@@ -514,6 +514,56 @@ func _run() -> void:
 			await _wait(6.5)
 			await shot("gameover_cheated")
 			print("CHEAT gameover screen=%d name_edit=%s" % [game.menus.screen, game.menus._name_edit])
+		"newenemies":
+			# bat (2-1)
+			game.menus.hide_all()
+			game._start_game(Game.first_level_of_world(2))
+			await _wait(Game.CARD_TIME + 0.4)
+			var bat: Bat = null
+			for n in game.level.get_children():
+				if n is Bat and absf(n.global_position.x - 35 * 16) < 20:
+					bat = n
+			await teleport(Vector2i(31, 16))
+			game.player.star_t = 3.0            # survive the swoop, we only watch it
+			await _wait(0.7)
+			print("BAT state=%d pos=%s" % [bat._state, bat.global_position.round()])
+			await shot("bat_swoop")
+			await _wait(1.0)
+			print("BAT dead=%s (star touch)" % [not is_instance_valid(bat) or bat.dead])
+			# cactus (3-1) vs fireballs
+			game._start_game(Game.first_level_of_world(3))
+			await _wait(Game.CARD_TIME + 0.4)
+			game.change_power(Player.Power.FIRE, false)
+			await _wait(1.0)
+			var cac: CactusStack = null
+			for n in game.level.get_children():
+				if n is CactusStack and absf(n.global_position.x - 36 * 16) < 30:
+					cac = n
+			await teleport(Vector2i(28, 16))
+			game.player.facing = 1
+			await _wait(0.3)
+			await shot("cactus")
+			for i in 4:
+				await press("run")
+				await _wait(0.45)
+				print("CACTUS segments=%s" % (cac.segments if is_instance_valid(cac) and not cac.dead else 0))
+			# penguin (4-1)
+			game._start_game(Game.first_level_of_world(4))
+			await _wait(Game.CARD_TIME + 0.4)
+			await teleport(Vector2i(3, 16))
+			var pen: Penguin = null
+			for n in game.level.get_children():
+				if n is Penguin:
+					pen = n
+					break
+			var slid := false
+			for i in 40:
+				await _wait(0.1)
+				if is_instance_valid(pen) and pen.sprite.animation == &"slide":
+					slid = true
+					await shot("penguin_slide")
+					break
+			print("PENGUIN slid=%s speed=%.0f" % [slid, pen.speed if is_instance_valid(pen) else -1.0])
 		"pause":
 			await start_play()
 			game._toggle_pause()

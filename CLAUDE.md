@@ -270,6 +270,19 @@ Seiten aus wie das Spiel selbst).
 X / A unten rechts. Der ▼-Knopf kam in v0.3 dazu — ohne ihn waren Röhren,
 Ducken und Absteigen auf Touch unmöglich.
 
+## Biom-Gegner (v0.9)
+
+- `a` Fledermaus (`bat.gd`, Höhle; `L.bat(c)` setzt sie direkt unter die
+  Decke): schläft kopfüber, stürzt sich auf Heldenhöhe herab, fliegt dann
+  wellenförmig weiter (durch Wände). Stampfbar.
+- `p` Kaktusturm (`cactus.gd`, Wüste): 3 (Welt 4: 4) schwankende Stachel-
+  kugeln, kriecht zum Helden. Stachelig: Stampfen verletzt! Jeder Feuerball
+  schlägt eine Kugel ab (`fire_hit()`, +200); Panzer/Stern/Zunge/Block von
+  unten erledigen den ganzen Turm.
+- `q` Pinguin (`penguin.gd`, `extends Shroom`, Schnee): schneller Läufer,
+  rutscht alle paar Sekunden 1,1 s bäuchlings mit 2,6-fachem Tempo.
+Feuerball ruft zuerst `fire_hit()` auf, falls vorhanden (Boss, Kaktus).
+
 ## Burgen + Boss (v0.8)
 
 Letzter Kurs jeder Welt: 1-4, 2-3, 3-3, 4-3 (`make_levels.py::castle_level`,
@@ -327,6 +340,6 @@ skaliert (NEAREST). Adaptive-Vordergrund bleibt im sichtbaren Kreis (~61 %).
 
 ## Offen / nächste Schritte
 
-- v0.9: neue Gegner je Biom (Fledermaus Höhle, Kaktusturm Wüste, Pinguin Schnee).
+- Ideen: weitere Welten, bewegliche Plattformen, Boss-Varianten.
 - `gen_audio.py` rendert Rauschen nicht deterministisch: nach einem Lauf
   unveränderte Stücke per `git checkout` zurücksetzen (sonst Binär-Churn).

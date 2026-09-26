@@ -48,7 +48,7 @@ const HELP_FALLBACK := {
 	"touch": "Left / right buttons: move\nA: jump   X: run, fireball, tongue\nHold X while moving to run.\nII: pause   Speaker: mute",
 	"items": "Hit ? blocks from below.\nMushroom: grow big.  Fire flower: throw fireballs.\nStar: invincible for a while.  Green mushroom: extra life.\nBig heroes break bricks.",
 	"dragon": "An egg hides in one ? block.\nJump onto the dragon to ride it.\nRun button: tongue eats enemies.\nDown + jump: hop off.  A hit throws you off.",
-	"worlds": "Stomp a turtle, then kick its shell:\nit knocks out every enemy in its way.\nRed turtles turn at edges, winged ones need two stomps.\nIce is slippery. Lava and water: don't fall in!",
+	"worlds": "Stomp a turtle, then kick its shell:\nit knocks out every enemy in its way.\nRed turtles turn at edges, winged ones need two stomps.\nIce is slippery. Lava and water: don't fall in!\nCave bats swoop, cactus stacks are spiky (use fire),\npenguins belly-slide.",
 	"castles": "Fire bars spin, lava bubbles leap: time your jumps.\nThe boss ends every world: stomp its head 3-4 times\n(5 fireballs = 1 hit).\nLevel select: on the title press B Y X A, type LEVELS\nor tap the title 5 times (no high score for unreached courses).",
 	"goal": "Stomp enemies from above.\nCoins: points, 100 coins = extra life.\nPipes marked by coins lead to bonus rooms.\nGrab the flag pole as high as you can!",
 }

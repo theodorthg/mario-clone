@@ -246,7 +246,7 @@ func _ground_tile(c: int, r: int, ch: String, row: int) -> Vector2i:
 	return Vector2i(m, row)
 
 func _pipe_free(ch: String) -> bool:
-	return ch in [".", "o", "g", "G", "k", "K", "J", "Z"] or DECOR.has(ch)
+	return ch in [".", "o", "g", "G", "k", "K", "J", "Z", "a", "p", "q"] or DECOR.has(ch)
 
 func _place_pipe(c: int, r: int) -> void:
 	tiles.set_cell(Vector2i(c, r), 0, PIPE_TOP_L)
@@ -331,6 +331,19 @@ func _build_entities() -> void:
 					boss.arena_left = ar.x * T
 					boss.arena_right = (ar.y + 1) * T
 					add_child(boss)
+				"a":
+					var bat := Bat.new()
+					bat.position = Vector2(c * T + T * 0.5, r * T)
+					add_child(bat)
+				"p":
+					var cs := CactusStack.new()
+					cs.segments = 3 if world < 4 else 4
+					cs.position = cell_feet(c, r)
+					add_child(cs)
+				"q":
+					var pg := Penguin.new()
+					pg.position = cell_feet(c, r)
+					add_child(pg)
 				"Q":
 					var ch_plant := Chomper.new()
 					ch_plant.pipe_top = Vector2((c + 1) * T, r * T)

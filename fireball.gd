@@ -46,8 +46,8 @@ func _physics_process(delta: float) -> void:
 
 func _on_area(a: Area2D) -> void:
 	var e := a.get_parent()
-	if e is Boss and not e.dead:
-		e.fire_hit()
+	if e != null and e.has_method("fire_hit") and not e.dead:
+		e.fire_hit()          # boss (5 = 1 hit), cactus stack (one ball per hit)
 		_die()
 		return
 	if e != null and e.has_method("kill_flip") and not e.dead:

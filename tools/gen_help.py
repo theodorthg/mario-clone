@@ -339,10 +339,18 @@ def page_worlds():
     text(d, (34, 114), "Ice is slippery - brake early.")
     img.alpha_composite(tiles.crop((9 * 16, 6 * 16, 10 * 16, 7 * 16)), (12, 134))
     text(d, (34, 138), "Lava and water: don't fall in!")
-    text(d, (230, 114), "WORLD 1  meadows", fill=DIM)
-    text(d, (230, 124), "WORLD 2  caverns", fill=DIM)
-    text(d, (230, 134), "WORLD 3  desert", fill=DIM)
-    text(d, (230, 144), "WORLD 4  snow", fill=DIM)
+    bat = trim(sheet_frame("enemy_bat", 18, 12, 1))
+    cac = Image.open(os.path.join(GFX, "enemy_cactus.png")).convert("RGBA")
+    seg, head = trim(cac.crop((0, 0, 16, 17))), trim(cac.crop((16, 0, 32, 17)))
+    pen = trim(sheet_frame("enemy_penguin", 18, 18, 0))
+    img.alpha_composite(bat, (232, 104))
+    text(d, (254, 106), "cave bats swoop", fill=DIM)
+    img.alpha_composite(seg, (234, 136))
+    img.alpha_composite(head, (234, 122))
+    text(d, (254, 124), "cactus: spiky!", fill=DIM)
+    text(d, (254, 134), "burn it (fire)", fill=DIM)
+    img.alpha_composite(pen, (234, 148))
+    text(d, (254, 152), "penguins slide", fill=DIM)
     return img
 
 

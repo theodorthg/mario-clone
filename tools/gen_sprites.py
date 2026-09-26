@@ -927,6 +927,76 @@ def turtles():
 
 
 # =========================================================================
+# BIOME ENEMIES — cave bat, desert cactus stack, snow penguin
+# =========================================================================
+BAT_PAL = {"k": "#3a2a5a", "b": "#6a4a9a", "B": "#4a3278", "r": "#ff4a4a", "t": "#ffffff"}
+BAT = {
+    "fly1": ["b..............b", "bb....k..k....bb", "bBb...kkkk...bBb", "bBBb.kkkkkk.bBBb",
+             ".bBBbkrkkrkbBBb.", "..bBBkkkkkkBBb..", "...bbkktkkkbb...", ".....kkkkkk.....",
+             "......kkkk......", "................"],
+    "fly2": ["................", "......k..k......", "......kkkk......", ".....kkkkkk.....",
+             "....bkrkkrkb....", "..bbBkkkkkkBbb..", ".bBBbkktkkkbBBb.", "bBBb.kkkkkk.bBBb",
+             "bBb...kkkk...bBb", "bb............bb"],
+    "hang": ["......k..k......", "......kkkk......", ".....bkkkkb.....", "....bBkkkkBb....",
+             "....bBkkkkBb....", "....bBkBBkBb....", ".....bkkkkb.....", "......kttk......",
+             ".......kk.......", "................"],
+}
+PENGUIN_PAL = {"k": "#1e2a48", "w": "#ffffff", "e": "#1b1030", "o": "#ff9a2a"}
+PENGUIN_TOP = [
+    "....kkkkk.....", "...kkkkkkk....", "..kkkkkwwkk...", "..kkkkkwekoo..", "..kkkkkkkkoo..",
+    "..kkkkwwwwkk..", ".kkkkwwwwwwk..", "kkkkwwwwwwwk..", "kkkkwwwwwwwk..", ".kkkwwwwwwwk..",
+    "..kkwwwwwwk...", "..kkkwwwwwk...", "...kkkkkkk....",
+]
+PENGUIN = {
+    "walk1": PENGUIN_TOP + ["..oo....oo...."],
+    "walk2": PENGUIN_TOP + ["...oo..oo....."],
+    "slide": ["..........kkk...", "...kkkkkkkkkkwk.", ".kkkkkkkkkkkkeoo", "kkwwwwwwwwwwkkk.",
+              ".wwwwwwwwwwwwk..", "..oo............"],
+    "squish": ["..kkkkkkkkkk..", ".kkkkwwwwkkoo.", "kkwwwwwwwwwwk.", ".oo.......oo.."],
+}
+CACTUS_PAL = {"L": "#b0e67a", "g": "#5aa83c", "G": "#3a7a2a", "t": "#fff4c8", "e": "#1b1030",
+              "w": "#ffffff", "p": "#ff6ab0", "y": "#ffd83c", "m": "#2a4a1a"}
+
+
+def cactus_ball(head=False):
+    rows = []
+    for y in range(12):
+        r = ""
+        for x in range(14):
+            dx, dy = (x - 6.5) / 7.0, (y - 5.5) / 6.0
+            d = dx * dx + dy * dy
+            if d > 1.0:
+                r += "."
+            elif (x + y * 2) % 5 == 0 and d > 0.55:
+                r += "t"
+            elif dx + dy < -0.5:
+                r += "L"
+            elif dx + dy > 0.6:
+                r += "G"
+            else:
+                r += "g"
+        rows.append(r)
+    if head:
+        for x, y, ch in ((4, 4, "w"), (4, 5, "e"), (8, 4, "w"), (8, 5, "e"), (5, 8, "m"), (6, 8, "m"), (7, 8, "m")):
+            rows[y] = rows[y][:x] + ch + rows[y][x + 1:]
+        top = ["......pp......", ".....pyyp.....", "......pp......"]
+        rows = top + rows
+    return rows
+
+
+def biome_enemies():
+    bat = [(n, ol(parse(BAT[n], BAT_PAL, "bat." + n))) for n in ["hang", "fly1", "fly2"]]
+    save_set("enemy_bat", bat, 18, 12, {"hang": (["hang"], 1, False), "fly": (["fly1", "fly2"], 10, True),
+                                        "flipped": (["fly1"], 1, False)})
+    pen = [(n, ol(parse(PENGUIN[n], PENGUIN_PAL, "penguin." + n))) for n in ["walk1", "walk2", "slide", "squish"]]
+    save_set("enemy_penguin", pen, 18, 18, {"walk": (["walk1", "walk2"], 8, True), "slide": (["slide"], 1, False),
+                                            "squish": (["squish"], 1, False), "flipped": (["walk1"], 1, False),
+                                            "fly": (["walk1"], 1, False)})
+    cac = [("seg", ol(parse(cactus_ball(), CACTUS_PAL, "cactus"))), ("head", ol(parse(cactus_ball(True), CACTUS_PAL, "cactus.h")))]
+    save_set("enemy_cactus", cac, 16, 17, {"seg": (["seg"], 1, False), "head": (["head"], 1, False)})
+
+
+# =========================================================================
 # BOSS — horned dragon-ogre king (own design), built from shapes + details
 # =========================================================================
 BOSS_PAL = {
@@ -1249,5 +1319,6 @@ if __name__ == "__main__":
     dino()
     enemies()
     turtles()
+    biome_enemies()
     boss()
     items()

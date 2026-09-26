@@ -26,6 +26,8 @@ Grid legend (one char per 16x16 cell, row 0 = top):
   I  ice block (solid, slippery)            L  lava (no collision, drawn in front)
   F  hard block with a rotating fire bar     b  lava bubble (in a lava pit's top row)
   Z  castle boss (arena = Level.arena)
+  a  cave bat (hangs under the ceiling)      p  desert cactus stack (spiky)
+  q  snow penguin (walks, belly-slides)
   decorations: * bush  + small bush  f flower  t grass tuft  r rock
                s sign  n fence
   Ground '#', bricks 'w' and decorations take the look of the BIOME of the
@@ -123,6 +125,13 @@ class Level:
         if r is None:
             r = self.surface(c) - 1
         self.set(c, r, ch)
+
+    def bat(self, c):
+        """bat hanging right under the ceiling at column c"""
+        r = 0
+        while r < ROWS and self.g[r][c] != ".":
+            r += 1
+        self.set(c, r, "a")
 
     def surface(self, c, below=None):
         """topmost solid cell at column c, searching from row `self.top` down
@@ -614,6 +623,8 @@ def level_2_1():
     L.enemy(99)
     L.enemy(101)
     L.set(104, GROUND - 3, "Q")
+    for c in (35, 70, 100, 158, 192):
+        L.bat(c)
     # shell alley: one turtle, a row of walkers behind it -> shell combo
     L.enemy(110, ch="k")
     L.enemy(115)
@@ -759,6 +770,8 @@ def level_3_1():
     L.stairs(202, 4, up=False)
     L.enemy(210)
     L.decor(212, "+")
+    for c in (36, 82, 137, 170):
+        L.enemy(c, ch="p")
     finale(L, 214, 230, 234)
     L.decor(227, "*")
     B0, B1 = 256, 295
@@ -851,6 +864,8 @@ def level_4_1():
     L.stairs(203, 4, up=False)
     L.set(211, 14, "J")
     L.decor(212, "+")
+    for c in (21, 59, 89, 126, 180):
+        L.enemy(c, ch="q")
     finale(L, 214, 230, 234)
     L.decor(226, "*")
     B0, B1 = 256, 295
@@ -947,6 +962,8 @@ def level_2_2():
     L.blocks(198, 12, "?")
     exit_pipe = L.pipe(204, 2, warp=True)
     L.coins(203, 11, 4)
+    for c in (38, 69, 106, 136, 170, 186):
+        L.bat(c)
     L.fill(MAIN_END - 2, MAIN_END - 1, 0, GROUND - 1, "w")
     E0, E1 = 220, 259
     L.ground(E0, E1)
@@ -1048,6 +1065,8 @@ def level_3_2():
     L.stairs(203, 4, up=False)
     L.set(209, 14, "J")
     L.decor(212, "+")
+    for c in (19, 64, 96, 123, 186):
+        L.enemy(c, ch="p")
     finale(L, 214, 230, 234)
     L.decor(227, "*")
     B0, B1 = 256, 295
@@ -1140,6 +1159,8 @@ def level_4_2():
     L.stairs(200, 4, up=False)
     L.fill(205, 212, GROUND, GROUND, "I")
     L.set(209, 14, "G")
+    for c in (17, 41, 96, 131, 188):
+        L.enemy(c, ch="q")
     finale(L, 214, 230, 234)
     L.decor(226, "*")
     B0, B1 = 256, 295
@@ -1245,6 +1266,10 @@ def render_preview(L, path):
     turtle_r = Image.open(os.path.join(gfx, "enemy_turtle_red.png")).convert("RGBA").crop((0, 0, 28, 26))
     boss_im = Image.open(os.path.join(gfx, "boss_1.png")).convert("RGBA").crop((0, 0, 32, 34))
     bubble = Image.open(os.path.join(gfx, "lava_bubble.png")).convert("RGBA")
+    bat_im = Image.open(os.path.join(gfx, "enemy_bat.png")).convert("RGBA").crop((0, 0, 18, 12))
+    pen_im = Image.open(os.path.join(gfx, "enemy_penguin.png")).convert("RGBA").crop((0, 0, 18, 18))
+    cac_seg = Image.open(os.path.join(gfx, "enemy_cactus.png")).convert("RGBA").crop((0, 0, 16, 17))
+    cac_head = Image.open(os.path.join(gfx, "enemy_cactus.png")).convert("RGBA").crop((16, 0, 32, 17))
     coin = Image.open(os.path.join(gfx, "coin.png")).convert("RGBA").crop((0, 0, 12, 16))
     decor = Image.open(os.path.join(gfx, "decor.png")).convert("RGBA")
     hero = Image.open(os.path.join(gfx, "hero_small.png")).convert("RGBA").crop((0, 0, 20, 20))
@@ -1312,6 +1337,13 @@ def render_preview(L, path):
                 later.append((bubble.resize((6, 6)), x + 5, y - 30))
             elif ch == "Z":
                 later.append((boss_im, x - 8, y - 18))
+            elif ch == "a":
+                later.append((bat_im, x - 1, y))
+            elif ch == "q":
+                later.append((pen_im, x - 1, y - 2))
+            elif ch == "p":
+                for i in range(3):
+                    later.append((cac_head if i == 2 else cac_seg, x, y - 1 - i * 11))
             elif ch == "X":
                 img.alpha_composite(blk(7), (x, y))
             elif ch == "w":
