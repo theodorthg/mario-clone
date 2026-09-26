@@ -19,6 +19,18 @@ const ROW_GRASS := 0
 const ROW_MISC := 1
 const ROW_PIPE := 2
 const ROW_CAVE := 3
+const ROW_SAND := 4
+const ROW_SNOW := 5
+const ROW_EXTRA := 6
+const ICE := Vector2i(8, 6)
+const LAVA_TOP := Vector2i(9, 6)      # 4-frame tile animation (9..12)
+const LAVA := Vector2i(13, 6)
+const SANDSTONE := Vector2i(14, 6)
+const ICE_BRICK := Vector2i(15, 6)
+const BIOME_ROW := {"grass": ROW_GRASS, "cave": ROW_CAVE, "sand": ROW_SAND, "snow": ROW_SNOW}
+## area theme (AREAS in the level data) -> ground/decor biome of those columns
+const THEME_BIOME := {"cave": "cave", "cavern": "cave", "desert": "sand", "desert_dusk": "sand",
+	"snow": "snow", "snow_night": "snow"}
 const HARD := Vector2i(4, 1)
 const BRIDGE_L := Vector2i(5, 1)
 const BRIDGE_M := Vector2i(6, 1)
@@ -37,6 +49,12 @@ const SIDE_BODY_B := Vector2i(7, 2)
 
 const DECOR := {"*": "bush_l", "+": "bush_s", "f": "flower_a", "t": "tuft", "r": "rock",
 	"s": "sign", "n": "fence"}
+## the same level chars dress up differently per biome
+const DECOR_BIOME := {
+	"sand": {"*": "cactus_l", "+": "cactus_s", "f": "dflower", "t": "tuft_sand", "r": "rock_sand"},
+	"snow": {"*": "pine", "+": "bush_snow", "f": "frost", "t": "tuft_snow", "r": "rock_snow"},
+	"cave": {"*": "crystal_l", "+": "crystal_s", "f": "glowshroom", "t": "tuft_cave", "r": "rock_cave"},
+}
 const FLOWERS := ["flower_a", "flower_b", "flower_c"]
 
 var data: Script
@@ -52,6 +70,8 @@ var castle_flag: Sprite2D
 var areas := {}                 # name -> {"rect": Rect2, "theme": String}
 var warps: Array = []           # [{zone: WarpZone, ...}]
 var decor_tex: Texture2D
+var biome := "grass"                 # biome of the "main" area
+var _col_biome := PackedStringArray()
 
 static var _tileset_cache: TileSet
 
@@ -59,6 +79,15 @@ func setup(level_script: Script) -> void:
 	data = level_script
 	grid = PackedStringArray(data.GRID)
 	cols = grid[0].length()
+	_col_biome.resize(cols)
+	_col_biome.fill("grass")
+	for name in data.AREAS:
+		var a: Dictionary = data.AREAS[name]
+		var b: String = THEME_BIOME.get(a["theme"], "grass")
+		for c in range(int(a["from"]), mini(int(a["to"]) + 1, cols)):
+			_col_biome[c] = b
+		if name == "main":
+			biome = b
 	decor_tex = load("res://assets/graphics/decor.png")
 	_build_tiles()
 	_build_entities()
@@ -74,6 +103,12 @@ func at(c: int, r: int) -> String:
 	if r < 0 or r >= ROWS or c < 0 or c >= cols:
 		return "."
 	return grid[r][c]
+
+func biome_at(c: int) -> String:
+	return _col_biome[clampi(c, 0, cols - 1)]
+
+func is_ice(c: int, r: int) -> bool:
+	return at(c, r) == "I"
 
 func area_at(x: float) -> String:
 	for name in areas:
@@ -106,14 +141,16 @@ static func tileset() -> TileSet:
 			var coords := Vector2i(x, y)
 			if y == ROW_MISC and x > WATER_TOP.x and x < WATER.x:
 				continue      # animation frames of WATER_TOP, not tiles of their own
+			if y == ROW_EXTRA and x > LAVA_TOP.x and x < LAVA.x:
+				continue
 			src.create_tile(coords)
-			if coords == WATER_TOP:
+			if coords == WATER_TOP or coords == LAVA_TOP:
 				src.set_tile_animation_columns(coords, 4)
 				src.set_tile_animation_frames_count(coords, 4)
 				for f in 4:
-					src.set_tile_animation_frame_duration(coords, f, 0.18)
-			if coords == WATER_TOP or coords == WATER:
-				continue      # water: no collision (falling in = pit death)
+					src.set_tile_animation_frame_duration(coords, f, 0.18 if coords == WATER_TOP else 0.24)
+			if coords in [WATER_TOP, WATER, LAVA_TOP, LAVA]:
+				continue      # water/lava: no collision (falling in = pit death)
 			var td := src.get_tile_data(coords, 0)
 			var one_way := y == ROW_MISC and x >= BRIDGE_L.x and x <= BRIDGE_R.x
 			td.add_collision_polygon(0)
@@ -141,13 +178,17 @@ func _build_tiles() -> void:
 			var ch := grid[r][c]
 			match ch:
 				"#":
-					tiles.set_cell(Vector2i(c, r), 0, _ground_tile(c, r, "#", ROW_GRASS))
+					tiles.set_cell(Vector2i(c, r), 0, _ground_tile(c, r, "#", BIOME_ROW.get(biome_at(c), ROW_GRASS)))
+				"I":
+					tiles.set_cell(Vector2i(c, r), 0, ICE)
+				"L":
+					water.set_cell(Vector2i(c, r), 0, LAVA if at(c, r - 1) == "L" else LAVA_TOP)
 				"c":
 					tiles.set_cell(Vector2i(c, r), 0, _ground_tile(c, r, "c", ROW_CAVE))
 				"X":
 					tiles.set_cell(Vector2i(c, r), 0, HARD)
 				"w":
-					tiles.set_cell(Vector2i(c, r), 0, CAVE_BRICK)
+					tiles.set_cell(Vector2i(c, r), 0, {"sand": SANDSTONE, "snow": ICE_BRICK}.get(biome_at(c), CAVE_BRICK))
 				"=":
 					var l := at(c - 1, r) == "="
 					var rr := at(c + 1, r) == "="
@@ -184,10 +225,14 @@ func _ground_tile(c: int, r: int, ch: String, row: int) -> Vector2i:
 		return Vector2i(0 if v < 12 else (1 if v < 14 else (2 if v < 17 else 3)), ROW_MISC)
 	if m == 0 and row == ROW_CAVE:
 		return Vector2i(8 + (absi(c * 7 + r * 13) % 2), ROW_MISC)
+	if m == 0 and (row == ROW_SAND or row == ROW_SNOW):
+		var hv := absi((c * 73856093) ^ (r * 19349663)) % 20
+		var k := 0 if hv < 13 else (1 if hv < 15 else (2 if hv < 18 else 3))
+		return Vector2i(k + (4 if row == ROW_SNOW else 0), ROW_EXTRA)
 	return Vector2i(m, row)
 
 func _pipe_free(ch: String) -> bool:
-	return ch in [".", "o", "g", "G"] or DECOR.has(ch)
+	return ch in [".", "o", "g", "G", "k", "K", "J"] or DECOR.has(ch)
 
 func _place_pipe(c: int, r: int) -> void:
 	tiles.set_cell(Vector2i(c, r), 0, PIPE_TOP_L)
@@ -245,6 +290,12 @@ func _build_entities() -> void:
 					e.winged = ch == "G"
 					e.position = cell_feet(c, r)
 					add_child(e)
+				"k", "K", "J":
+					var t := Turtle.new()
+					t.red = ch == "K"
+					t.winged = ch == "J"
+					t.position = cell_feet(c, r)
+					add_child(t)
 				"Q":
 					var ch_plant := Chomper.new()
 					ch_plant.pipe_top = Vector2((c + 1) * T, r * T)
@@ -252,8 +303,8 @@ func _build_entities() -> void:
 					add_child(ch_plant)
 				_:
 					if DECOR.has(ch):
-						var name: String = DECOR[ch]
-						if ch == "f":
+						var name: String = DECOR_BIOME.get(biome_at(c), {}).get(ch, DECOR[ch])
+						if ch == "f" and biome_at(c) == "grass":
 							name = FLOWERS[rng.randi() % FLOWERS.size()]
 						_add_decor(decor_layer, name, cell_feet(c, r))
 
@@ -261,7 +312,7 @@ func _add_block(c: int, r: int, kind: int, content: String) -> void:
 	var b := Block.new()
 	b.kind = kind
 	b.content = content
-	b.cave = data.AREAS.has("bonus") and c >= int(data.AREAS["bonus"]["from"])
+	b.cave = biome_at(c) == "cave"
 	b.position = cell_center(c, r)
 	add_child(b)
 

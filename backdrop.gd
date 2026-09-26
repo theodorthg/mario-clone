@@ -19,8 +19,10 @@ const LAYERS := [
 	["res://assets/graphics/bg_hills_near.png", 178.0, 0.48, 0.75, 0.0],
 	["res://assets/graphics/bg_trees.png", 196.0, 0.66, 0.9, 0.0],
 ]
-## sky: [top, mid, horizon, mid_pos, stars, moon]; tints: one per LAYERS
-## entry (same order); world: CanvasModulate tint for tiles + actors.
+## sky: [top, mid, horizon, mid_pos, stars, moon(, sun)]; tints: one per
+## LAYERS entry (same order) — OR "layers": own list of [texture, y, fx, fy,
+## auto, tint] for biomes with their own scenery; world: CanvasModulate tint
+## for tiles + actors; fx: screen-space particles ("snow", "motes", "sand").
 const THEMES := {
 	"grass": {
 		"sky": [Color("3b6bd6"), Color("73acf0"), Color("d8eefa"), 0.55, 0.0, 0.0],
@@ -44,6 +46,39 @@ const THEMES := {
 		"tints": [],
 		"world": Color.WHITE,
 	},
+	"cavern": {
+		"sky": [Color("04050c"), Color("0c1026"), Color("171d3c"), 0.5, 0.0, 0.0],
+		"layers": [
+			["res://assets/graphics/bg_cave_far.png", 50.0, 0.18, 0.15, 0.0, Color.WHITE],
+			["res://assets/graphics/bg_cave_crystals.png", 172.0, 0.38, 0.7, 0.0, Color.WHITE],
+			["res://assets/graphics/bg_cave_near.png", 206.0, 0.6, 0.9, 0.0, Color.WHITE],
+		],
+		"world": Color(0.9, 0.9, 1.0),
+		"fx": "motes",
+	},
+	"desert": {
+		"sky": [Color("2a70d0"), Color("78bcf0"), Color("fce6b4"), 0.5, 0.0, 0.0, 1.0],
+		"layers": [
+			["res://assets/graphics/bg_clouds.png", 22.0, 0.12, 0.1, 4.0, Color(1.0, 0.97, 0.9, 0.7)],
+			["res://assets/graphics/bg_pyramids.png", 104.0, 0.2, 0.4, 0.0, Color.WHITE],
+			["res://assets/graphics/bg_dunes_far.png", 150.0, 0.32, 0.6, 0.0, Color.WHITE],
+			["res://assets/graphics/bg_cacti.png", 176.0, 0.5, 0.78, 0.0, Color.WHITE],
+		],
+		"world": Color(1.0, 0.97, 0.9),
+		"fx": "sand",
+	},
+	"snow": {
+		"sky": [Color("5a7ab8"), Color("a4c0e6"), Color("eef4fc"), 0.55, 0.0, 0.0],
+		"layers": [
+			["res://assets/graphics/bg_clouds.png", 26.0, 0.12, 0.1, 3.0, Color(0.95, 0.97, 1.0)],
+			["res://assets/graphics/bg_mountains.png", 72.0, 0.18, 0.35, 0.0, Color(0.92, 0.96, 1.0)],
+			["res://assets/graphics/bg_pines_far.png", 138.0, 0.3, 0.6, 0.0, Color.WHITE],
+			["res://assets/graphics/bg_snowhills.png", 178.0, 0.45, 0.75, 0.0, Color.WHITE],
+			["res://assets/graphics/bg_pines_near.png", 190.0, 0.62, 0.9, 0.0, Color.WHITE],
+		],
+		"world": Color(0.96, 0.98, 1.0),
+		"fx": "snow",
+	},
 }
 const REF_CAM_Y := 185.0
 
@@ -55,6 +90,9 @@ var _time := 0.0
 var theme := ""
 var _world_tint: CanvasModulate
 var _para_layer: CanvasLayer
+var _fx_layer: CanvasLayer
+var _fx: CPUParticles2D
+var _fx_size := Vector2.ZERO
 
 func _ready() -> void:
 	z_index = -50
@@ -77,6 +115,10 @@ func _ready() -> void:
 	add_child(_para_layer)
 	_world_tint = CanvasModulate.new()
 	add_child(_world_tint)
+	# weather / ambience particles in screen space, above the world
+	_fx_layer = CanvasLayer.new()
+	_fx_layer.layer = 5
+	add_child(_fx_layer)
 
 func set_theme(name: String) -> void:
 	if name == theme:
@@ -90,28 +132,92 @@ func set_theme(name: String) -> void:
 	mat.set_shader_parameter("mid_pos", th.sky[3])
 	mat.set_shader_parameter("stars", th.sky[4])
 	mat.set_shader_parameter("moon", th.sky[5])
+	mat.set_shader_parameter("sun", th.sky[6] if th.sky.size() > 6 else 0.0)
 	_world_tint.color = th.world
 	for l in _layers:
 		l.sprite.queue_free()
 	_layers.clear()
-	var tints: Array = th.tints
-	for i in tints.size():
-		var spec: Array = LAYERS[i]
+	var specs: Array = []
+	if th.has("layers"):
+		specs = th.layers
+	else:
+		for i in th.tints.size():
+			specs.append(LAYERS[i] + [th.tints[i]])
+	for spec in specs:
 		var s := Sprite2D.new()
 		s.texture = load(spec[0])
 		s.centered = false
 		s.region_enabled = true
 		s.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
-		s.self_modulate = tints[i]
+		s.self_modulate = spec[5]
 		_para_layer.add_child(s)
 		_layers.append({"sprite": s, "y": spec[1], "fx": spec[2], "fy": spec[3], "auto": spec[4]})
+	_set_fx(th.get("fx", ""))
 	_process(0.0)
+
+func _set_fx(kind: String) -> void:
+	if _fx:
+		_fx.queue_free()
+		_fx = null
+	if kind == "":
+		return
+	var p := CPUParticles2D.new()
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	p.local_coords = false
+	match kind:
+		"snow":
+			p.amount = 110
+			p.lifetime = 8.0
+			p.direction = Vector2(0.25, 1.0)
+			p.spread = 18.0
+			p.initial_velocity_min = 14.0
+			p.initial_velocity_max = 30.0
+			p.gravity = Vector2(0, 4)
+			p.scale_amount_min = 1.0
+			p.scale_amount_max = 2.0
+			p.color = Color(1, 1, 1, 0.9)
+		"motes":
+			p.amount = 36
+			p.lifetime = 7.0
+			p.direction = Vector2(0.2, -1.0)
+			p.spread = 60.0
+			p.initial_velocity_min = 2.0
+			p.initial_velocity_max = 8.0
+			p.gravity = Vector2.ZERO
+			p.scale_amount_min = 1.0
+			p.scale_amount_max = 1.0
+			var g := Gradient.new()
+			g.set_color(0, Color(0.5, 0.95, 1.0, 0.0))
+			g.set_color(1, Color(0.5, 0.95, 1.0, 0.0))
+			g.add_point(0.3, Color(0.6, 0.95, 1.0, 0.8))
+			g.add_point(0.7, Color(0.85, 0.7, 1.0, 0.7))
+			p.color_ramp = g
+		"sand":
+			p.amount = 40
+			p.lifetime = 5.0
+			p.direction = Vector2(-1.0, 0.12)
+			p.spread = 6.0
+			p.initial_velocity_min = 55.0
+			p.initial_velocity_max = 95.0
+			p.gravity = Vector2(0, 2)
+			p.scale_amount_min = 1.0
+			p.scale_amount_max = 1.0
+			p.color = Color(1.0, 0.9, 0.66, 0.55)
+	p.preprocess = p.lifetime
+	_fx = p
+	_fx_size = Vector2.ZERO
+	_fx_layer.add_child(p)
 
 func _process(delta: float) -> void:
 	_time += delta
 	if camera == null:
 		return
 	var view := get_viewport_rect().size
+	if _fx and view != _fx_size:
+		# emit from the whole screen (plus margin) so no edge stays empty
+		_fx_size = view
+		_fx.position = view * 0.5 + Vector2(40, -20)
+		_fx.emission_rect_extents = view * 0.5 + Vector2(60, 40)
 	var cam := camera.get_screen_center_position()
 	var left := cam.x - view.x * 0.5
 	for l in _layers:

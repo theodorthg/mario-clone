@@ -99,6 +99,16 @@ func _apply_visual_power(p: int, small_fire := false) -> void:
 func show_power_frame(p: int) -> void:
 	_apply_visual_power(p)
 
+func _on_ice() -> bool:
+	var game := Game.instance
+	if game == null or game.level == null:
+		return false
+	var r := int(floorf((global_position.y + 2.0) / Level.T))
+	for dx in [-5.0, 0.0, 5.0]:
+		if game.level.is_ice(int(floorf((global_position.x + dx) / Level.T)), r):
+			return true
+	return false
+
 func is_big() -> bool:
 	return power != Power.SMALL
 
@@ -158,20 +168,21 @@ func _physics_process(delta: float) -> void:
 	if crouching:
 		dir = 0.0
 
-	# horizontal
+	# horizontal (ice blocks: much less grip on the ground)
+	var grip := 0.28 if on_floor and _on_ice() else 1.0
 	var top := RUN_MAX if run else WALK_MAX
 	if dir != 0.0:
 		facing = 1 if dir > 0.0 else -1
 		var target := dir * top
 		if on_floor and velocity.x != 0.0 and signf(velocity.x) != signf(dir):
-			velocity.x = move_toward(velocity.x, 0.0, SKID_DECEL * delta)
+			velocity.x = move_toward(velocity.x, 0.0, SKID_DECEL * grip * delta)
 		elif absf(velocity.x) > top and signf(velocity.x) == signf(dir):
 			velocity.x = move_toward(velocity.x, target, DECEL * 0.5 * delta)
 		else:
-			var acc := (RUN_ACCEL if run else ACCEL) if on_floor else AIR_ACCEL
+			var acc := (RUN_ACCEL if run else ACCEL) * grip if on_floor else AIR_ACCEL
 			velocity.x = move_toward(velocity.x, target, acc * delta)
 	else:
-		velocity.x = move_toward(velocity.x, 0.0, (DECEL if on_floor else DECEL * 0.35) * delta)
+		velocity.x = move_toward(velocity.x, 0.0, (DECEL * grip if on_floor else DECEL * 0.35) * delta)
 
 	# jump
 	if jump_buffer_t > 0.0 and coyote_t > 0.0:

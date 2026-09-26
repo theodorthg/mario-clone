@@ -49,6 +49,44 @@ CAVE_TOP = {
     "L": "#c4d0f4", "g": "#8e9ed8", "G": "#6878b8", "H": "#4a5896",
     "D": "#1c2344", "d": "#222a4e",
 }
+SAND = {
+    "a": "#e0b060", "b": "#cc9a4c", "c": "#b0803a", "d": "#8a5c26",
+    "e": "#f4d08a", "s": "#c8a070", "S": "#9a7040", "T": "#f0dcb0", "r": "#a0703a",
+}
+SAND_TOP = {
+    "L": "#fff4c8", "g": "#f8dc8c", "G": "#ecc670", "H": "#d4a656",
+    "D": "#9a6a30", "d": "#8a5c26",
+}
+SNOW = {
+    "a": "#7a8cb0", "b": "#6878a0", "c": "#56648a", "d": "#3c4868",
+    "e": "#a0b0d0", "s": "#8a9ac0", "S": "#4c5878", "T": "#c8d4ec", "r": "#465274",
+}
+SNOW_TOP = {
+    "L": "#ffffff", "g": "#f2f7ff", "G": "#d4e2f6", "H": "#aac0e0",
+    "D": "#6a7ea8", "d": "#3c4868",
+}
+LAVA_PAL = {"f": "#fff6a0", "l": "#ffc83a", "w": "#ff7a1a", "m": "#e0401a", "d": "#a8200e"}
+ICE_PAL = {"k": OUTLINE, "w": "#ffffff", "l": "#d4f4ff", "i": "#a0e0fa", "I": "#6cc0ec", "D": "#3a8ac8"}
+ICE = [
+    "kkkkkkkkkkkkkkkk",
+    "kwwlllllllllliIk",
+    "kwlliiiiiiiiiiIk",
+    "klliwiiiiiiiiiIk",
+    "kliwwiiiiiiiiiIk",
+    "kliwiiiiiiiwiiIk",
+    "kliiiiiiiiwwiiIk",
+    "kliiiiiiiwwiiiIk",
+    "kliiiiiiwwiiiiIk",
+    "kliiiiiwwiiiiiIk",
+    "kliiiiiwiiiiiiIk",
+    "kliiiiiiiiiwiiIk",
+    "kliiiiiiiiwiiiIk",
+    "kiiiiiiiiiiiiIIk",
+    "kIIIIIIIIIIIIIDk",
+    "kkkkkkkkkkkkkkkk",
+]
+SANDSTONE_PAL = {"k": OUTLINE, "l": "#fbe0a0", "b": "#e0b060", "B": "#b0803a", "m": "#6a4418"}
+ICEBRICK_PAL = {"k": OUTLINE, "l": "#f0faff", "b": "#b8e4fa", "B": "#78b8e4", "m": "#34608e"}
 
 DIRT_BASE = [
     "aaabaaaaaaabaaaa",
@@ -392,6 +430,151 @@ FENCE = [
 ]
 
 
+# ------------------------------------------------------------ biome decor --
+CACTUS = {"L": "#9ad86a", "g": "#5aa83c", "G": "#3a7a2a", "t": "#f4ecc0", "p": "#ff6ab0", "y": "#ffd83c"}
+
+
+def _rib(px, x0, y0, w, h, pal, round_top=True):
+    cols = [pal["L"], pal["g"], pal["g"], pal["G"]][:w] if w <= 4 else \
+        [pal["L"]] + [pal["g"]] * (w - 2) + [pal["G"]]
+    for y in range(y0, y0 + h):
+        for i in range(w):
+            if round_top and y == y0 and (i == 0 or i == w - 1):
+                continue
+            c = cols[i]
+            if 0 < i < w - 1 and (y - y0) % 5 == 2 and i == w // 2:
+                c = pal["t"]
+            px[x0 + i, y] = hex_rgba(c)
+
+
+def cactus_l():
+    img = Image.new("RGBA", (14, 26), TRANSPARENT)
+    px = img.load()
+    _rib(px, 5, 0, 4, 26, CACTUS)          # trunk
+    _rib(px, 0, 9, 4, 9, CACTUS)           # left arm (up)
+    _rib(px, 3, 14, 3, 4, CACTUS, False)   # left elbow
+    _rib(px, 10, 5, 4, 9, CACTUS)          # right arm (up)
+    _rib(px, 8, 10, 3, 4, CACTUS, False)   # right elbow
+    return outline(img, color=OUTLINE, selective=False)
+
+
+def cactus_s():
+    img = Image.new("RGBA", (10, 10), TRANSPARENT)
+    px = img.load()
+    for y in range(2, 10):
+        for x in range(10):
+            dx, dy = (x - 4.5) / 5.0, (y - 6.0) / 4.6
+            if dx * dx + dy * dy <= 1.0:
+                c = CACTUS["g"]
+                if x in (2, 5, 8):
+                    c = CACTUS["G"]
+                if x < 2 or (x == 3 and y < 5):
+                    c = CACTUS["L"]
+                px[x, y] = hex_rgba(c)
+    for x, y, c in [(4, 0, "p"), (5, 0, "p"), (3, 1, "p"), (4, 1, "y"), (5, 1, "y"), (6, 1, "p")]:
+        px[x, y] = hex_rgba(CACTUS[c])
+    return outline(img, color=OUTLINE, selective=False)
+
+
+PINE = {"n": "#1f5a3a", "N": "#12402a", "l": "#2f7a4a", "w": "#ffffff", "W": "#d4e2f6", "b": "#5a3a22"}
+
+
+def pine():
+    w, h = 18, 30
+    img = Image.new("RGBA", (w, h), TRANSPARENT)
+    px = img.load()
+    tiers = [(0, 8, 4), (6, 9, 6), (12, 10, 8), (18, 9, 9)]   # (top, height, half width)
+    for top, th, hw in tiers:
+        for y in range(top, top + th):
+            half = max(1, round((y - top + 1) / th * hw))
+            for x in range(9 - half, 9 + half):
+                c = PINE["l"] if x < 9 else PINE["n"]
+                if y - top >= th - 2:
+                    c = PINE["N"]
+                # snow on the upper slope of every tier
+                if y - top < 3 or (x - (9 - half) < 2 and y - top < th - 2):
+                    c = PINE["w"] if x < 11 else PINE["W"]
+                px[x, y] = hex_rgba(c)
+    for y in range(27, h):
+        for x in (8, 9):
+            px[x, y] = hex_rgba(PINE["b"])
+    return outline(img, color=OUTLINE, selective=False)
+
+
+CRYSTAL_CYAN = ("#d8fcff", "#5ce0f0", "#2a8ab8")
+CRYSTAL_PURPLE = ("#f4d8ff", "#b474f4", "#6a38b0")
+CRYSTAL_ICE = ("#ffffff", "#bfe8ff", "#7ab4e4")
+
+
+def crystal(img, x0, h, w, cols):
+    px = img.load()
+    H = img.size[1]
+    light, mid, dark = [hex_rgba(c) for c in cols]
+    tip = w // 2 + 1
+    for y in range(H - h, H):
+        d = y - (H - h)
+        half = min(w / 2.0, (d + 1) * w / (2.0 * tip))
+        for x in range(w):
+            if abs(x + 0.5 - w / 2.0) <= half:
+                c = light if x < w / 2.0 - 1 else (mid if x < w / 2.0 + 1 else dark)
+                px[x0 + x, y] = c
+
+
+def crystal_l():
+    img = Image.new("RGBA", (18, 20), TRANSPARENT)
+    crystal(img, 0, 11, 6, CRYSTAL_PURPLE)
+    crystal(img, 11, 13, 6, CRYSTAL_PURPLE)
+    crystal(img, 5, 20, 8, CRYSTAL_CYAN)
+    return outline(img, color=OUTLINE, selective=False)
+
+
+def crystal_s(cols=CRYSTAL_CYAN, cols2=CRYSTAL_PURPLE):
+    img = Image.new("RGBA", (10, 11), TRANSPARENT)
+    crystal(img, 4, 7, 5, cols2)
+    crystal(img, 0, 11, 6, cols)
+    return outline(img, color=OUTLINE, selective=False)
+
+
+GLOW = {"c": "#6af0ff", "C": "#2ab0d8", "w": "#e8ffff", "s": "#d8d0e8", "S": "#8a84a8"}
+GLOWSHROOM = [
+    "..cccc..",
+    ".cwcccC.",
+    "ccccwcCC",
+    "CCCCCCCC",
+    "...ss...",
+    "...sS...",
+    "..ssS...",
+]
+
+
+def recolored(rows, **kw):
+    pal = dict(DECOR_PAL)
+    pal.update(kw)
+    return parse(rows, pal)
+
+
+def biome_decor():
+    ol_ = lambda im: outline(im, color=OUTLINE, selective=False)  # noqa: E731
+    small_bush = [r[:18] for r in BUSH_L[1:]]
+    return [
+        ("cactus_l", cactus_l()),
+        ("cactus_s", cactus_s()),
+        ("dflower", recolored(FLOWER_A, G="#8a9a3a", r="#ff6ab0")),
+        ("tuft_sand", recolored(TUFT, L="#fff0a8", g="#e8c860", G="#b8923a")),
+        ("rock_sand", ol_(recolored(ROCK, s="#d8b078", T="#f4dcb0", S="#a07848"))),
+        ("pine", pine()),
+        ("bush_snow", ol_(recolored(small_bush, L="#ffffff", g="#eef4ff", G="#c4d4ec", H="#8aa0c8", D="#4a5e88"))),
+        ("frost", crystal_s(CRYSTAL_ICE, CRYSTAL_ICE)),
+        ("tuft_snow", recolored(TUFT, L="#ffffff", g="#e4eeff", G="#a8bcdc")),
+        ("rock_snow", ol_(recolored(ROCK, s="#8a9ac0", T="#ffffff", S="#56648a"))),
+        ("crystal_l", crystal_l()),
+        ("crystal_s", crystal_s()),
+        ("glowshroom", ol_(parse(GLOWSHROOM, GLOW))),
+        ("tuft_cave", recolored(TUFT, L="#8ae0d0", g="#4aa8a0", G="#2a7078")),
+        ("rock_cave", ol_(recolored(ROCK, s="#6a78a8", T="#9aa8d4", S="#3e4876"))),
+    ]
+
+
 def castle():
     """80 x 88 px small castle, door centered at x=40 (door 16 wide, 24 tall)."""
     w, h = 80, 88
@@ -517,7 +700,7 @@ def checkpoint(flag_col):
 WATER_PAL = {"f": "#f4fbff", "l": "#a8dcff", "w": "#4a9ae8", "m": "#3a82d6", "d": "#2a64b8"}
 
 
-def water_surface(frame):
+def water_surface(frame, pal=WATER_PAL, alpha=225):
     """16x16, 4 animation frames: a travelling wave crest + foam on top."""
     img = Image.new("RGBA", (T, T), TRANSPARENT)
     px = img.load()
@@ -529,8 +712,20 @@ def water_surface(frame):
             ch = "f" if d == 0 else ("l" if d == 1 else ("w" if d < 7 else "m"))
             if d > 2 and (x + y * 3 + frame * 5) % 13 == 0:
                 ch = "l"
-            c = hex_rgba(WATER_PAL[ch])
-            px[x, y] = (c[0], c[1], c[2], 225)
+            c = hex_rgba(pal[ch])
+            px[x, y] = (c[0], c[1], c[2], alpha)
+    return img
+
+
+def lava_body():
+    img = Image.new("RGBA", (T, T), TRANSPARENT)
+    px = img.load()
+    for y in range(T):
+        for x in range(T):
+            ch = "m" if y < 9 else "d"
+            if (x * 5 + y * 7) % 19 == 0:
+                ch = "w"
+            px[x, y] = hex_rgba(LAVA_PAL[ch])
     return img
 
 
@@ -549,10 +744,23 @@ def water_body():
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    atlas = Image.new("RGBA", (16 * T, 4 * T), TRANSPARENT)
+    atlas = Image.new("RGBA", (16 * T, 7 * T), TRANSPARENT)
     for m in range(16):
         atlas.paste(edge_tile(m, DIRT, GRASS), (m * T, 0))
         atlas.paste(edge_tile(m, CAVE, CAVE_TOP), (m * T, 3 * T))
+        atlas.paste(edge_tile(m, SAND, SAND_TOP), (m * T, 4 * T))
+        atlas.paste(edge_tile(m, SNOW, SNOW_TOP), (m * T, 5 * T))
+    # row 6: sand interior 0-3, snow interior 4-7, ice 8, lava top 9-12
+    # (animation), lava 13, sandstone brick 14, ice brick 15
+    for i in range(4):
+        atlas.paste(dirt_variant(i, SAND), (i * T, 6 * T))
+        atlas.paste(dirt_variant(i, SNOW), ((4 + i) * T, 6 * T))
+    atlas.paste(parse(ICE, ICE_PAL), (8 * T, 6 * T))
+    for f in range(4):
+        atlas.paste(water_surface(f, LAVA_PAL, 255), ((9 + f) * T, 6 * T))
+    atlas.paste(lava_body(), (13 * T, 6 * T))
+    atlas.paste(parse(BRICK, SANDSTONE_PAL), (14 * T, 6 * T))
+    atlas.paste(parse(BRICK, ICEBRICK_PAL), (15 * T, 6 * T))
     for i in range(4):
         atlas.paste(dirt_variant(i), (i * T, T))
     atlas.paste(parse(HARD, HARD_PAL), (4 * T, T))
@@ -617,7 +825,7 @@ def main():
         ("sign", outline(parse(SIGN, DECOR_PAL), color=OUTLINE, selective=False)),
         ("fence", parse(FENCE, DECOR_PAL)),
         ("castle", castle()),
-    ]
+    ] + biome_decor()
     pole, ball, flag, castle_flag = flag_parts()
     decos += [("pole", pole), ("pole_ball", ball), ("flag", flag), ("castle_flag", castle_flag),
               ("cp_off", checkpoint("#9aa0b0")), ("cp_on", checkpoint("#3cc43c"))]

@@ -380,6 +380,56 @@ def title():
     return s.render(loop=True)
 
 
+def desert():
+    """'Dune Drift' — D phrygian dominant, 132 bpm, 16 bars (8 + repeat
+    with the lead doubled an octave lower)."""
+    s = Song(132)
+    melody = bars(
+        "D5:2 Eb5:2 F#5:4 G5:2 F#5:2 Eb5:4", "D5:2 Eb5:2 F#5:2 A5:2 G5:4 F#5:4",
+        "A5:2 Bb5:2 A5:2 G5:2 F#5:2 G5:2 A5:4", "G5:2 F#5:2 Eb5:2 F#5:2 D5:8",
+        "D6:3 C6:1 Bb5:2 A5:2 G5:2 A5:2 Bb5:4", "A5:3 G5:1 F#5:2 Eb5:2 F#5:4 G5:4",
+        "A5:2 Bb5:2 C6:2 Bb5:2 A5:2 G5:2 F#5:2 G5:2", "F#5:2 Eb5:2 D5:4 r:8",
+    )
+    melody = melody + " " + melody
+    prog = ["D", "D", "G", "D", "Bb", "Eb", "C", "D"] * 2
+    roots = {"D": "D2 A2 D3 A2", "G": "G2 D3 G3 D3", "Bb": "Bb1 F2 Bb2 F2", "Eb": "Eb2 Bb2 Eb3 Bb2",
+             "C": "C2 G2 C3 G2"}
+    thirds = {"D": ("F#4", "A4"), "G": ("G4", "Bb4"), "Bb": ("D4", "F4"), "Eb": ("Eb4", "G4"), "C": ("C4", "E4")}
+    bass = " ".join(" ".join(n + ":2" for n in (roots[c] + " " + roots[c]).split()) for c in prog)
+    harm = " ".join("r:2 %s:2 r:2 %s:2 r:2 %s:2 r:2 %s:2" % (thirds[c] * 2) for c in prog)
+    s.track("pulse", melody, 0.32, duty=0.25, legato=0.85, vib=0.35, d=0.08, s=0.65)
+    s.track("pulse", " ".join(["r:128"] + melody.split()[len(melody.split()) // 2:]), 0.11,
+            duty=0.5, legato=0.8, s=0.5, octave=-1)
+    s.track("pulse", harm, 0.1, duty=0.5, legato=0.45, d=0.03, s=0.4)
+    s.track("tri", bass, 0.55, legato=0.8, s=0.9)
+    s.drums(("K..hK.S.K..hKhS." * 16), 0.3)
+    return s.render(loop=True)
+
+
+def snow():
+    """'Frosty Peaks' — F major waltz (3/4), 138 bpm, 16 bars, bell lead."""
+    s = Song(138)
+    melody = bars(
+        "C6:4 A5:4 F5:4", "G5:4 A5:2 Bb5:2 C6:4", "D6:4 C6:4 A5:4", "G5:8 r:4",
+        "A5:4 F5:4 C5:4", "D5:4 E5:2 F5:2 G5:4", "A5:4 G5:4 E5:4", "F5:8 r:4",
+        "F6:4 E6:4 D6:4", "C6:4 A5:2 Bb5:2 C6:4", "Bb5:4 A5:4 G5:4", "A5:8 r:4",
+        "D6:4 C6:4 Bb5:4", "A5:4 G5:2 F5:2 E5:4", "G5:4 F5:4 E5:4", "F5:8 r:4",
+    )
+    prog = ["F", "C", "Dm", "C", "F", "Bb", "C", "F", "Dm", "F", "Gm", "F", "Bb", "C", "C", "F"]
+    roots = {"F": ("F2", "C3"), "C": ("C2", "G2"), "Dm": ("D2", "A2"), "Bb": ("Bb1", "F2"), "Gm": ("G2", "D3")}
+    thirds = {"F": ("A4", "C5"), "C": ("G4", "C5"), "Dm": ("F4", "A4"), "Bb": ("F4", "Bb4"), "Gm": ("G4", "Bb4")}
+    bass = " ".join("%s:6 %s:6" % roots[c] for c in prog)
+    pah_a = " ".join("r:4 %s:4 %s:4" % (thirds[c][0], thirds[c][0]) for c in prog)
+    pah_b = " ".join("r:4 %s:4 %s:4" % (thirds[c][1], thirds[c][1]) for c in prog)
+    s.track("pulse", melody, 0.3, duty=0.125, legato=0.7, vib=0.2, a=0.002, d=0.18, s=0.3, echo=0.35)
+    s.track("tri", melody, 0.14, legato=0.5, s=0.4, octave=1)
+    s.track("pulse", pah_a, 0.09, duty=0.5, legato=0.4, d=0.03, s=0.4)
+    s.track("pulse", pah_b, 0.08, duty=0.25, legato=0.4, d=0.03, s=0.4)
+    s.track("tri", bass, 0.5, legato=0.9, s=0.9)
+    s.drums(("K.h.h.h.h.h." * 16), 0.2)
+    return s.render(loop=True)
+
+
 def jingle_clear():
     s = Song(160)
     lead = "G4:1 C5:1 E5:1 G5:1 C6:1 E6:1 G6:4 E6:4 Ab4:1 C5:1 Eb5:1 Ab5:1 C6:1 Eb6:1 Ab6:4 Eb6:4 " \
@@ -413,6 +463,8 @@ def music():
         "music_cave": cave,
         "music_star": star,
         "music_title": title,
+        "music_desert": desert,
+        "music_snow": snow,
         "jingle_clear": jingle_clear,
         "jingle_death": jingle_death,
         "jingle_gameover": jingle_gameover,

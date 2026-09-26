@@ -206,7 +206,7 @@ func _update_tongue(delta: float) -> void:
 	if not _tongue_caught and _tongue_area.monitoring:
 		for a in _tongue_area.get_overlapping_areas():
 			var e := a.get_parent()
-			if (e is Shroom or e is Chomper) and not e.dead:
+			if e != null and e.has_method("kill_flip") and not e.dead:
 				_eat(e)
 				break
 

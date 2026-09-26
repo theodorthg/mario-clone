@@ -46,8 +46,8 @@ func _physics_process(delta: float) -> void:
 
 func _on_area(a: Area2D) -> void:
 	var e := a.get_parent()
-	if (e is Shroom or e is Chomper) and not e.dead:
-		if e is Shroom and Game.instance:
+	if e != null and e.has_method("kill_flip") and not e.dead:
+		if not (e is Chomper) and Game.instance:
 			Game.instance.add_score(200, e.global_position)
 		e.kill_flip(global_position.x)
 		_die()

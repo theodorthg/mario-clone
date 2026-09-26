@@ -19,6 +19,8 @@ const SOUNDS := {
 	"music_cave": ["Music: Coin Cave", 55, -4.0],
 	"music_star": ["Music: Star Power", 55, -4.0],
 	"music_title": ["Music: Title", 55, -4.0],
+	"music_desert": ["Music: Dune Drift", 55, -4.0],
+	"music_snow": ["Music: Frosty Peaks", 55, -4.0],
 	"jingle_clear": ["Jingle: Course clear", 60, -3.0],
 	"jingle_death": ["Jingle: Lost a life", 60, -3.0],
 	"jingle_gameover": ["Jingle: Game over", 60, -3.0],
@@ -47,13 +49,13 @@ const SOUNDS := {
 	"pause": ["Pause", 50, -6.0],
 }
 const ORDER := [
-	"music_overworld", "music_cave", "music_star", "music_title",
+	"music_overworld", "music_cave", "music_desert", "music_snow", "music_star", "music_title",
 	"jingle_clear", "jingle_death", "jingle_gameover",
 	"jump", "jump_big", "stomp", "kick", "bump", "break", "coin", "sprout",
 	"powerup", "powerdown", "oneup", "fireball", "pipe", "flagpole", "tick",
 	"skid", "hatch", "dino", "tongue", "gulp", "checkpoint", "hurry", "pause",
 ]
-const MUSIC_KEYS := ["music_overworld", "music_cave", "music_star", "music_title"]
+const MUSIC_KEYS := ["music_overworld", "music_cave", "music_desert", "music_snow", "music_star", "music_title"]
 
 var _muted := false
 var _players := {}

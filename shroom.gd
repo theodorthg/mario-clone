@@ -83,7 +83,8 @@ func _physics_process(delta: float) -> void:
 
 func _on_area(a: Area2D) -> void:
 	var other := a.get_parent()
-	if other != self and other is Shroom and not other.dead and not dead and _turn_cd <= 0.0:
+	var walker: bool = other is Shroom or (other is Turtle and other.state == Turtle.State.WALK)
+	if other != self and walker and not other.dead and not dead and _turn_cd <= 0.0:
 		dir = 1 if global_position.x > other.global_position.x else -1
 		_turn_cd = 0.2
 

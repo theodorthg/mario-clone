@@ -12,6 +12,8 @@ uniform float bands = 18.0;
 uniform float stars = 0.0;
 uniform float moon = 0.0;
 uniform vec2 moon_uv = vec2(0.78, 0.2);
+uniform float sun = 0.0;
+uniform vec2 sun_uv = vec2(0.8, 0.2);
 uniform vec2 design_size = vec2(480.0, 270.0);
 
 float hash(vec2 p) {
@@ -41,6 +43,17 @@ void fragment() {
 			c = vec3(1.0, 0.95, 0.72);
 		} else if (d1 < r + 5.0) {
 			c = mix(c, vec3(0.45, 0.5, 0.75), 0.15);
+		}
+	}
+	if (sun > 0.0) {
+		vec2 px = floor(UV * design_size);
+		float d = length(px - floor(sun_uv * design_size));
+		if (d < 13.0) {
+			c = d < 11.0 ? vec3(1.0, 0.98, 0.84) : vec3(1.0, 0.9, 0.55);
+		} else if (d < 30.0) {
+			// stepped halo rings (pixel-art glow, no smooth gradient)
+			float ring = floor((30.0 - d) / 6.0) / 3.0;
+			c = mix(c, vec3(1.0, 0.95, 0.75), ring * 0.35 * sun);
 		}
 	}
 	COLOR = vec4(c, 1.0);

@@ -21,8 +21,14 @@ Grid legend (one char per 16x16 cell, row 0 = top):
   >  side pipe mouth (top cell, 2 high; body extends right)
   o  coin             g  walking mushroom enemy   G  winged (hopping) one
   Q  pipe top-left with a biting plant inside
+  k  green shell turtle (walks off ledges)   K  red one (turns at ledges)
+  J  winged green turtle (hops)
+  I  ice block (solid, slippery)            L  lava (no collision, drawn in front)
   decorations: * bush  + small bush  f flower  t grass tuft  r rock
                s sign  n fence
+  Ground '#', bricks 'w' and decorations take the look of the BIOME of the
+  area they are in (area theme -> biome, see level.gd THEME_BIOME): e.g. in a
+  desert area '#' is sand, 'w' sandstone, '*' a cactus.
 """
 import os
 import sys
@@ -33,7 +39,9 @@ PREVIEW = "--preview" in sys.argv
 PREVIEW_DIR = os.environ.get("PREVIEW_DIR", "/tmp")
 ROWS = 20
 GROUND = 17          # top row of the default ground
-SOLID = set("#cXwBP W?MYSCUh>")
+SOLID = set("#cXwBP W?MYSCUh>I")
+THEME_BIOME = {"cave": "cave", "cavern": "cave", "desert": "sand", "desert_dusk": "sand",
+               "snow": "snow", "snow_night": "snow"}
 
 
 class Level:
@@ -50,6 +58,7 @@ class Level:
         self.checkpoints = []
         self.warps = []
         self.areas = {}
+        self.top = 0
 
     # ---------------------------------------------------------------- basics
     def set(self, c, r, ch):
@@ -80,6 +89,14 @@ class Level:
     def water(self, c0, c1, top=GROUND):
         self.fill(c0, c1, top, ROWS - 1, "v")
 
+    def lava(self, c0, c1, top=GROUND + 1):
+        """lava pit: clears the ground below `top`, fills with lava"""
+        self.fill(c0, c1, self.top, ROWS - 1, ".")
+        self.fill(c0, c1, top, ROWS - 1, "L")
+
+    def ceiling(self, c0, c1, depth=3):
+        self.fill(c0, c1, 0, depth - 1, "#")
+
     def bridge(self, c0, c1, r):
         self.fill(c0, c1, r, r, "=")
 
@@ -99,14 +116,16 @@ class Level:
             d = abs(i - mid) / max(mid, 1)
             self.set(c + i, r + int(round(d * d * 2.2)), "o")
 
-    def enemy(self, c, r=None):
+    def enemy(self, c, r=None, ch="g"):
         if r is None:
             r = self.surface(c) - 1
-        self.set(c, r, "g")
+        self.set(c, r, ch)
 
-    def surface(self, c):
-        for r in range(ROWS):
-            if self.g[r][c] in "#cX":
+    def surface(self, c, below=None):
+        """topmost solid cell at column c, searching from row `self.top` down
+        (cave levels set top below their ceiling)"""
+        for r in range(self.top if below is None else below, ROWS):
+            if self.g[r][c] in "#cXI":
                 return r
         return ROWS
 
@@ -535,6 +554,311 @@ def level_1_3():
 
 
 # =========================================================================
+# 2-1  "Crystal Caverns" — underground: ceiling, lava, shell turtles; the
+#      way out is a pipe to a sunset meadow with the flag
+# =========================================================================
+def level_2_1():
+    L = Level("2-1", "CRYSTAL CAVERNS", 306, time=400)
+    MAIN_END = 214
+    L.top = 6
+    L.ground(0, MAIN_END - 1)
+    L.ceiling(0, MAIN_END - 1, 3)
+    # hanging rock chunks for a jagged ceiling
+    for c0, c1, d in [(9, 12, 4), (30, 33, 5), (60, 64, 6), (92, 94, 4), (140, 145, 5), (182, 186, 5)]:
+        L.fill(c0, c1, 3, d - 1, "#")
+    L.decor(2, "*")
+    L.decor(6, "f")
+    L.decor(8, "t")
+    L.blocks(13, 13, "B?M?B")
+    L.enemy(19)
+    L.enemy(22, ch="k")
+    L.decor(24, "+")
+    L.pipe(26, 2)
+    # bricks with coins
+    L.blocks(30, 12, "BBBBBB")
+    L.coins(30, 11, 6)
+    L.enemy(33)
+    # first lava pit
+    L.lava(37, 40)
+    L.coin_arc(36, 11, 6)
+    # hill patrolled by a red turtle
+    L.fill(42, 48, 15, GROUND - 1, "#")
+    L.enemy(45, ch="K")
+    L.decor(43, "f")
+    L.lava(50, 52)
+    warp_in = L.pipe(55, 3, warp=True)
+    L.decor(58, "t")
+    # floating stone ledge with coins, walkers below
+    L.ledge(61, 67, 12)
+    L.coins(61, 11, 7)
+    L.enemy(62)
+    L.enemy(65)
+    L.enemy(64, 11, ch="K")
+    L.set(70, 14, "J")
+    # lava lake with stepping pillars
+    L.lava(74, 86)
+    L.fill(77, 78, 14, ROWS - 1, "#")
+    L.fill(81, 82, 12, ROWS - 1, "#")
+    L.coins(77, 13, 2)
+    L.coins(81, 11, 2)
+    L.coin_arc(83, 9, 5)
+    L.checkpoints.append((90, GROUND - 1))
+    L.decor(92, "*")
+    L.blocks(95, 13, "BBCBB")
+    L.set(97, 9, "S")
+    L.enemy(99)
+    L.enemy(101)
+    L.set(104, GROUND - 3, "Q")
+    # shell alley: one turtle, a row of walkers behind it -> shell combo
+    L.enemy(110, ch="k")
+    L.enemy(115)
+    L.enemy(117)
+    L.enemy(119)
+    L.enemy(121)
+    L.decor(123, "+")
+    # low-ceiling passage with a hidden 1-UP
+    L.fill(125, 139, 3, 8, "#")
+    L.blocks(128, 13, "B?BB")
+    L.set(133, 13, "h")
+    L.enemy(131, GROUND - 1)
+    L.enemy(136, GROUND - 1, ch="k")
+    # log bridge over lava
+    L.lava(142, 150)
+    L.bridge(141, 151, 14)
+    L.enemy(146, 13)
+    L.coins(143, 11, 7)
+    L.blocks(154, 13, "BYB")
+    L.decor(158, "f")
+    L.ledge(160, 164, 13)
+    L.enemy(162, 12, ch="K")
+    L.enemy(166)
+    L.enemy(168, ch="k")
+    warp_out = L.pipe(171, 2)
+    # lava pit with stepping ledges
+    L.lava(175, 183)
+    L.ledge(177, 178, 14)
+    L.ledge(181, 182, 12)
+    L.set(181, 11, "J")
+    L.coin_arc(176, 10, 8)
+    L.set(186, GROUND - 3, "Q")
+    L.enemy(190)
+    L.enemy(192)
+    L.stairs(195, 4, up=True)
+    L.blocks(200, 12, "?")
+    exit_pipe = L.pipe(204, 2, warp=True)
+    L.coins(203, 11, 4)
+    L.fill(MAIN_END - 2, MAIN_END - 1, 0, GROUND - 1, "w")
+    # exit meadow (outside, sunset)
+    E0, E1 = 220, 259
+    L.ground(E0, E1)
+    arrive = L.pipe(E0 + 3, 2)
+    L.decor(E0 + 7, "*")
+    L.decor(E0 + 12, "f")
+    L.coins(E0 + 9, 12, 4)
+    finale(L, E0 + 12, E0 + 28, E0 + 32)
+    L.decor(E0 + 25, "t")
+    B0, B1 = 266, 305
+    exit_mouth = coin_room(L, B0, B1)
+    L.areas = {"main": (0, MAIN_END - 1, "cavern"), "exit": (E0, E1, "sunset"), "bonus": (B0, B1, "cave")}
+    L.warps = [
+        {"entry": warp_in, "kind": "down", "arrive": (B0 + 3, 4), "arrive_kind": "drop", "area": "bonus"},
+        {"entry": exit_mouth, "kind": "right", "arrive": warp_out, "arrive_kind": "up", "area": "main"},
+        {"entry": exit_pipe, "kind": "down", "arrive": arrive, "arrive_kind": "up", "area": "exit"},
+    ]
+    return L
+
+
+# =========================================================================
+# 3-1  "Dune Drift" — desert: sand, cacti, sandstone ruins, red turtles on
+#      ledges, winged turtles, an oasis
+# =========================================================================
+def level_3_1():
+    L = Level("3-1", "DUNE DRIFT", 300, time=400)
+    MAIN_END = 250
+    L.ground(0, MAIN_END - 1)
+    L.decor(1, "s")
+    L.decor(5, "*")
+    L.decor(9, "+")
+    L.blocks(12, 13, "?B?")
+    L.blocks(13, 9, "M")
+    L.enemy(17, ch="k")
+    L.decor(20, "r")
+    # dune humps
+    L.fill(23, 29, 16, GROUND - 1, "#")
+    L.fill(25, 27, 15, 15, "#")
+    L.enemy(26, 14)
+    L.decor(24, "+")
+    L.pit(32, 34)
+    L.coin_arc(31, 11, 5)
+    # sandstone ruin: wall steps with a red turtle on top
+    L.fill(38, 45, 14, GROUND - 1, "w")
+    L.fill(40, 43, 11, 13, "w")
+    L.enemy(41, 10, ch="K")
+    L.coins(38, 13, 2)
+    L.coins(44, 13, 2)
+    L.blocks(41, 7, "?")
+    L.decor(47, "*")
+    L.pipe(50, 3)
+    L.set(54, 14, "J")
+    warp_in = L.pipe(58, 2, warp=True)
+    L.enemy(62)
+    L.enemy(64)
+    L.decor(66, "f")
+    # oasis
+    L.pit(69, 78)
+    L.water(69, 78)
+    L.bridge(68, 79, 14)
+    L.enemy(73, 13, ch="k")
+    L.coins(70, 10, 8)
+    L.decor(81, "*")
+    L.blocks(84, 13, "BCB?B")
+    L.enemy(88)
+    L.enemy(90, ch="K")
+    L.checkpoints.append((94, GROUND - 1))
+    # ledge chain over pits
+    L.pit(97, 110)
+    L.ledge(98, 101, 14, ch="w")
+    L.ledge(104, 106, 12, ch="w")
+    L.ledge(108, 110, 14, ch="w")
+    L.enemy(99, 13, ch="K")
+    L.coins(104, 11, 3)
+    L.set(105, 8, "S")
+    L.decor(113, "+")
+    L.set(116, GROUND - 3, "Q")
+    L.blocks(121, 13, "BYB")
+    L.enemy(125, ch="k")
+    L.enemy(129)
+    L.enemy(131)
+    L.enemy(133)
+    L.set(136, 14, "J")
+    # pyramid steps (sandstone) with a hidden 1-UP above
+    for i in range(5):
+        L.fill(140 + i, 152 - i, GROUND - 1 - i, GROUND - 1 - i, "w")
+    L.coins(144, 11, 5)
+    L.set(146, 8, "h")
+    L.enemy(155)
+    warp_out = L.pipe(159, 2)
+    L.decor(163, "*")
+    L.pit(166, 169)
+    L.coin_arc(165, 11, 6)
+    L.set(172, GROUND - 3, "Q")
+    L.set(176, 13, "J")
+    L.blocks(179, 13, "B?BB")
+    L.enemy(181, ch="k")
+    L.enemy(184)
+    L.ledge(187, 191, 13, ch="w")
+    L.enemy(189, 12, ch="K")
+    L.coins(187, 12, 2)
+    L.stairs(196, 4, up=True)
+    L.pit(200, 201)
+    L.stairs(202, 4, up=False)
+    L.enemy(210)
+    L.decor(212, "+")
+    finale(L, 214, 230, 234)
+    L.decor(227, "*")
+    B0, B1 = 256, 295
+    exit_mouth = coin_room(L, B0, B1)
+    L.areas = {"main": (0, MAIN_END - 1, "desert"), "bonus": (B0, B1, "cave")}
+    L.warps = [
+        {"entry": warp_in, "kind": "down", "arrive": (B0 + 3, 4), "arrive_kind": "drop", "area": "bonus"},
+        {"entry": exit_mouth, "kind": "right", "arrive": warp_out, "arrive_kind": "up", "area": "main"},
+    ]
+    return L
+
+
+# =========================================================================
+# 4-1  "Frosty Peaks" — snow: slippery ice blocks, frozen lake with ice
+#      floes, pines, turtles
+# =========================================================================
+def level_4_1():
+    L = Level("4-1", "FROSTY PEAKS", 300, time=400)
+    MAIN_END = 250
+    L.ground(0, MAIN_END - 1)
+    L.decor(1, "s")
+    L.decor(4, "*")
+    L.decor(8, "+")
+    L.blocks(11, 13, "B?M?B")
+    L.enemy(16)
+    L.enemy(18, ch="k")
+    L.decor(21, "*")
+    # first ice patch on the ground (slippery run-up)
+    L.fill(24, 31, GROUND, GROUND, "I")
+    L.enemy(28)
+    L.pit(33, 35)
+    L.coin_arc(32, 11, 5)
+    # snowy hill
+    L.fill(38, 46, 15, GROUND - 1, "#")
+    L.fill(40, 44, 13, 14, "#")
+    L.enemy(42, 12, ch="K")
+    L.decor(39, "t")
+    L.pipe(49, 3)
+    warp_in = L.pipe(55, 2, warp=True)
+    L.set(59, 14, "G")
+    L.decor(61, "*")
+    # frozen lake with ice floes
+    L.pit(64, 82)
+    L.water(64, 82)
+    L.ledge(66, 69, 15, depth=1, ch="I")
+    L.ledge(72, 74, 13, depth=1, ch="I")
+    L.ledge(77, 80, 15, depth=1, ch="I")
+    L.enemy(67, 14)
+    L.coins(72, 12, 3)
+    L.coins(77, 14, 4)
+    L.set(73, 9, "S")
+    L.checkpoints.append((86, GROUND - 1))
+    L.decor(88, "+")
+    L.blocks(91, 13, "BCB")
+    L.enemy(95, ch="k")
+    L.enemy(99)
+    L.enemy(101)
+    L.set(104, GROUND - 3, "Q")
+    # ice-block bridge over a pit
+    L.pit(109, 118)
+    L.ledge(108, 119, 14, depth=1, ch="I")
+    L.enemy(112, 13, ch="k")
+    L.enemy(115, 13)
+    L.coins(110, 11, 8)
+    L.blocks(123, 13, "BYB")
+    L.decor(127, "*")
+    L.set(130, 14, "J")
+    L.enemy(133)
+    # ice-brick ledge staircase with a hidden 1-UP
+    L.ledge(137, 140, 14, ch="w")
+    L.ledge(143, 146, 11, ch="w")
+    L.ledge(149, 152, 8, ch="w")
+    L.coins(149, 7, 4)
+    L.set(144, 6, "h")
+    L.enemy(145, 10, ch="K")
+    L.enemy(139, 13)
+    warp_out = L.pipe(156, 2)
+    L.decor(160, "*")
+    L.pit(163, 166)
+    L.coin_arc(162, 11, 6)
+    L.fill(168, 175, GROUND, GROUND, "I")
+    L.enemy(171, ch="k")
+    L.set(178, GROUND - 3, "Q")
+    L.set(183, 14, "G")
+    L.blocks(186, 13, "?B?")
+    L.enemy(190)
+    L.enemy(192)
+    L.stairs(196, 4, up=True)
+    L.pit(200, 202)
+    L.stairs(203, 4, up=False)
+    L.set(211, 14, "J")
+    L.decor(212, "+")
+    finale(L, 214, 230, 234)
+    L.decor(226, "*")
+    B0, B1 = 256, 295
+    exit_mouth = coin_room(L, B0, B1)
+    L.areas = {"main": (0, MAIN_END - 1, "snow"), "bonus": (B0, B1, "cave")}
+    L.warps = [
+        {"entry": warp_in, "kind": "down", "arrive": (B0 + 3, 4), "arrive_kind": "drop", "area": "bonus"},
+        {"entry": exit_mouth, "kind": "right", "arrive": warp_out, "arrive_kind": "up", "area": "main"},
+    ]
+    return L
+
+
+# =========================================================================
 # preview rendering (uses the real generated art)
 # =========================================================================
 def render_preview(L, path):
@@ -543,6 +867,8 @@ def render_preview(L, path):
     tiles = Image.open(os.path.join(gfx, "tiles.png")).convert("RGBA")
     blocks = Image.open(os.path.join(gfx, "blocks.png")).convert("RGBA")
     shroom = Image.open(os.path.join(gfx, "enemy_shroom.png")).convert("RGBA").crop((0, 0, 26, 18))
+    turtle = Image.open(os.path.join(gfx, "enemy_turtle.png")).convert("RGBA").crop((0, 0, 28, 26))
+    turtle_r = Image.open(os.path.join(gfx, "enemy_turtle_red.png")).convert("RGBA").crop((0, 0, 28, 26))
     coin = Image.open(os.path.join(gfx, "coin.png")).convert("RGBA").crop((0, 0, 12, 16))
     decor = Image.open(os.path.join(gfx, "decor.png")).convert("RGBA")
     hero = Image.open(os.path.join(gfx, "hero_small.png")).convert("RGBA").crop((0, 0, 20, 20))
@@ -571,11 +897,21 @@ def render_preview(L, path):
         return L.g[r][c] == ch
 
     deco_map = {"*": "bush_l", "+": "bush_s", "f": "flower_a", "t": "tuft", "r": "rock", "s": "sign", "n": "fence"}
+    biome_deco = {
+        "sand": {"*": "cactus_l", "+": "cactus_s", "f": "dflower", "t": "tuft_sand", "r": "rock_sand"},
+        "snow": {"*": "pine", "+": "bush_snow", "f": "frost", "t": "tuft_snow", "r": "rock_snow"},
+        "cave": {"*": "crystal_l", "+": "crystal_s", "f": "glowshroom", "t": "tuft_cave", "r": "rock_cave"},
+    }
+    col_biome = ["grass"] * L.cols
+    for c0, c1, theme in L.areas.values():
+        for c in range(c0, min(c1 + 1, L.cols)):
+            col_biome[c] = THEME_BIOME.get(theme, "grass")
     later = []
     for r in range(ROWS):
         for c in range(L.cols):
             ch = L.g[r][c]
             x, y = c * T, r * T
+            bio = col_biome[c]
             if ch in "#c":
                 m = 0
                 if not solid_ground(c, r - 1, ch):
@@ -586,12 +922,19 @@ def render_preview(L, path):
                     m |= 4
                 if not solid_ground(c + 1, r, ch):
                     m |= 8
-                row = 0 if ch == "#" else 3
+                row = {"grass": 0, "cave": 3, "sand": 4, "snow": 5}[bio] if ch == "#" else 3
                 img.alpha_composite(tile(m, row), (x, y))
+            elif ch == "I":
+                img.alpha_composite(tile(8, 6), (x, y))
+            elif ch == "L":
+                later.append((tile(13 if L.get(c, r - 1) == "L" else 9, 6), x, y))
             elif ch == "X":
                 img.alpha_composite(blk(7), (x, y))
             elif ch == "w":
-                img.alpha_composite(blk(6), (x, y))
+                if bio in ("sand", "snow"):
+                    img.alpha_composite(tile(14 if bio == "sand" else 15, 6), (x, y))
+                else:
+                    img.alpha_composite(blk(6), (x, y))
             elif ch == "=":
                 img.alpha_composite(tile(6, 1), (x, y))
             elif ch == "v":
@@ -606,7 +949,7 @@ def render_preview(L, path):
                 img.alpha_composite(tile(0, 2), (x, y))
                 img.alpha_composite(tile(1, 2), (x + T, y))
                 rr = r + 1
-                while rr < ROWS and L.g[rr][c] not in "#cXw":
+                while rr < ROWS and L.g[rr][c] not in "#cXwI":
                     img.alpha_composite(tile(2, 2), (c * T, rr * T))
                     img.alpha_composite(tile(3, 2), (c * T + T, rr * T))
                     rr += 1
@@ -622,8 +965,10 @@ def render_preview(L, path):
                 later.append((coin, x + 2, y))
             elif ch in "gG":
                 later.append((shroom, x - 5, y - 2))
+            elif ch in "kKJ":
+                later.append((turtle_r if ch == "K" else turtle, x - 6, y - 10))
             elif ch in deco_map:
-                d = idx[deco_map[ch]]
+                d = idx[biome_deco.get(bio, {}).get(ch, deco_map[ch])]
                 later.append((d, x + (T - d.size[0]) // 2, y + T - d.size[1]))
     for im, x, y in later:
         img.alpha_composite(im, (x, y))
@@ -654,3 +999,6 @@ if __name__ == "__main__":
     level_1_1().emit()
     level_1_2().emit()
     level_1_3().emit()
+    level_2_1().emit()
+    level_3_1().emit()
+    level_4_1().emit()

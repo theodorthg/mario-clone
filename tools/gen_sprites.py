@@ -816,6 +816,117 @@ def enemies():
 
 
 # =========================================================================
+# TURTLES — walker (facing right), shell (4 spin frames), peek, winged
+# =========================================================================
+TURTLE_PAL = {
+    "y": "#ffd84a", "Y": "#d49a1c", "o": "#8a4a10", "t": "#ffffff", "e": "#1b1030",
+    "g": "#3cc43c", "G": "#1f8a2c", "l": "#9af07e", "w": "#fff4d8", "W": "#d8c090",
+    "b": "#f07830", "B": "#b04818", "m": "#2a1a10",
+}
+RED_SWAP = {"#3cc43c": "#e8402e", "#1f8a2c": "#a8202a", "#9af07e": "#ff9a7a"}
+TURTLE_TOP = [
+    "..........yyyy..",
+    ".........yyyyyy.",
+    ".........yyyytty",
+    "........yyyyytey",
+    "........yyyyytey",
+    "........Yyyyyyyy",
+    "........YYyyyyoy",
+    ".........YYyyyy.",
+    "..........YYyy..",
+    "....ggggg..Yyy..",
+    "...gllggggGyyy..",
+    "..gllgGGgggGyy..",
+    ".gllgGggGggGyyY.",
+    ".glgGggggGgGyyYY",
+    ".gggGggggGGgyyY.",
+    ".ggggGGGGggGyy..",
+    ".GgggggggggGYy..",
+    ".wwwwwwwwwwwwY..",
+    "..WWWWWWWWWWy...",
+]
+TURTLE_LEGS = {
+    "walk1": [
+        "...yyY....yyY...",
+        "...yyY....yyY...",
+        "..bbbb...bbbb...",
+        ".bbbbbB.bbbbbB..",
+        ".BBBBBB.BBBBBB..",
+    ],
+    "walk2": [
+        "....yyY..yyY....",
+        "....yyY..yyY....",
+        "...bbbb.bbbb....",
+        "..bbbbbBbbbbbB..",
+        "..BBBBBBBBBBBB..",
+    ],
+}
+SHELL_ROWS = [(4, 11), (2, 13), (1, 14), (1, 14), (0, 15), (0, 15), (0, 15)]
+
+
+def shell_rows(off, peek=False):
+    """side view of the shell (16x10); `off` shifts the plate seams -> spin"""
+    rows = []
+    for y, (a, b) in enumerate(SHELL_ROWS):
+        r = ""
+        for x in range(16):
+            if x < a or x > b:
+                r += "."
+            elif x == a or x == b or y == 6:
+                r += "G"
+            elif (y == 3) or (y < 3 and (x + off) % 8 == 0) or (y > 3 and (x + off + 4) % 8 == 0):
+                r += "G"
+            elif x + y * 1.6 < 8 and y < 3:
+                r += "l"
+            else:
+                r += "g"
+        rows.append(r)
+    rows.append("wwwwwwwwwwwwwwww" if not peek else "wwwwmmmmmmmmwwww")
+    rows.append("WwwwwwwwwwwwwwwW" if not peek else "Wwwwmtemmtemwwww")
+    rows.append(".WWWWWWWWWWWWWW.")
+    return rows
+
+
+def turtle_frames(swap=None):
+    def img(rows):
+        im = parse(rows, TURTLE_PAL, "turtle")
+        return recolor(im, swap) if swap else im
+    from PIL import Image as _I
+    frames = []
+    walk = {}
+    for n in ["walk1", "walk2"]:
+        walk[n] = img(TURTLE_TOP + TURTLE_LEGS[n])
+        frames.append((n, ol(walk[n])))
+    for i in range(4):
+        frames.append(("shell%d" % i, ol(img(shell_rows(i * 2)))))
+    frames.append(("peek", ol(img(shell_rows(0, True)))))
+    # winged: wing on the shell's back (left), canvas kept symmetric (26 wide)
+    for n, wing in [("fly1", WING_UP), ("fly2", WING_DOWN)]:
+        body = walk["walk1" if n == "fly1" else "walk2"]
+        canvas = _I.new("RGBA", (26, body.height), (0, 0, 0, 0))
+        canvas.paste(body, (5, 0), body)
+        wr = parse(wing, WING_PAL).transpose(_I.FLIP_LEFT_RIGHT)
+        canvas.paste(wr, (2, 9), wr)
+        frames.append((n, ol(canvas)))
+    return frames
+
+
+TURTLE_ANIMS = {
+    "walk": (["walk1", "walk2"], 6, True),
+    "fly": (["fly1", "fly2"], 8, True),
+    "shell": (["shell0"], 1, False),
+    "spin": (["shell0", "shell1", "shell2", "shell3"], 18, True),
+    "peek": (["peek", "shell0"], 8, True),
+    "flipped": (["shell0"], 1, False),
+}
+
+
+def turtles():
+    save_set("enemy_turtle", turtle_frames(), 28, 26, TURTLE_ANIMS)
+    save_set("enemy_turtle_red", turtle_frames(RED_SWAP), 28, 26, TURTLE_ANIMS)
+
+
+# =========================================================================
 # ITEMS
 # =========================================================================
 COIN_PAL = {"y": "#ffd83c", "Y": "#e09a18", "o": "#a8600c", "w": "#fff8c0", "l": "#ffea80"}
@@ -976,4 +1087,5 @@ if __name__ == "__main__":
     hero()
     dino()
     enemies()
+    turtles()
     items()

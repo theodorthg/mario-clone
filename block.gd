@@ -50,7 +50,7 @@ func _process(delta: float) -> void:
 	if _multi_t > 0.0:
 		_multi_t -= delta
 
-func bump(player: Player) -> void:
+func bump(player: Player, from_shell := false) -> void:
 	var game := Game.instance
 	if used or _bumping:
 		_snd("bump")
@@ -62,7 +62,7 @@ func bump(player: Player) -> void:
 	_kill_enemies_on_top()
 	match content:
 		"":
-			if player.is_big():
+			if player.is_big() or from_shell:
 				_break()
 				return
 			_snd("bump")

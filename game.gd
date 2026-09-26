@@ -13,10 +13,15 @@ extends Node2D
 
 enum State { TITLE, INTRO, PLAYING, TRANSITION, DYING, CLEAR, GAMEOVER }
 
+const THEME_MUSIC := {"cave": "music_cave", "cavern": "music_cave", "desert": "music_desert",
+	"desert_dusk": "music_desert", "snow": "music_snow", "snow_night": "music_snow"}
 const LEVELS := [
 	preload("res://levels/level_1_1.gd"),
 	preload("res://levels/level_1_2.gd"),
 	preload("res://levels/level_1_3.gd"),
+	preload("res://levels/level_2_1.gd"),
+	preload("res://levels/level_3_1.gd"),
+	preload("res://levels/level_4_1.gd"),
 ]
 const CHAIN := [100, 200, 400, 500, 800, 1000, 2000, 4000, 5000, 8000]
 const TIME_TICK := 0.4
@@ -217,7 +222,8 @@ func _play_area_music() -> void:
 		_snd_call("play_music", null, ["music_star"])
 		return
 	var theme: String = level.areas.get(area, {"theme": "grass"}).theme
-	_snd_call("play_music", null, ["music_cave" if theme == "cave" else "music_overworld", 1.2 if _hurry else 1.0])
+	var key: String = THEME_MUSIC.get(theme, "music_overworld")
+	_snd_call("play_music", null, [key, 1.2 if _hurry else 1.0])
 
 # ================================================================ process --
 func _process(delta: float) -> void:

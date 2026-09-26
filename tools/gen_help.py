@@ -308,10 +308,47 @@ def page_goal():
     return img
 
 
+def page_worlds():
+    img, d = new_page()
+    text(d, (8, 6), "TURTLES & WORLDS", f8, GOLD)
+    walk = trim(sheet_frame("enemy_turtle", 28, 26, 0))
+    shell = trim(sheet_frame("enemy_turtle", 28, 26, 2))
+    red = trim(sheet_frame("enemy_turtle_red", 28, 26, 0))
+    fly = trim(sheet_frame("enemy_turtle", 28, 26, 7))
+    jump = trim(sheet_frame("hero_small", 20, 20, 4))
+    img.alpha_composite(walk, (12, 26))
+    text(d, (32, 34), ">", fill=GOLD)
+    img.alpha_composite(jump, (42, 16))
+    img.alpha_composite(shell, (42, 38))
+    text(d, (64, 34), ">", fill=GOLD)
+    img.alpha_composite(shell, (74, 38))
+    for i in range(3):
+        d.line((94 + i * 4, 40 + i * 3, 100 + i * 4, 40 + i * 3), fill=DIM)
+    text(d, (116, 20), "Stomp a turtle: it hides.")
+    text(d, (116, 30), "Touch the shell to kick it -")
+    text(d, (116, 40), "it knocks out every enemy", fill=GOLD)
+    text(d, (116, 50), "in its way. Watch out when", fill=GOLD)
+    text(d, (116, 60), "it bounces back!", fill=GOLD)
+    img.alpha_composite(red, (12, 76))
+    text(d, (32, 82), "Red turtles turn at edges.")
+    img.alpha_composite(fly, (170, 74))
+    text(d, (196, 82), "Winged: stomp twice.")
+    tiles = Image.open(os.path.join(GFX, "tiles.png")).convert("RGBA")
+    img.alpha_composite(tiles.crop((8 * 16, 6 * 16, 9 * 16, 7 * 16)), (12, 110))
+    text(d, (34, 114), "Ice is slippery - brake early.")
+    img.alpha_composite(tiles.crop((9 * 16, 6 * 16, 10 * 16, 7 * 16)), (12, 134))
+    text(d, (34, 138), "Lava and water: don't fall in!")
+    text(d, (230, 114), "WORLD 1  meadows", fill=DIM)
+    text(d, (230, 124), "WORLD 2  caverns", fill=DIM)
+    text(d, (230, 134), "WORLD 3  desert", fill=DIM)
+    text(d, (230, 144), "WORLD 4  snow", fill=DIM)
+    return img
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     pages = {"controls": page_controls, "touch": page_touch, "items": page_items,
-             "dragon": page_dragon, "goal": page_goal}
+             "dragon": page_dragon, "goal": page_goal, "worlds": page_worlds}
     for n, fn in pages.items():
         fn().save(os.path.join(OUT, n + ".png"))
     print("  help pages:", ", ".join(pages))

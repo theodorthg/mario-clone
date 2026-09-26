@@ -98,6 +98,16 @@ der Welt; Spieler-/Gegner-Kontakt läuft über die Hitbox-`Area2D` des Gegners.
   8 rechts), wählt Innen-Erde-Varianten deterministisch per Zell-Hash.
   Röhren wachsen vom `P`/`W`-Kopf nach unten bis zum nächsten festen Feld.
 
+### Biome (seit v0.4)
+Das Aussehen von `#` (Boden), `w` (Ziegelwand) und Deko-Zeichen hängt vom
+**Thema des Bereichs** ab (`level.gd::THEME_BIOME`: `cavern`/`cave` → Höhle,
+`desert` → Sand, `snow` → Schnee, sonst Gras) — dieselben Bau-Helfer
+funktionieren in jeder Welt. `*` wird z. B. Busch / Saguaro / Tanne /
+Kristall. Atlas-Reihen: 4 Sand-, 5 Schnee-Autotile, 6 Extras (Innenvarianten,
+Eis `I` 8, Lava `L` 9–12 animiert + 13, Sandstein 14, Eisziegel 15).
+Eis: `player.gd::_on_ice()` → nur 28 % Grip (Beschleunigen/Bremsen).
+Lava liegt wie Wasser auf dem Vordergrund-Layer ohne Kollision (= Grube).
+
 ### Themen / Stimmungen (`backdrop.gd::THEMES`)
 `grass` (Tag), `sunset` (Abend: violett-orange Himmel, warm getönte
 Ebenen), `night` (Nacht: Sterne + Mond im Himmel-Shader, blau getönte
@@ -105,7 +115,21 @@ Ebenen), `cave` (Bonusraum). Jede Ebene bekommt ihren eigenen Farbton
 (`self_modulate`), die Welt (Tiles + Figuren) einen `CanvasModulate`. Die
 Parallax-Ebenen liegen deshalb in einem eigenen `CanvasLayer`
 (`follow_viewport_enabled`), sonst würde der Welt-Ton sie doppelt abdunkeln.
-Thema pro Bereich in `AREAS` des Levels.
+Thema pro Bereich in `AREAS` des Levels. Neue Themen haben eigene Ebenen
+(`"layers"`) statt der Gras-Ebenen: `cavern` (Stalaktiten, Säulen,
+Kristallhügel, schwebende Leuchtpartikel), `desert` (Sonne im Himmel-
+Shader, Pyramiden, Dünen, Kakteen, Sandwehen), `snow` (Berge, Tannen,
+Schneehügel, Schneefall). Partikel: `CPUParticles2D` auf eigenem
+CanvasLayer 5 (Bildschirmraum). Musik je Thema: `game.gd::THEME_MUSIC`.
+
+### 2-1 „Crystal Caverns“, 3-1 „Dune Drift“, 4-1 „Frosty Peaks“ (v0.4)
+2-1: Decke (`L.ceiling`, `L.top = 6` damit `surface()` unter der Decke
+sucht), Lavagruben mit Pfeilern, Panzer-Gasse (eine Schildkröte vor vier
+Pilzlingen → Kick-Kombo), niedriger Gang mit verstecktem 1-UP; Ausgang über
+eine Röhre in den Bereich `exit` (Abendwiese mit Fahne + Burg).
+3-1: Sandstein-Ruinen, Oase mit Brücke, Sims-Kette, Pyramiden-Stufen.
+4-1: Eisflächen am Boden, zugefrorener See mit Eisschollen, Eisblock-
+Brücke, Eisziegel-Treppe. Nach 4-1: Siegerbildschirm.
 
 ### 1-1 „Green Hills“ (312 Spalten, davon 262 Hauptlevel)
 Start-Wiese mit ?-Blöcken → Röhrenfeld (Warp-Röhre Spalte 53 → Münzhöhle,
@@ -132,6 +156,13 @@ Siegerbildschirm mit Hall-of-Fame-Eintrag.
   nur Feuerball/Stern/Drachenzunge besiegen sie.
 - Wasser (`v`): eigener `TileMapLayer` VOR den Figuren (z 2), animierte
   Oberfläche als Tile-Animation (4 Frames), keine Kollision (= Grube).
+- `turtle.gd` (v0.4): `k` grün (läuft über Kanten), `K` rot (dreht an Kanten
+  via `test_move`), `J` geflügelt. Zustände WALK → (Stampfen) SHELL → (Berühren
+  oder Stampfen) SPIN (210 px/s, prallt an Wänden ab, stößt Blöcke seitlich
+  an — Ziegel zerbrechen, `Block.bump(player, true)`) → Stampfen stoppt ihn.
+  Nach 6 s schaut sie heraus (Wackeln) und läuft wieder. Kick 400, Panzer-
+  Kette 500/800/1000/2000/4000/5000/8000, dann 1UP. Feuerball/Zunge/Stern
+  behandeln alle Gegner generisch (`has_method("kill_flip")`).
 
 ## Punkte
 
@@ -177,7 +208,8 @@ Outline programmatisch — genau die Punkte, an denen PixelLab scheiterte.
 Eigener kleiner NES-artiger Synth (Puls mit Duty, Dreieck, Rauschen,
 Hüllkurven, Glissando, Vibrato). 23 Effekte → `assets/sounds/*.wav`; Musik
 (Oberwelt 150 bpm C-Dur, Höhle 118 bpm a-Moll mit Echo, Stern 184 bpm,
-Titel 112 bpm) + Jingles (Ziel, Tod, Game Over) → `assets/music/*.ogg`.
+Titel 112 bpm, Wüste „Dune Drift“ 132 bpm D-phrygisch-dominant, Schnee
+„Frosty Peaks“ 138 bpm F-Dur-Walzer mit Glocken-Lead) + Jingles (Ziel, Tod, Game Over) → `assets/music/*.ogg`.
 **Eigenkompositionen** in Tracker-Notation im Skript — bewusst nicht die
 Nintendo-Themen. Loops werden mit umgeklapptem Nachhall gerendert (nahtlos);
 `sound_manager.gd` setzt `AudioStreamOggVorbis.loop = true` zur Laufzeit.
@@ -189,7 +221,9 @@ Nintendo-Themen. Loops werden mit umgeklapptem Nachhall gerendert (nahtlos);
   Punktetabellen.
 - `tools/playtest.gd`: startet das echte Spiel **im Fenster**, simuliert
   Eingaben per `Input.action_press()` und speichert Screenshots + Zustands-
-  zeilen. Szenarien: basic, powerup, stomp, pipe, flag, dino, title.
+  zeilen. Szenarien: basic, powerup, stomp, pipe, flag, dino, title, fire,
+  star, gameover, dinohit, checkpoint, levels, card, ridebig, pause, worlds,
+  turtle (Stampfen/Kick/Kombo/rote Kante), exitpipe, ice.
   `godot --path . --script res://tools/playtest.gd -- <szenario> <ordner>`
   — schneller als der MCP-Editor-Weg und ohne offenen Editor nutzbar.
 - `build.sh`: Editor-Check prüft nur echte `godot`-Prozesse (`pgrep -x`),
@@ -202,7 +236,7 @@ Nintendo-Themen. Loops werden mit umgeklapptem Nachhall gerendert (nahtlos);
 
 ## Hilfeseiten
 
-`tools/gen_help.py` rendert 5 bebilderte Seiten (Steuerung Tastatur +
+`tools/gen_help.py` rendert 6 bebilderte Seiten (+ „Turtles & Worlds“ seit v0.4) (Steuerung Tastatur +
 Gamepad inkl. D-Pad/A/B/X/Y/Start/Select und Mute-/Pause-Knopf, Touch,
 Blöcke & Items, Drache, Ziel & Punkte) mit den echten Sprites und der
 Pixelschrift, 1:1 in Design-Pixeln (340×170) → im Menü mit NEAREST-Filter.
@@ -217,5 +251,8 @@ Ducken und Absteigen auf Touch unmöglich.
 
 ## Offen / nächste Schritte
 
-- Referenz-Implementierung der Screenshot-Taste (`screenshot_capture.gd`)
-  in der globalen CLAUDE.md Punkt 20 nachtragen.
+- v0.5: zweite Level je Welt (Abend-/Nachtvarianten `desert_dusk`,
+  `snow_night` sind in THEME_BIOME/THEME_MUSIC schon vorgesehen),
+  Welt-Auswahl für freigespielte Welten.
+- `gen_audio.py` rendert Rauschen nicht deterministisch: nach einem Lauf
+  unveränderte Stücke per `git checkout` zurücksetzen (sonst Binär-Churn).

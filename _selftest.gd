@@ -14,8 +14,7 @@ const SCRIPTS := [
 	"res://score_popup.gd", "res://shroom.gd", "res://powerup.gd", "res://fireball.gd",
 	"res://dino.gd", "res://egg.gd", "res://flagpole.gd", "res://warp_zone.gd",
 	"res://checkpoint.gd", "res://backdrop.gd", "res://hud.gd", "res://menus.gd",
-	"res://touch_controls.gd", "res://chomper.gd", "res://game.gd",
-	"res://levels/level_1_1.gd", "res://levels/level_1_2.gd", "res://levels/level_1_3.gd",
+	"res://touch_controls.gd", "res://chomper.gd", "res://turtle.gd", "res://game.gd",
 ]
 
 func _init() -> void:
@@ -36,9 +35,8 @@ func _init() -> void:
 				if e.device != -1:
 					fails += _expect(false, "joypad binding of %s uses device -1" % action)
 
-	# level data
-	for path in ["res://levels/level_1_1.gd", "res://levels/level_1_2.gd", "res://levels/level_1_3.gd"]:
-		var lv: Script = load(path)
+	# level data (every level in Game.LEVELS)
+	for lv: Script in Game.LEVELS:
 		var grid: Array = lv.GRID
 		fails += _expect(grid.size() == 20, "%s has 20 rows" % lv.ID)
 		var w: int = grid[0].length()
@@ -53,6 +51,9 @@ func _init() -> void:
 			fails += _expect(grid[e.y][e.x] in ["W", ">"], "%s warp entry %s is a W/> cell" % [lv.ID, e])
 		for a in lv.AREAS.values():
 			fails += _expect(int(a["to"]) - int(a["from"]) + 1 >= 38, "%s area wide enough for 2.2:1 screens" % lv.ID)
+			fails += _expect(Backdrop.THEMES.has(a["theme"]), "%s theme %s exists" % [lv.ID, a["theme"]])
+		for wp in lv.WARPS:
+			fails += _expect(lv.AREAS.has(wp["area"]), "%s warp target area %s exists" % [lv.ID, wp["area"]])
 
 	# scoring tables
 	fails += _expect(Flagpole.points_for_height(200) == 5000, "top of pole = 5000")

@@ -185,6 +185,175 @@ def trees():
     return img
 
 
+# ------------------------------------------------------------------ desert --
+def pyramids():
+    h = 110
+    img = Image.new("RGBA", (BG_W, h), TRANSPARENT)
+    px = img.load()
+    lit, shade, line, course = (hex_rgba(c) for c in ("#f4cc80", "#c8904a", "#8a5c2c", "#dcaa62"))
+    for cx, hh in [(70, 46), (190, 88), (262, 58), (420, 70), (560, 40)]:
+        for y in range(h - hh, h):
+            half = y - (h - hh)
+            for dx in range(-half, half + 1):
+                X = (cx + dx) % BG_W
+                col = lit if dx < 0 else shade
+                if (y - (h - hh)) % 6 == 5 and dx < 0:
+                    col = course
+                if abs(dx) == half:
+                    col = line
+                px[X, y] = col
+        px[cx % BG_W, h - hh - 1] = line
+    return img
+
+
+def cacti_band():
+    """near dune strip with saguaro silhouettes standing on it"""
+    img = hills(96, ["#f0c070", "#d8a052", "#c08840", "#9a6a30"],
+                [(9, 2, 0.6), (5, 5, 1.9), (3, 10, 0.4)], 56, pattern=True, seed=9)
+    px = img.load()
+    dark, lite = hex_rgba("#4a6a2c"), hex_rgba("#6a8a3a")
+    rng = random.Random(21)
+    x = 20
+    while x < BG_W - 10:
+        top = 56 - int(periodic(x, [(9, 2, 0.6), (5, 5, 1.9), (3, 10, 0.4)]))
+        hh = rng.randint(16, 30)
+        for y in range(top - hh, top + 2):
+            for dx in range(-2, 2):
+                px[(x + dx) % BG_W, y] = lite if dx < 0 else dark
+        for side, ay, ah in [(-1, top - hh + 8, 8), (1, top - hh + 5, 9)]:
+            ax = x + side * 5
+            for y in range(ay, ay + ah):
+                for dx in range(-1, 1):
+                    px[(ax + dx) % BG_W, y] = dark
+            for dx in range(min(ax, x), max(ax, x)):
+                px[dx % BG_W, ay + ah - 1] = dark
+                px[dx % BG_W, ay + ah - 2] = dark
+        x += rng.randint(55, 110)
+    return img
+
+
+# -------------------------------------------------------------------- snow --
+def pines(h, seed, size, colors, base_y, band=True):
+    img = Image.new("RGBA", (BG_W, h), TRANSPARENT)
+    px = img.load()
+    body, dark, snow, snow_sh, line = (hex_rgba(c) for c in colors)
+    rng = random.Random(seed)
+    mask = {}
+    x = 0
+    while x < BG_W:
+        th = rng.randint(*size)
+        foot = base_y + rng.randint(-4, 4)
+        for y in range(foot - th, foot):
+            d = y - (foot - th)
+            half = int(d * 0.42) + 1 - (2 if d % 7 == 0 and d > 6 else 0)
+            for dx in range(-half, half + 1):
+                v = 2 if (d % 7 < 2 or dx < -half + 2) else (1 if dx < 0 else 0)
+                mask[((x + dx) % BG_W, y)] = v
+        x += rng.randint(th // 3, th // 2 + 4)
+    if band:
+        for X in range(BG_W):
+            for Y in range(base_y + int(periodic(X, [(3, 8, 0.3), (2, 20, 1.2)])), h):
+                mask[(X, Y)] = 3
+    for (X, Y), v in mask.items():
+        px[X, Y] = {0: dark, 1: body, 2: snow, 3: snow_sh}[v]
+    for (X, Y) in list(mask.keys()):
+        if Y - 1 >= 0 and (X, Y - 1) not in mask:
+            px[X, Y - 1] = line
+    return img
+
+
+# -------------------------------------------------------------------- cave --
+def cave_far():
+    """ceiling with stalactites on top, columns, floor bumps — full height"""
+    h = 270
+    img = Image.new("RGBA", (BG_W, h), TRANSPARENT)
+    px = img.load()
+    rock, rock_l, rock_d, line = (hex_rgba(c) for c in ("#232a52", "#2f3868", "#1a1f3e", "#12162e"))
+    rng = random.Random(5)
+    ceil = [int(22 + periodic(x, [(6, 4, 0.2), (3, 11, 1.4)])) for x in range(BG_W)]
+    floor_ = [int(230 - periodic(x, [(8, 3, 1.0), (4, 13, 0.3)])) for x in range(BG_W)]
+    fill = {}
+    for x in range(BG_W):
+        for y in range(0, ceil[x]):
+            fill[(x, y)] = 1
+        for y in range(floor_[x], h):
+            fill[(x, y)] = 1
+    # stalactites
+    x = 4
+    while x < BG_W:
+        ln, w = rng.randint(14, 46), rng.randint(3, 7)
+        for y in range(ceil[x % BG_W] - 2, ceil[x % BG_W] + ln):
+            half = max(0, int(w * (1 - (y - ceil[x % BG_W]) / ln)))
+            for dx in range(-half, half + 1):
+                fill[((x + dx) % BG_W, y)] = 2 if dx < 0 else 1
+        x += rng.randint(12, 34)
+    # columns
+    for cx in (110, 350, 520):
+        for y in range(0, h):
+            wv = 9 + int(3 * math.sin(y / 17.0))
+            for dx in range(-wv, wv + 1):
+                fill[((cx + dx) % BG_W, y)] = 2 if dx < -wv + 4 else (3 if dx > wv - 3 else 1)
+    for (X, Y), v in fill.items():
+        px[X, Y] = {1: rock, 2: rock_l, 3: rock_d}[v]
+    for (X, Y) in list(fill.keys()):
+        for nx, ny in ((X, Y - 1), (X, Y + 1)):
+            if 0 <= ny < h and (nx, ny) not in fill:
+                px[nx, ny] = line
+    return img
+
+
+def cave_crystals():
+    img = hills(120, ["#3a4478", "#2c3462", "#222850", "#161a36"],
+                [(14, 3, 0.9), (7, 7, 0.2), (4, 17, 1.6)], 60, pattern=True, seed=13)
+    px = img.load()
+    rng = random.Random(17)
+    cols = [("#d8fcff", "#5ce0f0", "#2a8ab8"), ("#f4d8ff", "#b474f4", "#6a38b0")]
+    x = 12
+    while x < BG_W:
+        top = 60 - int(periodic(x, [(14, 3, 0.9), (7, 7, 0.2), (4, 17, 1.6)]))
+        lt, md, dk = (hex_rgba(c) for c in rng.choice(cols))
+        hh, w = rng.randint(7, 16), rng.randint(3, 5)
+        for y in range(top - hh, top + 2):
+            d = y - (top - hh)
+            half = min(w, d // 2 + 1)
+            for dx in range(-half, half + 1):
+                px[(x + dx) % BG_W, y] = lt if dx < -half + 2 else (md if dx < 1 else dk)
+        # soft glow dots around the crystal
+        for _ in range(6):
+            gx, gy = x + rng.randint(-10, 10), top - hh + rng.randint(-8, 10)
+            if 0 <= gy < 120 and px[gx % BG_W, gy][3] == 0:
+                px[gx % BG_W, gy] = (md[0], md[1], md[2], 150)
+        x += rng.randint(26, 64)
+    return img
+
+
+def cave_near():
+    h = 90
+    img = Image.new("RGBA", (BG_W, h), TRANSPARENT)
+    px = img.load()
+    body, lite, line = hex_rgba("#141a34"), hex_rgba("#1f264a"), hex_rgba("#0a0d1e")
+    rng = random.Random(3)
+    fill = {}
+    for X in range(BG_W):
+        for Y in range(70 + int(periodic(X, [(4, 5, 0.1), (2, 16, 0.8)])), h):
+            fill[(X, Y)] = 0
+    x = 8
+    while x < BG_W:
+        hh, w = rng.randint(20, 58), rng.randint(5, 10)
+        for y in range(h - 20 - hh, h):
+            d = y - (h - 20 - hh)
+            half = min(w, int(d * w / max(hh * 0.8, 1)) + 1)
+            for dx in range(-half, half + 1):
+                fill[((x + dx) % BG_W, y)] = 1 if dx < -half + 2 else 0
+        x += rng.randint(30, 80)
+    for (X, Y), v in fill.items():
+        px[X, Y] = lite if v else body
+    for (X, Y) in list(fill.keys()):
+        if Y - 1 >= 0 and (X, Y - 1) not in fill:
+            px[X, Y - 1] = line
+    return img
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     layers = {
@@ -195,6 +364,20 @@ def main():
         "bg_hills_near": hills(110, ["#8ee070", "#5cbc4a", "#46a03c", "#2e7a30"],
                                [(20, 2, 1.1), (12, 5, 0.3), (6, 11, 2.4)], 50, seed=5),
         "bg_trees": trees(),
+        # desert
+        "bg_pyramids": pyramids(),
+        "bg_dunes_far": hills(120, ["#fbe0a0", "#eec27c", "#dcaa62", "#c8904a"],
+                              [(12, 2, 0.4), (7, 5, 1.1), (3, 11, 2.0)], 46, pattern=False, seed=4),
+        "bg_cacti": cacti_band(),
+        # snow
+        "bg_pines_far": pines(110, 31, (22, 40), ["#5a7ca0", "#4a6a8c", "#e4eefa", "#c4d4ea", "#3a5476"], 70),
+        "bg_snowhills": hills(110, ["#ffffff", "#e0eaf8", "#c4d4ea", "#98acd0"],
+                              [(18, 2, 0.8), (10, 5, 2.1), (5, 13, 0.4)], 52, pattern=False, seed=6),
+        "bg_pines_near": pines(110, 37, (34, 58), ["#2f6a58", "#1f4a40", "#ffffff", "#d4e2f6", "#123a30"], 84),
+        # cave
+        "bg_cave_far": cave_far(),
+        "bg_cave_crystals": cave_crystals(),
+        "bg_cave_near": cave_near(),
     }
     for name, im in layers.items():
         im.save(os.path.join(OUT, name + ".png"))

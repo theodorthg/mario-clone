@@ -321,6 +321,96 @@ func _run() -> void:
 			game.player.facing = -1
 			await hold("move_left", 0.4)
 			await shot("fire_ride_left")
+		"worlds":
+			# 2-1 cave, 3-1 desert, 4-1 snow: two views each
+			var spots := {3: [Vector2i(16, 16), Vector2i(76, 13)], 4: [Vector2i(36, 16), Vector2i(72, 13)],
+				5: [Vector2i(20, 16), Vector2i(70, 14)]}
+			for idx in [3, 4, 5]:
+				game.menus.hide_all()
+				game._start_game()
+				game.level_index = idx
+				game._begin_level()
+				await _wait(Game.CARD_TIME + 0.4)
+				for k in 2:
+					await teleport(spots[idx][k])
+					await _wait(1.2)
+					state("world idx %d spot %d" % [idx, k])
+					await shot("world_%d_%d" % [idx, k])
+		"turtle":
+			game.menus.hide_all()
+			game._start_game()
+			game.level_index = 3
+			game._begin_level()
+			await _wait(Game.CARD_TIME + 0.4)
+			var tt: Turtle = null
+			for n in game.level.get_children():
+				if n is Turtle and absf(n.global_position.x - 110 * 16) < 40:
+					tt = n
+			await teleport(Vector2i(106, 16))
+			await _wait(0.2)
+			tt.global_position = Vector2(112 * 16 + 8, 272)
+			game.player.global_position = Vector2(112 * 16 + 8, 236)
+			game.player.velocity = Vector2(0, 100)
+			await _wait(0.12)
+			print("TURTLE after stomp: state=%d dead=%s score=%d" % [tt.state, tt.dead, game.score])
+			await shot("shell")
+			await teleport(Vector2i(109, 16))
+			var score0 := game.score
+			await hold("move_right", 0.45)
+			await _wait(0.1)
+			print("TURTLE after kick: state=%d vx=%.0f" % [tt.state, tt.velocity.x])
+			await shot("kicked")
+			await _wait(1.2)
+			var alive := 0
+			for n in game.level.get_children():
+				if n is Shroom and not n.dead and absf(n.global_position.x - 118 * 16) < 80:
+					alive += 1
+			print("TURTLE combo: score +%d, shrooms left near alley=%d, shell state=%d" % [game.score - score0, alive, tt.state if is_instance_valid(tt) else -1])
+			await shot("combo")
+			# red turtle stays on its ledge (160..164, top row 13)
+			var red: Turtle = null
+			for n in game.level.get_children():
+				if n is Turtle and n.red and absf(n.global_position.x - 162 * 16) < 40:
+					red = n
+			print("RED before: pos=%s active=%s" % [red.global_position.round(), red.active])
+			await teleport(Vector2i(156, 16))
+			for i in 8:
+				await _wait(0.5)
+				if not is_instance_valid(red):
+					print("RED freed at t=%.1f" % (i * 0.5))
+					break
+				print("RED t=%.1f pos=%s dir=%d state=%d floor=%s" % [i * 0.5, red.global_position.round(), red.dir, red.state, red.is_on_floor()])
+			await shot("red_ledge")
+		"exitpipe":
+			game.menus.hide_all()
+			game._start_game()
+			game.level_index = 3
+			game._begin_level()
+			await _wait(Game.CARD_TIME + 0.4)
+			await teleport(Vector2i(205, 14))
+			await _wait(0.3)
+			await hold("move_down", 1.2)
+			await _wait(1.5)
+			state("after exit pipe")
+			await shot("exit_area")
+		"ice":
+			game.menus.hide_all()
+			game._start_game()
+			game.level_index = 5
+			game._begin_level()
+			await _wait(Game.CARD_TIME + 0.4)
+			for n in game.get_tree().get_nodes_in_group("enemies"):
+				n.queue_free()
+			for spot in [Vector2i(3, 16), Vector2i(22, 16)]:
+				await teleport(spot)
+				await _wait(0.2)
+				Input.action_press("run")
+				await hold("move_right", 0.7)
+				Input.action_release("run")
+				var x0 := game.player.global_position.x
+				await _wait(1.0)
+				print("ICE slide from col %d: slid %.0f px after release" % [spot.x, game.player.global_position.x - x0])
+			await shot("ice")
 		"pause":
 			await start_play()
 			game._toggle_pause()

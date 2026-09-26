@@ -1,0 +1,114 @@
+[gd_resource type="SpriteFrames" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/graphics/enemy_turtle.png" id="1_tex"]
+
+[sub_resource type="AtlasTexture" id="at_walk1"]
+atlas = ExtResource("1_tex")
+region = Rect2(0, 0, 28, 26)
+
+[sub_resource type="AtlasTexture" id="at_walk2"]
+atlas = ExtResource("1_tex")
+region = Rect2(28, 0, 28, 26)
+
+[sub_resource type="AtlasTexture" id="at_fly1"]
+atlas = ExtResource("1_tex")
+region = Rect2(196, 0, 28, 26)
+
+[sub_resource type="AtlasTexture" id="at_fly2"]
+atlas = ExtResource("1_tex")
+region = Rect2(224, 0, 28, 26)
+
+[sub_resource type="AtlasTexture" id="at_shell0"]
+atlas = ExtResource("1_tex")
+region = Rect2(56, 0, 28, 26)
+
+[sub_resource type="AtlasTexture" id="at_shell1"]
+atlas = ExtResource("1_tex")
+region = Rect2(84, 0, 28, 26)
+
+[sub_resource type="AtlasTexture" id="at_shell2"]
+atlas = ExtResource("1_tex")
+region = Rect2(112, 0, 28, 26)
+
+[sub_resource type="AtlasTexture" id="at_shell3"]
+atlas = ExtResource("1_tex")
+region = Rect2(140, 0, 28, 26)
+
+[sub_resource type="AtlasTexture" id="at_peek"]
+atlas = ExtResource("1_tex")
+region = Rect2(168, 0, 28, 26)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_walk1")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_walk2")
+}],
+"loop": true,
+"name": &"walk",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_fly1")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_fly2")
+}],
+"loop": true,
+"name": &"fly",
+"speed": 8.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_shell0")
+}],
+"loop": false,
+"name": &"shell",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_shell0")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_shell1")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_shell2")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_shell3")
+}],
+"loop": true,
+"name": &"spin",
+"speed": 18.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_peek")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_shell0")
+}],
+"loop": true,
+"name": &"peek",
+"speed": 8.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_shell0")
+}],
+"loop": false,
+"name": &"flipped",
+"speed": 1.0
+}]
