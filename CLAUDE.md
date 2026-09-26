@@ -240,6 +240,10 @@ Nintendo-Themen. Loops werden mit umgeklapptem Nachhall gerendert (nahtlos);
 - `_selftest.gd` (headless): parst alle Skripte, prüft 16:9, InputMap
   (inkl. `device=-1` bei allen Joypad-Bindungen), Level-Konsistenz,
   Punktetabellen.
+- **Vor jedem Build/Commit `_selftest.gd` laufen lassen und mit `&&`
+  verketten**: `build.sh` exportiert auch bei GDScript-Parse-Fehlern
+  klaglos (v0.9.1 ging so mit kaputtem `menus.gd` raus — doppelte
+  Anführungszeichen in einem String-Literal).
 - `tools/playtest.gd`: startet das echte Spiel **im Fenster**, simuliert
   Eingaben per `Input.action_press()` und speichert Screenshots + Zustands-
   zeilen. Szenarien: basic, powerup, stomp, pipe, flag, dino, title, fire,
