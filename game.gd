@@ -240,6 +240,8 @@ func _build_level(idx: int, with_player: bool) -> void:
 			for cp in level.get_children():
 				if cp is Checkpoint and cp.global_position.distance_to(start) < 4.0:
 					cp.set_active_silent()
+		if _is_boss_spawn(start):
+			power = Player.Power.FIRE      # (re)start at the boss: always fire power
 		player = PlayerScript.new()
 		player.name = "Player"
 		player.power = power
@@ -254,6 +256,13 @@ func _build_level(idx: int, with_player: bool) -> void:
 	_enter_area(level.area_at(start.x), true)
 	_cam_pos = Vector2(start.x, start.y - 30.0)
 	_update_camera(0.0, true)
+
+## Spawning at the checkpoint in front of a castle's boss arena (or the
+## level select's "Boss" start)?
+func _is_boss_spawn(pos: Vector2) -> bool:
+	var arena = LEVELS[level_index].get_script_constant_map().get("ARENA")
+	return checkpoint_pos != null and arena != null and pos.x >= (arena.x - 10) * Level.T \
+		and pos.x < arena.x * Level.T
 
 func _enter_area(name: String, snap := false) -> void:
 	area = name
@@ -688,7 +697,10 @@ func boss_defeated(_boss: Boss) -> void:
 		player.velocity.x = 0.0
 	add_score(5000, player.global_position + Vector2(0, -40) if player else null)
 	var tw := create_tween()
-	tw.tween_interval(3.2)
+	# reward: an extra life for every boss beaten
+	tw.tween_interval(1.2)
+	tw.tween_callback(func(): one_up(player.global_position + Vector2(0, -56) if player else Vector2.ZERO))
+	tw.tween_interval(2.0)
 	tw.tween_callback(func():
 		_tally_step = maxi(1, ceili(time_left / 60.0))
 		_tally_time())

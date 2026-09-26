@@ -285,6 +285,8 @@ func _build_entities() -> void:
 					_add_block(c, r, Block.Kind.QUESTION, "powerup")
 				"Y":
 					_add_block(c, r, Block.Kind.QUESTION, "egg")
+				"N":
+					_add_block(c, r, Block.Kind.QUESTION, "flower")
 				"B":
 					_add_block(c, r, Block.Kind.BRICK, "")
 				"S":

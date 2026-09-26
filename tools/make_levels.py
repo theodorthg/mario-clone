@@ -25,7 +25,7 @@ Grid legend (one char per 16x16 cell, row 0 = top):
   J  winged green turtle (hops)
   I  ice block (solid, slippery)            L  lava (no collision, drawn in front)
   F  hard block with a rotating fire bar     b  lava bubble (in a lava pit's top row)
-  Z  castle boss (arena = Level.arena)
+  Z  castle boss (arena = Level.arena)     N  ?-block that always holds a fire flower
   a  cave bat (hangs under the ceiling)      p  desert cactus stack (spiky)
   q  snow penguin (walks, belly-slides)
   decorations: * bush  + small bush  f flower  t grass tuft  r rock
@@ -43,7 +43,7 @@ PREVIEW = "--preview" in sys.argv
 PREVIEW_DIR = os.environ.get("PREVIEW_DIR", "/tmp")
 ROWS = 20
 GROUND = 17          # top row of the default ground
-SOLID = set("#cXwBP W?MYSCUh>I")
+SOLID = set("#cXwBP W?MYSCUh>IN")
 THEME_BIOME = {"cave": "cave", "cavern": "cave", "desert": "sand", "desert_dusk": "sand",
                "snow": "snow", "snow_night": "snow", "fortress": "castle"}
 
@@ -1249,6 +1249,10 @@ def castle_level(world, lid):
     L.arena = (A0, A1)
     L.start = (3, GROUND - 1)
     L.checkpoints.append((96, GROUND - 1))
+    # boss checkpoint + guaranteed fire flower right before the arena; a
+    # restart here always begins with fire power (game.gd _is_boss_spawn)
+    L.checkpoints.append((A0 - 7, GROUND - 1))
+    L.set(A0 - 4, 13, "N")
     L.areas = {"main": (0, 159, "fortress")}
     return L
 
@@ -1357,7 +1361,7 @@ def render_preview(L, path):
                 img.alpha_composite(tile(6, 1), (x, y))
             elif ch == "v":
                 later.append((tile(15 if L.get(c, r - 1) == "v" else 11, 1), x, y))
-            elif ch in "?MY":
+            elif ch in "?MYN":
                 img.alpha_composite(blk(0), (x, y))
             elif ch in "BSCU":
                 img.alpha_composite(blk(5), (x, y))

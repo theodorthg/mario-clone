@@ -580,6 +580,43 @@ func _run() -> void:
 			var bosses := game.get_tree().get_nodes_in_group("boss")
 			print("BOSSSEL boss active=%s hp=%d cam_left=%d" % [bosses[0].active, bosses[0].hp, game.camera.limit_left])
 			await shot("boss_arena")
+		"bossfix":
+			game.menus.hide_all()
+			game._start_game(Game.castle_of_world(1), true, true)
+			await _wait(Game.CARD_TIME + 0.4)
+			print("FIX boss-direct start: power=%d (FIRE=%d)" % [game.player.power, Player.Power.FIRE])
+			game.player_died(true)
+			await _wait(2.8 + Game.CARD_TIME + 0.8)
+			print("FIX after death respawn: power=%d pos=%s" % [game.player.power, game.player.global_position.round()])
+			# normal run: pass the boss checkpoint small, bump the flower block
+			game._start_game(Game.castle_of_world(1))
+			await _wait(Game.CARD_TIME + 0.4)
+			await teleport(Vector2i(110, 16))
+			await hold("move_right", 0.5)
+			await _wait(0.8)
+			print("FIX after boss checkpoint: power=%d cp=%s" % [game.player.power, game.checkpoint_pos])
+			await teleport(Vector2i(116, 16))
+			await hold("jump", 0.25)
+			await _wait(1.5)
+			await shot("flower_block")
+			var items := game.get_tree().get_nodes_in_group("items")
+			print("FIX items from N block: %s" % [items.map(func(i): return i.kind)])
+			# beat the boss -> extra life
+			await teleport(Vector2i(125, 16))
+			await _wait(1.0)
+			var boss: Boss = game.get_tree().get_nodes_in_group("boss")[0]
+			var lives0 := game.lives
+			for i in 3:
+				if not is_instance_valid(boss) or boss.dead:
+					break
+				boss._act = 99.0
+				await _wait(maxf(boss._inv, 0.0) + 0.1)
+				game.player.global_position = boss.global_position + Vector2(0, -80)
+				game.player.velocity = Vector2(0, 150)
+				await _wait(1.4)
+			await _wait(3.0)
+			print("FIX lives before=%d after win=%d" % [lives0, game.lives])
+			await shot("win_1up")
 		"pause":
 			await start_play()
 			game._toggle_pause()

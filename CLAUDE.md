@@ -306,8 +306,13 @@ Partikel, Musik `music_castle`). Deko: `*` Banner, `+`/`t` Fackel
   speit gezielte Flammen (`boss_flame.gd`); 3 HP (ab Welt 3: 4), Stampfen/
   Stern = 1, 5 Feuerbälle = 1; danach 1,2 s unverwundbar, wird schneller.
   Kein `kill_flip()` → immun gegen Panzer, Blöcke, Zunge. Sieg:
-  `boss_defeated()` → „WORLD n CLEAR!“, `jingle_world`, +5000, Zeitbonus,
-  nächste Welt. Burg-Level haben `FLAG`/`CASTLE` = (-1, -1).
+  `boss_defeated()` → „WORLD n CLEAR!“, `jingle_world`, +5000, **1UP**
+  (v0.9.4), Zeitbonus, nächste Welt.
+- Vor jeder Arena (v0.9.4, Nutzerwunsch — sonst frustrierend): eigener
+  Checkpoint (Arena−7) + `N`-Block (immer Feuerblume, Block-Inhalt
+  `flower`). Wer vor der Arena (re)spawnt — Tod nach dem Boss-Checkpoint
+  oder „Boss“-Direktstart — beginnt immer als Feuer-Held
+  (`game.gd::_is_boss_spawn()`: Spawn in Spalten [Arena−10, Arena)). Burg-Level haben `FLAG`/`CASTLE` = (-1, -1).
 
 ## Levelauswahl-Cheat (v0.8)
 

@@ -82,6 +82,11 @@ func bump(player: Player, from_shell := false) -> void:
 			_snd("sprout")
 			_spawn_item(PowerUp.Kind.MUSHROOM if not player.is_big() else PowerUp.Kind.FLOWER)
 			_set_used()
+		"flower":
+			# always a fire flower (castle block in front of the boss arena)
+			_snd("sprout")
+			_spawn_item(PowerUp.Kind.FLOWER)
+			_set_used()
 		"star":
 			_snd("sprout")
 			_spawn_item(PowerUp.Kind.STAR)
