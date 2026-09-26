@@ -1,0 +1,98 @@
+[gd_resource type="SpriteFrames" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/graphics/blocks.png" id="1_tex"]
+
+[sub_resource type="AtlasTexture" id="at_q0"]
+atlas = ExtResource("1_tex")
+region = Rect2(0, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="at_q1"]
+atlas = ExtResource("1_tex")
+region = Rect2(16, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="at_q2"]
+atlas = ExtResource("1_tex")
+region = Rect2(32, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="at_q3"]
+atlas = ExtResource("1_tex")
+region = Rect2(48, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="at_used"]
+atlas = ExtResource("1_tex")
+region = Rect2(64, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="at_brick"]
+atlas = ExtResource("1_tex")
+region = Rect2(80, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="at_cave_brick"]
+atlas = ExtResource("1_tex")
+region = Rect2(96, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="at_hard"]
+atlas = ExtResource("1_tex")
+region = Rect2(112, 0, 16, 16)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_q0")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_q0")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_q0")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_q1")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_q2")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_q3")
+}],
+"loop": true,
+"name": &"question",
+"speed": 8.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_used")
+}],
+"loop": false,
+"name": &"used",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_brick")
+}],
+"loop": false,
+"name": &"brick",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_cave_brick")
+}],
+"loop": false,
+"name": &"cave_brick",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_hard")
+}],
+"loop": false,
+"name": &"hard",
+"speed": 1.0
+}]

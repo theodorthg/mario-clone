@@ -1,0 +1,102 @@
+[gd_resource type="SpriteFrames" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/graphics/powerups.png" id="1_tex"]
+
+[sub_resource type="AtlasTexture" id="at_mushroom"]
+atlas = ExtResource("1_tex")
+region = Rect2(0, 0, 18, 17)
+
+[sub_resource type="AtlasTexture" id="at_oneup"]
+atlas = ExtResource("1_tex")
+region = Rect2(18, 0, 18, 17)
+
+[sub_resource type="AtlasTexture" id="at_flower0"]
+atlas = ExtResource("1_tex")
+region = Rect2(36, 0, 18, 17)
+
+[sub_resource type="AtlasTexture" id="at_flower1"]
+atlas = ExtResource("1_tex")
+region = Rect2(54, 0, 18, 17)
+
+[sub_resource type="AtlasTexture" id="at_flower2"]
+atlas = ExtResource("1_tex")
+region = Rect2(72, 0, 18, 17)
+
+[sub_resource type="AtlasTexture" id="at_flower3"]
+atlas = ExtResource("1_tex")
+region = Rect2(90, 0, 18, 17)
+
+[sub_resource type="AtlasTexture" id="at_star0"]
+atlas = ExtResource("1_tex")
+region = Rect2(108, 0, 18, 17)
+
+[sub_resource type="AtlasTexture" id="at_star1"]
+atlas = ExtResource("1_tex")
+region = Rect2(126, 0, 18, 17)
+
+[sub_resource type="AtlasTexture" id="at_star2"]
+atlas = ExtResource("1_tex")
+region = Rect2(144, 0, 18, 17)
+
+[sub_resource type="AtlasTexture" id="at_star3"]
+atlas = ExtResource("1_tex")
+region = Rect2(162, 0, 18, 17)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_mushroom")
+}],
+"loop": false,
+"name": &"mushroom",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_oneup")
+}],
+"loop": false,
+"name": &"oneup",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_flower0")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_flower1")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_flower2")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_flower3")
+}],
+"loop": true,
+"name": &"flower",
+"speed": 10.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_star0")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_star1")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_star2")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_star3")
+}],
+"loop": true,
+"name": &"star",
+"speed": 14.0
+}]

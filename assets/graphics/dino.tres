@@ -1,0 +1,130 @@
+[gd_resource type="SpriteFrames" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/graphics/dino.png" id="1_tex"]
+
+[sub_resource type="AtlasTexture" id="at_stand"]
+atlas = ExtResource("1_tex")
+region = Rect2(0, 0, 28, 32)
+
+[sub_resource type="AtlasTexture" id="at_blink"]
+atlas = ExtResource("1_tex")
+region = Rect2(196, 0, 28, 32)
+
+[sub_resource type="AtlasTexture" id="at_walk1"]
+atlas = ExtResource("1_tex")
+region = Rect2(28, 0, 28, 32)
+
+[sub_resource type="AtlasTexture" id="at_walk2"]
+atlas = ExtResource("1_tex")
+region = Rect2(56, 0, 28, 32)
+
+[sub_resource type="AtlasTexture" id="at_walk3"]
+atlas = ExtResource("1_tex")
+region = Rect2(84, 0, 28, 32)
+
+[sub_resource type="AtlasTexture" id="at_jump"]
+atlas = ExtResource("1_tex")
+region = Rect2(112, 0, 28, 32)
+
+[sub_resource type="AtlasTexture" id="at_eat"]
+atlas = ExtResource("1_tex")
+region = Rect2(140, 0, 28, 32)
+
+[sub_resource type="AtlasTexture" id="at_eat_walk"]
+atlas = ExtResource("1_tex")
+region = Rect2(168, 0, 28, 32)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_stand")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_stand")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_stand")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_stand")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_stand")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_blink")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 4.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_walk1")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_walk2")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_walk3")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_walk2")
+}],
+"loop": true,
+"name": &"walk",
+"speed": 10.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_walk1")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_walk2")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_walk3")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_walk2")
+}],
+"loop": true,
+"name": &"run",
+"speed": 16.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_jump")
+}],
+"loop": false,
+"name": &"jump",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_eat")
+}],
+"loop": false,
+"name": &"eat",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_eat_walk")
+}],
+"loop": false,
+"name": &"eat_walk",
+"speed": 1.0
+}]

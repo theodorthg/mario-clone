@@ -1,0 +1,48 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://game.gd" id="1_game"]
+[ext_resource type="Script" path="res://backdrop.gd" id="2_backdrop"]
+[ext_resource type="Script" path="res://hud.gd" id="3_hud"]
+[ext_resource type="Script" path="res://menus.gd" id="4_menus"]
+[ext_resource type="Script" path="res://touch_controls.gd" id="5_touch"]
+
+[node name="Game" type="Node2D"]
+script = ExtResource("1_game")
+
+[node name="Backdrop" type="Node2D" parent="."]
+script = ExtResource("2_backdrop")
+
+[node name="World" type="Node2D" parent="."]
+
+[node name="Camera2D" type="Camera2D" parent="."]
+
+[node name="HUD" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="Root" type="Control" parent="HUD"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_hud")
+
+[node name="Touch" type="CanvasLayer" parent="."]
+layer = 11
+
+[node name="Root" type="Node2D" parent="Touch"]
+script = ExtResource("5_touch")
+
+[node name="Menus" type="CanvasLayer" parent="."]
+layer = 20
+
+[node name="Root" type="Control" parent="Menus"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("4_menus")

@@ -32,3 +32,6 @@ templates.tpz
 # deliberate end-of-project "Claude Code transcript.pdf" is still committable.
 Claude Code transcript — *.pdf
 Claude Code transcript*.html
+
+# Python bytecode of the asset generators in tools/
+__pycache__/

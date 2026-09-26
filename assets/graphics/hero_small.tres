@@ -1,0 +1,146 @@
+[gd_resource type="SpriteFrames" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/graphics/hero_small.png" id="1_tex"]
+
+[sub_resource type="AtlasTexture" id="at_idle"]
+atlas = ExtResource("1_tex")
+region = Rect2(0, 0, 20, 20)
+
+[sub_resource type="AtlasTexture" id="at_walk1"]
+atlas = ExtResource("1_tex")
+region = Rect2(20, 0, 20, 20)
+
+[sub_resource type="AtlasTexture" id="at_walk2"]
+atlas = ExtResource("1_tex")
+region = Rect2(40, 0, 20, 20)
+
+[sub_resource type="AtlasTexture" id="at_walk3"]
+atlas = ExtResource("1_tex")
+region = Rect2(60, 0, 20, 20)
+
+[sub_resource type="AtlasTexture" id="at_jump"]
+atlas = ExtResource("1_tex")
+region = Rect2(80, 0, 20, 20)
+
+[sub_resource type="AtlasTexture" id="at_skid"]
+atlas = ExtResource("1_tex")
+region = Rect2(100, 0, 20, 20)
+
+[sub_resource type="AtlasTexture" id="at_death"]
+atlas = ExtResource("1_tex")
+region = Rect2(120, 0, 20, 20)
+
+[sub_resource type="AtlasTexture" id="at_climb"]
+atlas = ExtResource("1_tex")
+region = Rect2(140, 0, 20, 20)
+
+[sub_resource type="AtlasTexture" id="at_ride"]
+atlas = ExtResource("1_tex")
+region = Rect2(160, 0, 20, 20)
+
+[sub_resource type="AtlasTexture" id="at_front"]
+atlas = ExtResource("1_tex")
+region = Rect2(180, 0, 20, 20)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_idle")
+}],
+"loop": false,
+"name": &"idle",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_walk1")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_walk2")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_walk3")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_walk2")
+}],
+"loop": true,
+"name": &"walk",
+"speed": 12.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_jump")
+}],
+"loop": false,
+"name": &"jump",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_jump")
+}],
+"loop": false,
+"name": &"fall",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_skid")
+}],
+"loop": false,
+"name": &"skid",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_death")
+}],
+"loop": false,
+"name": &"death",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_climb")
+}],
+"loop": false,
+"name": &"climb",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_ride")
+}],
+"loop": false,
+"name": &"ride",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_front")
+}],
+"loop": false,
+"name": &"front",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_idle")
+}],
+"loop": false,
+"name": &"crouch",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_walk1")
+}],
+"loop": false,
+"name": &"throw",
+"speed": 1.0
+}]

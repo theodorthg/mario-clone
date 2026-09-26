@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mario-clone-web",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8096", "--directory", "../web-release-mario-clone"],
+      "port": 8096
+    }
+  ]
+}

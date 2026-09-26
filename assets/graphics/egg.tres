@@ -1,0 +1,58 @@
+[gd_resource type="SpriteFrames" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/graphics/egg.png" id="1_tex"]
+
+[sub_resource type="AtlasTexture" id="at_egg"]
+atlas = ExtResource("1_tex")
+region = Rect2(0, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="at_crack"]
+atlas = ExtResource("1_tex")
+region = Rect2(16, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="at_shell"]
+atlas = ExtResource("1_tex")
+region = Rect2(32, 0, 16, 16)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_egg")
+}],
+"loop": false,
+"name": &"idle",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_egg")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_crack")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_egg")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_crack")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_crack")
+}],
+"loop": false,
+"name": &"crack",
+"speed": 8.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_shell")
+}],
+"loop": false,
+"name": &"shell",
+"speed": 1.0
+}]
