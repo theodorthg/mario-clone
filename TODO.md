@@ -16,6 +16,11 @@ Git-Log.
 
 ## Erledigt
 
+- [x] 2026-09-27 Android-System-Startbildschirm (vor dem Splash) einheitlich
+      reines Weiß: `splash_screen/icon` = transparentes
+      `assets/icon/android_splash_blank.png`, `branding_image` leer (Nutzer-
+      wunsch, ohne Gradle-Build; Hintergrundfarbe ließe sich nur per Gradle
+      ändern).
 - [x] v0.10.0 Bewegliche Plattformen (`~` seitwärts, `^` auf/ab) in 1-3,
       2-2, 3-1, 4-1 und den Burgen 3-3/4-3.
 - [x] v0.10.0 Boss-Varianten je Welt: 1 gezielte Flamme, 2 Dreifach-Fächer,

@@ -368,7 +368,9 @@ stehen (aus der Tetris-Vorlage kam `true` → Android zeigte nur den System-
 Splash mit Icon, nie `splash-screen.png`; seit v0.9.5 behoben, auf dem RG552
 per `screenrecord` verifiziert). Der vorgeschaltete Android-12-System-Splash
 (Icon) hat weißen Hintergrund — `splash_screen/background_color` greift
-nur bei Gradle-Builds.
+nur bei Gradle-Builds. Seit 2026-09-27 (Nutzerwunsch, kein Gradle) zeigt er
+nur reines Weiß: `splash_screen/icon` = transparentes
+`assets/icon/android_splash_blank.png`, `branding_image` leer.
 
 ## App-Icon (v0.5)
 
