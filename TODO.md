@@ -17,14 +17,7 @@ Git-Log.
       sofort (bevor das Log rotiert) `adb logcat -b crash -d` und
       `adb logcat -d | grep -iE "fatal|signal|godot|marioclone"` sichern und
       tiefer analysieren (ggf. Debug-APK mit Symbolen).
-- [ ] OPPO noch auf v0.9.0 → beim nächsten Anschließen aktuelle APK
-      installieren.
-- [ ] Nutzer-Feedback zu den neuen Musikstücken (Wüste, Schnee, Burg,
-      „World Clear“-Fanfare) — konnte sie nur technisch prüfen.
 - [ ] Boss-Balancing nach Spieltests (HP, Tempo, Flammenrate).
-- [ ] Nutzer fragen: Android-Splash-Fix (`disable_godot_boot_splash=false`)
-      + Splash mit Fake-Ladebalken auch in tetris/pacman/galaga/centipede
-      übernehmen?
 - [ ] Optional: weißer Hintergrund des Android-12-System-Splash (nur per
       Gradle-Build änderbar).
 - [ ] `tools/gen_audio.py` rendert Rauschen nicht deterministisch → Seed
@@ -33,6 +26,11 @@ Git-Log.
 
 ## Erledigt
 
+- [x] 2026-09-26 Splash in den anderen Projekten geprüft: tetris + galaga
+      haben ihren Ladebalken-Splash schon; centipede bekam `splash.gd`;
+      pacman hat noch gar keinen Splash (→ dort offen, Nutzer fragen).
+- [x] 2026-09-26 v0.9.7 auf dem Handy (CPH2581) installiert.
+- [x] 2026-09-26 Nutzer-Feedback Musik: „top“.
 - [x] v0.9.7 Boss-Arena-Start robuster (deferred, idempotent); TODO.md
       eingeführt; Playtest überspringt den Splash erst nach `_ready`.
 - [x] v0.9.6 Splash mit Fake-Ladebalken (3 s, überspringbar).
