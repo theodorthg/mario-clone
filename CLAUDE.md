@@ -336,6 +336,12 @@ nicht importiert/exportiert). Neu erzeugen:
 `magick art_src/mario-clone-splashscreen.jpeg -resize 1920x1080 -background black -gravity center -extent 1920x1080 -strip splash-screen.png`.
 `tools/gen_ui.py` erzeugt den Splash NICHT mehr (hat ihn früher überschrieben).
 Godot-Boot-Splash kann nur PNG.
+**Android**: im Android-Preset muss `splash_screen/disable_godot_boot_splash=false`
+stehen (aus der Tetris-Vorlage kam `true` → Android zeigte nur den System-
+Splash mit Icon, nie `splash-screen.png`; seit v0.9.5 behoben, auf dem RG552
+per `screenrecord` verifiziert). Der vorgeschaltete Android-12-System-Splash
+(Icon) hat weißen Hintergrund — `splash_screen/background_color` greift
+nur bei Gradle-Builds.
 
 ## App-Icon (v0.5)
 
