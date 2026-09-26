@@ -15,7 +15,7 @@ signal restart_pressed
 signal quit_to_menu_pressed
 signal settings_changed(cfg: Dictionary)
 
-enum Screen { NONE, START, SETTINGS, SOUND, PAUSE, GAMEOVER, HELP, HIGHSCORES, VICTORY, WORLDS }
+enum Screen { NONE, START, SETTINGS, SOUND, PAUSE, GAMEOVER, HELP, HIGHSCORES, VICTORY, WORLDS, CONTROLS }
 
 const PANEL_W := 250.0
 const BTN_H := 22.0
@@ -42,7 +42,7 @@ const HELP_TOUCH := [
 	{"file": "worlds", "h": "Turtles & Worlds"},
 ]
 const HELP_FALLBACK := {
-	"controls": "Move: Arrows / A D / D-pad\nJump: Space / Z / K / W / Up  (A)\nRun, fireball, tongue: Shift / X / J  (X/Y)\nDuck / enter pipe: Down\nPause: Esc / P (Start)   Mute: M (Select)\nScreenshot: F12",
+	"controls": "Move: Arrows / A D / D-pad\nJump: Space / Z / K / W / Up  (A)\nRun, fireball, tongue: Shift / X / J  (X/Y)\nDuck / enter pipe: Down\nPause: Esc / P (Start)   Mute: M (Select)\nScreenshot: F12\nChange keys: Settings > Controls",
 	"touch": "Left / right buttons: move\nA: jump   X: run, fireball, tongue\nHold X while moving to run.\nII: pause   Speaker: mute",
 	"items": "Hit ? blocks from below.\nMushroom: grow big.  Fire flower: throw fireballs.\nStar: invincible for a while.  Green mushroom: extra life.\nBig heroes break bricks.",
 	"dragon": "An egg hides in one ? block.\nJump onto the dragon to ride it.\nRun button: tongue eats enemies.\nDown + jump: hop off.  A hit throws you off.",
@@ -129,6 +129,8 @@ func _rebuild() -> void:
 			_build_highscores()
 		Screen.WORLDS:
 			_build_worlds()
+		Screen.CONTROLS:
+			_build_controls()
 	_panel.reset_size()
 	_recenter_panel.call_deferred()
 	if screen == Screen.HELP and _help_back_btn:
@@ -199,7 +201,8 @@ func _button(text: String, cb: Callable, is_cancel := false) -> Button:
 		var snd := get_node_or_null("/root/Snd")
 		if snd:
 			snd.play("bump")
-		cb.call())
+		if cb.is_valid():
+			cb.call())
 	UiStyle.style_button(b, FONT)
 	if is_cancel:
 		b.set_meta("is_cancel", true)
@@ -462,15 +465,104 @@ func _build_settings() -> void:
 		func(_d): _set_cfg("start_big", not bool(_cfg.start_big)),
 		func(v): return "Yes" if v else "No")
 	_vbox.add_child(big_row)
-	var touch_row := _row("Touch keys")
+	_vbox.add_child(_hbox([
+		_button("Sound", func(): _show_screen(Screen.SOUND)),
+		_button("Controls", func(): _show_screen(Screen.CONTROLS)),
+		_button("Back", func(): _show_screen(_return_screen), true),
+	]))
+
+# --------------------------------------------------------------- controls --
+## Rebinding: press a slot button, then the new key / gamepad button.
+var _slots: Array = []            # [{button, action, kind}]
+var _listen := {}                 # {action, kind, button, t} while waiting
+
+func _build_controls() -> void:
+	_panel.custom_minimum_size = Vector2(330, 0)
+	_listen = {}
+	_slots.clear()
+	_vbox.add_child(_heading("CONTROLS"))
+	var touch_row := _row("Touch keys", 130)
 	_stepper(touch_row, func(): return int(_cfg.touch_buttons),
 		func(d): _set_cfg("touch_buttons", posmod(int(_cfg.touch_buttons) + d, GameSettings.TOUCH_NAMES.size())),
 		func(v): return GameSettings.TOUCH_NAMES[v])
 	_vbox.add_child(touch_row)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, 124)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", GAP)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	for spec in ControlsConfig.ACTIONS:
+		var row := _row(spec[1], 110)
+		var kb := _button("", Callable())
+		kb.custom_minimum_size = Vector2(100, BTN_H)
+		kb.pressed.connect(_start_listen.bind(spec[0], "key", kb))
+		row.add_child(kb)
+		_slots.append({"button": kb, "action": spec[0], "kind": "key"})
+		if spec[2]:
+			var pb := _button("", Callable())
+			pb.custom_minimum_size = Vector2(90, BTN_H)
+			pb.pressed.connect(_start_listen.bind(spec[0], "pad", pb))
+			row.add_child(pb)
+			_slots.append({"button": pb, "action": spec[0], "kind": "pad"})
+		else:
+			var l := _hint("D-pad")
+			l.custom_minimum_size = Vector2(90, 0)
+			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			row.add_child(l)
+		list.add_child(row)
+	_vbox.add_child(scroll)
+	_refresh_slots()
 	_vbox.add_child(_hbox([
-		_button("Sound", func(): _show_screen(Screen.SOUND)),
-		_button("Back", func(): _show_screen(_return_screen), true),
+		_button("Defaults", func():
+			ControlsConfig.reset()
+			_listen = {}
+			_refresh_slots()),
+		_button("Back", func(): _show_screen(Screen.SETTINGS), true),
 	]))
+
+func _refresh_slots() -> void:
+	for s in _slots:
+		var b: Button = s.button
+		if not is_instance_valid(b):
+			continue
+		if not _listen.is_empty() and _listen.button == b:
+			b.text = "press..."
+		else:
+			b.text = ControlsConfig.key_label(s.action) if s.kind == "key" else ControlsConfig.pad_label(s.action)
+
+func _start_listen(action: String, kind: String, b: Button) -> void:
+	_listen = {"action": action, "kind": kind, "button": b, "t": Time.get_ticks_msec()}
+	_refresh_slots()
+	var token: int = _listen.t
+	get_tree().create_timer(5.0, true, false, true).timeout.connect(func():
+		if not _listen.is_empty() and _listen.t == token:
+			_listen = {}
+			_refresh_slots())
+
+func _input(event: InputEvent) -> void:
+	if _listen.is_empty() or screen != Screen.CONTROLS:
+		return
+	if Time.get_ticks_msec() - int(_listen.t) < 150 or not event.is_pressed() or event.is_echo():
+		return
+	var value := -1
+	if _listen.kind == "key" and event is InputEventKey:
+		value = event.physical_keycode if event.physical_keycode != 0 else event.keycode
+	elif _listen.kind == "pad" and event is InputEventJoypadButton:
+		value = event.button_index
+	elif event is InputEventMouseButton:
+		_listen = {}
+		_refresh_slots()
+		return
+	if value < 0:
+		return
+	get_viewport().set_input_as_handled()
+	ControlsConfig.set_binding(_listen.action, _listen.kind, value)
+	var b: Button = _listen.button
+	_listen = {}
+	_refresh_slots()
+	b.grab_focus.call_deferred()
 
 func _set_cfg(key: String, value) -> void:
 	_cfg[key] = value

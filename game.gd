@@ -72,6 +72,7 @@ func _ready() -> void:
 	world.process_mode = Node.PROCESS_MODE_PAUSABLE
 	backdrop.camera = camera
 	cfg = GameSettings.load_all()
+	ControlsConfig.apply()
 	_touch = OS.has_feature("mobile") or DisplayServer.is_touchscreen_available()
 	hud.pause_pressed.connect(_toggle_pause)
 	hud.mute_pressed.connect(_toggle_mute)

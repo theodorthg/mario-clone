@@ -160,6 +160,7 @@ def page_controls():
     glass_btn(d, 212, 142, "speaker")
     glass_btn(d, 234, 142, "pause")
     text(d, (258, 147), "or click", fill=DIM)
+    text(d, (8, 158), "Change keys + buttons: Settings > Controls", fill=GOLD)
     return img
 
 

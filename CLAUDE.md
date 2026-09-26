@@ -59,6 +59,16 @@ davon ist aus Nintendo-Spielen übernommen (Figuren nur „im Stil von“).
 Absteigen vom Drachen: ↓ + Sprung. `[input]` nie von Hand editieren, sondern
 `godot --headless --path . --script res://tools/setup_input.gd`.
 
+**Umbelegen (v0.7)**: Settings → Controls. `controls_config.gd`
+(`ControlsConfig`) legt Overrides aus settings.cfg `[controls]`
+(`<aktion>.key` = physical keycode, `<aktion>.pad` = Button-Index) über die
+Defaults aus project.godot: `apply()` beim Start und nach jeder Änderung
+(`InputMap.load_from_project_settings()` + Overrides). Taste = zusätzlich
+(Default-Tasten bleiben), Gamepad-Button = ersetzt die Buttons der Aktion;
+beides wird anderen Aktionen weggenommen (Tausch statt Doppelbelegung).
+D-Pad/Stick-Bewegung ist fest. Dort auch „Touch keys“ Auto/On/Off.
+`ui_accept`/`ui_cancel` (Menüs: A/B) bleiben unverändert.
+
 ## Physik (player.gd, px/s bei 16-px-Tiles)
 
 Laufen 90, Rennen 155, Sprung 270 (+50 bei Vollgas), Schwerkraft 560 solange
@@ -285,6 +295,6 @@ skaliert (NEAREST). Adaptive-Vordergrund bleibt im sichtbaren Kreis (~61 %).
 
 ## Offen / nächste Schritte
 
-- Settings: Tastenbelegung änderbar (Tastatur + Gamepad).
+- Weitere Welten/Level, Boss-Burg am Ende einer Welt, weitere Gegner.
 - `gen_audio.py` rendert Rauschen nicht deterministisch: nach einem Lauf
   unveränderte Stücke per `git checkout` zurücksetzen (sonst Binär-Churn).

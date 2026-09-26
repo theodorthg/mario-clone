@@ -14,7 +14,7 @@ const SCRIPTS := [
 	"res://score_popup.gd", "res://shroom.gd", "res://powerup.gd", "res://fireball.gd",
 	"res://dino.gd", "res://egg.gd", "res://flagpole.gd", "res://warp_zone.gd",
 	"res://checkpoint.gd", "res://backdrop.gd", "res://hud.gd", "res://menus.gd",
-	"res://touch_controls.gd", "res://chomper.gd", "res://turtle.gd", "res://game.gd",
+	"res://touch_controls.gd", "res://chomper.gd", "res://turtle.gd", "res://controls_config.gd", "res://game.gd",
 ]
 
 func _init() -> void:

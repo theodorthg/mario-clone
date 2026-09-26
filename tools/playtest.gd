@@ -438,6 +438,22 @@ func _run() -> void:
 			await _wait(Game.CARD_TIME + 0.4)
 			state("started world 3")
 			print("level id: ", Game.LEVELS[game.level_index].ID)
+		"controls":
+			await _wait(0.8)
+			game.menus._show_screen(Menus.Screen.CONTROLS)
+			await shot("controls")
+			# rebind jump (pad) to X: X leaves "run", run keeps Y
+			ControlsConfig.set_binding("jump", "pad", 2)
+			ControlsConfig.set_binding("jump", "key", KEY_H)
+			var names := func(a): return "%s | %s" % [ControlsConfig.key_label(a), ControlsConfig.pad_label(a)]
+			print("CTRL jump=", names.call("jump"), "  run=", names.call("run"))
+			var ev := InputEventKey.new()
+			ev.physical_keycode = KEY_H
+			print("CTRL H is jump: ", InputMap.event_is_action(ev, "jump"))
+			game.menus._refresh_slots()
+			await shot("rebound")
+			ControlsConfig.reset()
+			print("CTRL after reset jump=", names.call("jump"), "  run=", names.call("run"))
 		"pause":
 			await start_play()
 			game._toggle_pause()
