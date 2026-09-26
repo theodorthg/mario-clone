@@ -673,16 +673,31 @@ func _level_done() -> void:
 
 # =================================================================== boss --
 ## The boss woke up: lock the camera to the arena, wall off the way back.
+## Called deferred by boss.gd (NOT from inside its _physics_process): the
+## wall-up changes TileMapLayer cells + collision, which must not happen in
+## the middle of a physics step (suspected cause of a one-off crash on the
+## RG552, see TODO.md). Idempotent per level; ignored once the level or the
+## boss is gone or the game left PLAYING (death / pause race).
 func start_boss(boss: Boss) -> void:
+	if state != State.PLAYING or level == null or not is_instance_valid(boss) \
+			or boss.dead or not boss.is_inside_tree() or boss.get_parent() != level \
+			or level.get_meta("boss_started", false):
+		return
+	level.set_meta("boss_started", true)
 	camera.limit_left = int(boss.arena_left)
 	camera.limit_right = int(boss.arena_right)
 	if player:
 		player.left_limit = boss.arena_left
 		player.right_limit = boss.arena_right
 	var gate_c := int(boss.arena_left / Level.T)
-	for r in range(0, Level.ROWS):
-		if level.tiles.get_cell_source_id(Vector2i(gate_c, r)) == -1 and r < Level.ROWS - 3:
-			level.tiles.set_cell(Vector2i(gate_c, r), 0, Level.CASTLE_WALL)
+	# never wall anyone in: the hero (and a ridden dragon) must be clear of it
+	var gate_right := float(gate_c + 1) * Level.T
+	if player and player.global_position.x - 10.0 < gate_right:
+		player.global_position.x = gate_right + 12.0
+	for r in range(0, Level.ROWS - 3):
+		var cell := Vector2i(gate_c, r)
+		if level.tiles.get_cell_source_id(cell) == -1:
+			level.tiles.set_cell(cell, 0, Level.CASTLE_WALL)
 	_snd_call("play", null, ["break"])
 	_snd_call("set_music_pitch", null, [1.12])
 	hud.show_banner("BOSS!", 1.2)

@@ -20,7 +20,6 @@ func _init() -> void:
 	var scene: PackedScene = load("res://game.tscn")
 	game = scene.instantiate()
 	root.add_child(game)
-	game.skip_splash()
 	_run.call_deferred()
 
 func _wait(t: float) -> void:
@@ -70,6 +69,11 @@ func teleport(cell: Vector2i) -> void:
 	await _frames(3)
 
 func _run() -> void:
+	# the game's _ready (which creates the splash) runs only once the tree
+	# is live — skip the splash from here, not from _init()
+	await process_frame
+	if scenario != "splash":
+		game.skip_splash()
 	match scenario:
 		"title":
 			await _wait(1.5)
@@ -576,7 +580,14 @@ func _run() -> void:
 			await _wait(Game.CARD_TIME + 0.4)
 			state("at boss 3-3")
 			print("BOSSSEL level=%s cheated=%s" % [Game.LEVELS[game.level_index].ID, game.cheated])
-			await hold("move_right", 1.6)
+			for i in 8:
+				Input.action_press("move_right")
+				await _wait(0.25)
+				var bb := game.get_tree().get_nodes_in_group("boss")
+				print("BOSSSEL t=%.2f px=%.0f state=%d bosses=%d active=%s started=%s" % [i * 0.25,
+					game.player.global_position.x if game.player else -1.0, game.state, bb.size(),
+					bb[0].active if bb.size() > 0 else false, game.level.get_meta("boss_started", false)])
+			Input.action_release("move_right")
 			await _wait(0.6)
 			var bosses := game.get_tree().get_nodes_in_group("boss")
 			print("BOSSSEL boss active=%s hp=%d cam_left=%d" % [bosses[0].active, bosses[0].hp, game.camera.limit_left])

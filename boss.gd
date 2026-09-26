@@ -70,7 +70,7 @@ func _physics_process(delta: float) -> void:
 	if not active:
 		if p.global_position.x > arena_left + 40.0 and p.mode == Player.Mode.NORMAL:
 			active = true
-			game.start_boss(self)
+			game.start_boss.call_deferred(self)     # tile/collision changes outside the physics step
 		else:
 			return
 	_inv = maxf(_inv - delta, 0.0)

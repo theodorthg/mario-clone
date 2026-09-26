@@ -373,6 +373,5 @@ skaliert (NEAREST). Adaptive-Vordergrund bleibt im sichtbaren Kreis (~61 %).
 
 ## Offen / nächste Schritte
 
-- Ideen: weitere Welten, bewegliche Plattformen, Boss-Varianten.
-- `gen_audio.py` rendert Rauschen nicht deterministisch: nach einem Lauf
-  unveränderte Stücke per `git checkout` zurücksetzen (sonst Binär-Churn).
+Siehe **`TODO.md`** (offene Punkte sammeln + abhaken, gilt über
+Kontextwechsel hinaus).
