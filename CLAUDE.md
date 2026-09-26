@@ -336,6 +336,11 @@ nicht importiert/exportiert). Neu erzeugen:
 `magick art_src/mario-clone-splashscreen.jpeg -resize 1920x1080 -background black -gravity center -extent 1920x1080 -strip splash-screen.png`.
 `tools/gen_ui.py` erzeugt den Splash NICHT mehr (hat ihn früher überschrieben).
 Godot-Boot-Splash kann nur PNG.
+**Fake-Ladebalken (v0.9.6, wie Galaga)**: `splash.gd` (CanvasLayer 50) zeigt
+nach dem kurzen nativen Boot-Splash (0,5 s) dasselbe Bild weiter + goldenen
+Ladebalken unten mittig über `Splash.TIME` = 3 s, danach Titelbildschirm
+(`game.gd`: `splash.done` → `_to_title`). Taste/Pad-Button/Klick/Tipp
+überspringt (nach 0,3 s). `tools/playtest.gd` ruft `game.skip_splash()`.
 **Android**: im Android-Preset muss `splash_screen/disable_godot_boot_splash=false`
 stehen (aus der Tetris-Vorlage kam `true` → Android zeigte nur den System-
 Splash mit Icon, nie `splash-screen.png`; seit v0.9.5 behoben, auf dem RG552

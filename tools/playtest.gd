@@ -20,6 +20,7 @@ func _init() -> void:
 	var scene: PackedScene = load("res://game.tscn")
 	game = scene.instantiate()
 	root.add_child(game)
+	game.skip_splash()
 	_run.call_deferred()
 
 func _wait(t: float) -> void:
@@ -617,6 +618,18 @@ func _run() -> void:
 			await _wait(3.0)
 			print("FIX lives before=%d after win=%d" % [lives0, game.lives])
 			await shot("win_1up")
+		"splash":
+			# fresh game WITH splash (the default init skipped it)
+			var g2: Game = load("res://game.tscn").instantiate()
+			root.remove_child(game)
+			game.queue_free()
+			game = g2
+			root.add_child(game)
+			await _wait(1.5)
+			await shot("splash_bar")
+			print("SPLASH active=%s menu=%d" % [is_instance_valid(game.splash) and game.splash._active, game.menus.screen])
+			await _wait(2.2)
+			print("SPLASH after: menu=%d (START=%d)" % [game.menus.screen, Menus.Screen.START])
 		"pause":
 			await start_play()
 			game._toggle_pause()

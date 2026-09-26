@@ -71,6 +71,7 @@ var _tally_step := 1
 ## true once the level select cheat started a course not reached yet:
 ## the whole run then gets no high score entry and saves no progress
 var cheated := false
+var splash: Splash
 
 func _ready() -> void:
 	instance = self
@@ -96,7 +97,15 @@ func _ready() -> void:
 	get_window().size_changed.connect(_apply_display_mode)
 	_last_window = DisplayServer.window_get_size()
 	_apply_display_mode()
-	_to_title()
+	# splash with a fake loading bar first, then the title screen
+	splash = Splash.new()
+	add_child(splash)
+	splash.done.connect(_to_title, CONNECT_ONE_SHOT)
+
+## Tests/tools: jump straight to the title screen.
+func skip_splash() -> void:
+	if splash and is_instance_valid(splash):
+		splash.finish()
 
 ## World freeze / thaw. Deferred: this is often triggered from inside a
 ## physics callback (area body_entered), where disabling CollisionObjects
