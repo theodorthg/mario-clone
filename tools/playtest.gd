@@ -323,19 +323,28 @@ func _run() -> void:
 			await shot("fire_ride_left")
 		"worlds":
 			# 2-1 cave, 3-1 desert, 4-1 snow: two views each
-			var spots := {3: [Vector2i(16, 16), Vector2i(76, 13)], 4: [Vector2i(36, 16), Vector2i(72, 13)],
-				5: [Vector2i(20, 16), Vector2i(70, 14)]}
-			for idx in [3, 4, 5]:
+			# 2-1/2-2 cave, 3-1/3-2 desert, 4-1/4-2 snow: two views each
+			var spots := {"2-1": [Vector2i(16, 16), Vector2i(76, 13)], "3-1": [Vector2i(36, 16), Vector2i(72, 13)],
+				"4-1": [Vector2i(20, 16), Vector2i(70, 14)], "2-2": [Vector2i(30, 13), Vector2i(84, 11)],
+				"3-2": [Vector2i(48, 16), Vector2i(86, 11)], "4-2": [Vector2i(46, 11), Vector2i(80, 12)]}
+			var only := OS.get_environment("WORLDS")
+			for idx in Game.LEVELS.size():
+				var lid: String = Game.LEVELS[idx].ID
+				if not spots.has(lid) or (only != "" and not lid in only.split(",")):
+					continue
 				game.menus.hide_all()
 				game._start_game()
 				game.level_index = idx
 				game._begin_level()
 				await _wait(Game.CARD_TIME + 0.4)
 				for k in 2:
-					await teleport(spots[idx][k])
+					for n in game.get_tree().get_nodes_in_group("enemies"):
+						if absf(n.global_position.x - spots[lid][k].x * 16) < 48:
+							n.queue_free()
+					await teleport(spots[lid][k])
 					await _wait(1.2)
-					state("world idx %d spot %d" % [idx, k])
-					await shot("world_%d_%d" % [idx, k])
+					state("world %s spot %d" % [lid, k])
+					await shot("world_%s_%d" % [lid, k])
 		"turtle":
 			game.menus.hide_all()
 			game._start_game()
@@ -396,7 +405,7 @@ func _run() -> void:
 		"ice":
 			game.menus.hide_all()
 			game._start_game()
-			game.level_index = 5
+			game.level_index = Game.first_level_of_world(4)
 			game._begin_level()
 			await _wait(Game.CARD_TIME + 0.4)
 			for n in game.get_tree().get_nodes_in_group("enemies"):

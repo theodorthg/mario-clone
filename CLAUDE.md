@@ -129,7 +129,18 @@ Pilzlingen → Kick-Kombo), niedriger Gang mit verstecktem 1-UP; Ausgang über
 eine Röhre in den Bereich `exit` (Abendwiese mit Fahne + Burg).
 3-1: Sandstein-Ruinen, Oase mit Brücke, Sims-Kette, Pyramiden-Stufen.
 4-1: Eisflächen am Boden, zugefrorener See mit Eisschollen, Eisblock-
-Brücke, Eisziegel-Treppe. Nach 4-1: Siegerbildschirm.
+Brücke, Eisziegel-Treppe.
+
+### 2-2 „Lava Depths“, 3-2 „Sunset Ruins“, 4-2 „Starlight Glacier“ (v0.6)
+2-2: Lavafluss mit Pfeilern (rote Schildkröte obenauf), Ziegeldecke,
+Holzbrücken über einem Lavasee, Hartblock-Treppe über Lava; Ausgang in
+eine Nachtwiese. 3-2 (Thema `desert_dusk`: tiefe Sonne `sky[7]` =
+`sun_uv`): geflügelte Schildkröten über Gruben, Sandstein-Tempel mit
+Dach, Schildkröten-Reihe auf einem Sims (Kombo), Stufenpyramide mit Tunnel.
+4-2 (Thema `snow_night`: Sterne + Mond, blaue Tönung): lange Eisbahn,
+Eisziegel-Türme, See mit Eisschollen, Eisbrücke über Wasser.
+Reihenfolge in `game.gd::LEVELS`: 1-1 … 1-3, 2-1, 2-2, 3-1, 3-2, 4-1, 4-2;
+nach 4-2 Siegerbildschirm.
 
 ### 1-1 „Green Hills“ (312 Spalten, davon 262 Hauptlevel)
 Start-Wiese mit ?-Blöcken → Röhrenfeld (Warp-Röhre Spalte 53 → Münzhöhle,
@@ -274,8 +285,6 @@ skaliert (NEAREST). Adaptive-Vordergrund bleibt im sichtbaren Kreis (~61 %).
 
 ## Offen / nächste Schritte
 
-- v0.6: zweite Level je Welt (Abend-/Nachtvarianten `desert_dusk`,
-  `snow_night` sind in THEME_BIOME/THEME_MUSIC schon vorgesehen).
 - Settings: Tastenbelegung änderbar (Tastatur + Gamepad).
 - `gen_audio.py` rendert Rauschen nicht deterministisch: nach einem Lauf
   unveränderte Stücke per `git checkout` zurücksetzen (sonst Binär-Churn).

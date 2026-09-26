@@ -859,6 +859,295 @@ def level_4_1():
 
 
 # =========================================================================
+# 2-2  "Lava Depths" — deeper cave: lava river with bridges and pillars,
+#      brick ceilings to smash, red turtles on pillars; exit to a night meadow
+# =========================================================================
+def level_2_2():
+    L = Level("2-2", "LAVA DEPTHS", 306, time=400)
+    MAIN_END = 214
+    L.top = 6
+    L.ground(0, MAIN_END - 1)
+    L.ceiling(0, MAIN_END - 1, 3)
+    for c0, c1, d in [(14, 17, 5), (44, 46, 4), (98, 102, 6), (150, 153, 5), (190, 194, 4)]:
+        L.fill(c0, c1, 3, d - 1, "#")
+    L.decor(2, "+")
+    L.decor(5, "*")
+    L.blocks(8, 13, "?M?")
+    L.enemy(12, ch="k")
+    L.enemy(15)
+    # lava river: pillars with red turtles
+    L.lava(19, 34)
+    L.fill(22, 23, 14, ROWS - 1, "#")
+    L.fill(27, 28, 12, ROWS - 1, "#")
+    L.fill(31, 32, 14, ROWS - 1, "#")
+    L.enemy(27, 11, ch="K")
+    L.coins(22, 13, 2)
+    L.coins(31, 13, 2)
+    L.coin_arc(24, 8, 3)
+    L.decor(37, "f")
+    L.pipe(40, 2)
+    L.enemy(44)
+    L.enemy(46, ch="k")
+    # brick ceiling: a low roof of bricks to smash when big
+    L.fill(50, 62, 3, 9, "#")
+    L.blocks(50, 10, "BBBBBCBBBBBBB")
+    L.blocks(54, 13, "?B?")
+    L.enemy(57, GROUND - 1)
+    L.enemy(60, GROUND - 1, ch="k")
+    warp_in = L.pipe(66, 2, warp=True)
+    L.decor(69, "t")
+    # log bridges over a long lava lake
+    L.lava(72, 93)
+    L.bridge(71, 77, 14)
+    L.fill(79, 80, 12, ROWS - 1, "#")
+    L.bridge(82, 87, 13)
+    L.fill(89, 90, 14, ROWS - 1, "#")
+    L.enemy(74, 13)
+    L.enemy(85, 12, ch="k")
+    L.coins(72, 11, 5)
+    L.coins(82, 10, 6)
+    L.set(79, 8, "S")
+    L.checkpoints.append((97, GROUND - 1))
+    L.decor(99, "*")
+    L.set(104, GROUND - 3, "Q")
+    L.blocks(109, 13, "BYB")
+    L.enemy(113)
+    L.enemy(115)
+    L.enemy(117, ch="K")
+    # hard-block staircase over lava
+    L.lava(121, 131)
+    for i, h in enumerate([1, 2, 3, 4]):
+        L.fill(121 + i, 121 + i, GROUND - h, ROWS - 1, "X")
+    for i, h in enumerate([4, 3, 2, 1]):
+        L.fill(128 + i, 128 + i, GROUND - h, ROWS - 1, "X")
+    L.coin_arc(124, 8, 5)
+    L.set(137, 14, "J")
+    L.ledge(140, 145, 12)
+    L.coins(140, 11, 6)
+    L.enemy(142, 11, ch="K")
+    L.enemy(141, GROUND - 1)
+    L.enemy(144, GROUND - 1, ch="k")
+    L.set(148, 13, "h")
+    warp_out = L.pipe(156, 2)
+    L.set(161, GROUND - 3, "Q")
+    L.lava(165, 176)
+    L.ledge(167, 169, 14)
+    L.ledge(172, 174, 12)
+    L.set(173, 11, "J")
+    L.coin_arc(166, 10, 10)
+    L.enemy(180)
+    L.enemy(182)
+    L.enemy(184, ch="k")
+    L.stairs(193, 4, up=True)
+    L.blocks(198, 12, "?")
+    exit_pipe = L.pipe(204, 2, warp=True)
+    L.coins(203, 11, 4)
+    L.fill(MAIN_END - 2, MAIN_END - 1, 0, GROUND - 1, "w")
+    E0, E1 = 220, 259
+    L.ground(E0, E1)
+    arrive = L.pipe(E0 + 3, 2)
+    L.decor(E0 + 7, "+")
+    L.decor(E0 + 10, "f")
+    L.coins(E0 + 8, 12, 3)
+    finale(L, E0 + 12, E0 + 28, E0 + 32)
+    L.decor(E0 + 24, "t")
+    B0, B1 = 266, 305
+    exit_mouth = coin_room(L, B0, B1)
+    L.areas = {"main": (0, MAIN_END - 1, "cavern"), "exit": (E0, E1, "night"), "bonus": (B0, B1, "cave")}
+    L.warps = [
+        {"entry": warp_in, "kind": "down", "arrive": (B0 + 3, 4), "arrive_kind": "drop", "area": "bonus"},
+        {"entry": exit_mouth, "kind": "right", "arrive": warp_out, "arrive_kind": "up", "area": "main"},
+        {"entry": exit_pipe, "kind": "down", "arrive": arrive, "arrive_kind": "up", "area": "exit"},
+    ]
+    return L
+
+
+# =========================================================================
+# 3-2  "Sunset Ruins" — desert at dusk: a sandstone temple with passages,
+#      winged turtles over pits, a turtle row for shell combos
+# =========================================================================
+def level_3_2():
+    L = Level("3-2", "SUNSET RUINS", 300, time=400)
+    MAIN_END = 250
+    L.ground(0, MAIN_END - 1)
+    L.decor(1, "s")
+    L.decor(4, "*")
+    L.blocks(9, 13, "B?B")
+    L.blocks(10, 9, "M")
+    L.enemy(14)
+    L.enemy(16, ch="k")
+    L.decor(19, "+")
+    # winged turtles over two pits
+    L.pit(22, 25)
+    L.set(23, 12, "J")
+    L.coin_arc(21, 11, 6)
+    L.pit(29, 32)
+    L.set(31, 11, "J")
+    L.coin_arc(28, 11, 6)
+    L.decor(35, "r")
+    # sandstone temple: outer walls, roof, inner passage with coins
+    L.fill(38, 60, 9, 9, "w")
+    L.fill(38, 39, 10, 13, "w")
+    L.fill(59, 60, 10, 13, "w")
+    L.blocks(44, 13, "B?BB?B")
+    L.coins(42, 16, 16)
+    L.enemy(47, GROUND - 1, ch="K")
+    L.enemy(53, GROUND - 1)
+    L.enemy(49, 8, ch="K")
+    L.coins(41, 7, 3)
+    L.coins(56, 7, 3)
+    L.set(50, 5, "S")
+    L.decor(63, "*")
+    L.pipe(66, 3)
+    warp_in = L.pipe(71, 2, warp=True)
+    L.set(75, 14, "J")
+    L.enemy(78)
+    # turtle row on a sandstone shelf -> kick one, the rest topple
+    L.ledge(82, 94, 13, ch="w")
+    for c in (85, 88, 91):
+        L.enemy(c, 12, ch="k")
+    L.enemy(93, 12, ch="K")
+    L.coins(82, 10, 3)
+    L.checkpoints.append((98, GROUND - 1))
+    L.decor(100, "f")
+    L.set(104, GROUND - 3, "Q")
+    L.pit(108, 111)
+    L.coin_arc(107, 11, 6)
+    L.blocks(115, 13, "BYB")
+    L.enemy(119)
+    L.enemy(121)
+    # step pyramid with a tunnel through its base
+    for i in range(6):
+        L.fill(126 + i, 140 - i, GROUND - 1 - i, GROUND - 1 - i, "w")
+    L.fill(131, 135, GROUND - 2, GROUND - 1, ".")
+    L.coins(131, 16, 5)
+    L.set(133, 8, "h")
+    L.coins(131, 10, 5)
+    L.enemy(129, 14, ch="k")
+    L.enemy(144)
+    L.set(147, 14, "J")
+    warp_out = L.pipe(151, 2)
+    L.decor(155, "*")
+    L.pit(158, 164)
+    L.ledge(160, 162, 13, ch="w")
+    L.enemy(161, 12, ch="K")
+    L.coins(158, 9, 7)
+    L.set(168, GROUND - 3, "Q")
+    L.blocks(173, 13, "?C?")
+    L.enemy(176, ch="k")
+    L.enemy(178)
+    L.enemy(180)
+    L.set(184, 13, "G")
+    L.stairs(196, 4, up=True)
+    L.pit(200, 202)
+    L.stairs(203, 4, up=False)
+    L.set(209, 14, "J")
+    L.decor(212, "+")
+    finale(L, 214, 230, 234)
+    L.decor(227, "*")
+    B0, B1 = 256, 295
+    exit_mouth = coin_room(L, B0, B1)
+    L.areas = {"main": (0, MAIN_END - 1, "desert_dusk"), "bonus": (B0, B1, "cave")}
+    L.warps = [
+        {"entry": warp_in, "kind": "down", "arrive": (B0 + 3, 4), "arrive_kind": "drop", "area": "bonus"},
+        {"entry": exit_mouth, "kind": "right", "arrive": warp_out, "arrive_kind": "up", "area": "main"},
+    ]
+    return L
+
+
+# =========================================================================
+# 4-2  "Starlight Glacier" — snow at night: long ice runs, floes over dark
+#      water, ice-brick towers, winged enemies
+# =========================================================================
+def level_4_2():
+    L = Level("4-2", "STARLIGHT GLACIER", 300, time=400)
+    MAIN_END = 250
+    L.ground(0, MAIN_END - 1)
+    L.decor(1, "s")
+    L.decor(5, "*")
+    L.blocks(9, 13, "?B?")
+    L.blocks(10, 9, "M")
+    L.enemy(14, ch="k")
+    # long ice run with a pit at its end
+    L.fill(18, 33, GROUND, GROUND, "I")
+    L.enemy(22)
+    L.enemy(26)
+    L.enemy(30, ch="k")
+    L.pit(35, 37)
+    L.coin_arc(34, 11, 5)
+    L.decor(40, "*")
+    # ice-brick towers with a turtle on top
+    L.fill(43, 45, 12, GROUND - 1, "w")
+    L.fill(49, 51, 10, GROUND - 1, "w")
+    L.enemy(50, 9, ch="K")
+    L.coins(43, 11, 3)
+    L.coins(49, 9, 3)
+    L.pipe(55, 2)
+    warp_in = L.pipe(60, 3, warp=True)
+    L.set(64, 14, "G")
+    # frozen lake: floes + ice bridge
+    L.pit(67, 90)
+    L.water(67, 90)
+    L.ledge(69, 71, 15, depth=1, ch="I")
+    L.ledge(74, 76, 13, depth=1, ch="I")
+    L.ledge(79, 84, 14, depth=1, ch="I")
+    L.ledge(87, 89, 12, depth=1, ch="I")
+    L.enemy(81, 13, ch="k")
+    L.set(77, 9, "J")
+    L.coins(74, 12, 3)
+    L.coins(79, 11, 6)
+    L.set(88, 8, "S")
+    L.checkpoints.append((94, GROUND - 1))
+    L.decor(96, "+")
+    L.blocks(99, 13, "BCB?")
+    L.enemy(104)
+    L.enemy(106, ch="k")
+    L.set(110, GROUND - 3, "Q")
+    L.fill(114, 124, GROUND, GROUND, "I")
+    L.enemy(118)
+    L.enemy(121)
+    L.blocks(116, 12, "BYB")
+    L.pit(126, 129)
+    L.set(127, 12, "G")
+    L.coin_arc(125, 10, 6)
+    # ice staircase up to a high ledge with a hidden 1-UP
+    L.ledge(133, 135, 14, depth=1, ch="I")
+    L.ledge(137, 139, 12, depth=1, ch="I")
+    L.ledge(141, 146, 10, ch="w")
+    L.coins(141, 9, 6)
+    L.set(143, 6, "h")
+    L.enemy(144, 9, ch="K")
+    warp_out = L.pipe(150, 2)
+    L.decor(154, "*")
+    L.pit(157, 169)
+    L.water(157, 169)
+    L.ledge(156, 170, 14, depth=1, ch="I")
+    L.enemy(160, 13)
+    L.enemy(164, 13, ch="k")
+    L.enemy(167, 13)
+    L.coins(158, 11, 11)
+    L.set(174, GROUND - 3, "Q")
+    L.set(178, 14, "J")
+    L.blocks(182, 13, "?B?")
+    L.enemy(186)
+    L.stairs(193, 4, up=True)
+    L.pit(197, 199)
+    L.stairs(200, 4, up=False)
+    L.fill(205, 212, GROUND, GROUND, "I")
+    L.set(209, 14, "G")
+    finale(L, 214, 230, 234)
+    L.decor(226, "*")
+    B0, B1 = 256, 295
+    exit_mouth = coin_room(L, B0, B1)
+    L.areas = {"main": (0, MAIN_END - 1, "snow_night"), "bonus": (B0, B1, "cave")}
+    L.warps = [
+        {"entry": warp_in, "kind": "down", "arrive": (B0 + 3, 4), "arrive_kind": "drop", "area": "bonus"},
+        {"entry": exit_mouth, "kind": "right", "arrive": warp_out, "arrive_kind": "up", "area": "main"},
+    ]
+    return L
+
+
+# =========================================================================
 # preview rendering (uses the real generated art)
 # =========================================================================
 def render_preview(L, path):
@@ -1000,5 +1289,8 @@ if __name__ == "__main__":
     level_1_2().emit()
     level_1_3().emit()
     level_2_1().emit()
+    level_2_2().emit()
     level_3_1().emit()
+    level_3_2().emit()
     level_4_1().emit()
+    level_4_2().emit()

@@ -79,6 +79,30 @@ const THEMES := {
 		"world": Color(0.96, 0.98, 1.0),
 		"fx": "snow",
 	},
+	"desert_dusk": {
+		# sun sinking behind the dunes: purple-orange sky, warm dark layers
+		"sky": [Color("2c2466"), Color("c05a78"), Color("ffb870"), 0.45, 0.0, 0.0, 1.0, Vector2(0.72, 0.52)],
+		"layers": [
+			["res://assets/graphics/bg_clouds.png", 22.0, 0.12, 0.1, 4.0, Color(1.0, 0.7, 0.7, 0.75)],
+			["res://assets/graphics/bg_pyramids.png", 104.0, 0.2, 0.4, 0.0, Color(0.82, 0.5, 0.52)],
+			["res://assets/graphics/bg_dunes_far.png", 150.0, 0.32, 0.6, 0.0, Color(0.95, 0.66, 0.56)],
+			["res://assets/graphics/bg_cacti.png", 176.0, 0.5, 0.78, 0.0, Color(0.72, 0.52, 0.5)],
+		],
+		"world": Color(1.0, 0.86, 0.78),
+		"fx": "sand",
+	},
+	"snow_night": {
+		"sky": [Color("050a20"), Color("16285a"), Color("3a4f8a"), 0.55, 1.0, 1.0],
+		"layers": [
+			["res://assets/graphics/bg_clouds.png", 26.0, 0.12, 0.1, 3.0, Color(0.4, 0.46, 0.7, 0.8)],
+			["res://assets/graphics/bg_mountains.png", 72.0, 0.18, 0.35, 0.0, Color(0.46, 0.54, 0.8)],
+			["res://assets/graphics/bg_pines_far.png", 138.0, 0.3, 0.6, 0.0, Color(0.4, 0.5, 0.74)],
+			["res://assets/graphics/bg_snowhills.png", 178.0, 0.45, 0.75, 0.0, Color(0.52, 0.62, 0.86)],
+			["res://assets/graphics/bg_pines_near.png", 190.0, 0.62, 0.9, 0.0, Color(0.34, 0.42, 0.62)],
+		],
+		"world": Color(0.72, 0.8, 1.0),
+		"fx": "snow",
+	},
 }
 const REF_CAM_Y := 185.0
 
@@ -133,6 +157,7 @@ func set_theme(name: String) -> void:
 	mat.set_shader_parameter("stars", th.sky[4])
 	mat.set_shader_parameter("moon", th.sky[5])
 	mat.set_shader_parameter("sun", th.sky[6] if th.sky.size() > 6 else 0.0)
+	mat.set_shader_parameter("sun_uv", th.sky[7] if th.sky.size() > 7 else Vector2(0.8, 0.2))
 	_world_tint.color = th.world
 	for l in _layers:
 		l.sprite.queue_free()

@@ -21,8 +21,11 @@ const LEVELS := [
 	preload("res://levels/level_1_2.gd"),
 	preload("res://levels/level_1_3.gd"),
 	preload("res://levels/level_2_1.gd"),
+	preload("res://levels/level_2_2.gd"),
 	preload("res://levels/level_3_1.gd"),
+	preload("res://levels/level_3_2.gd"),
 	preload("res://levels/level_4_1.gd"),
+	preload("res://levels/level_4_2.gd"),
 ]
 const CHAIN := [100, 200, 400, 500, 800, 1000, 2000, 4000, 5000, 8000]
 const TIME_TICK := 0.4
