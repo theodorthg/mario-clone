@@ -218,7 +218,7 @@ scrollbar), Mute. Persistenz `user://settings.cfg` wie global vorgegeben.
   Parallax NICHT über `Parallax2D`, sondern `backdrop.gd`: ein Sprite pro
   Ebene klebt am linken Kamerarand, `region_rect.x = Kamera·Faktor` bei
   `texture_repeat` — einfach und nahtlos.
-- `gen_ui.py` — Touch-Buttons, `splash-screen.png`.
+- `gen_ui.py` — Touch-Buttons (Splash siehe „Splash-Screen“).
 - `gen_font.py` — Pixelschrift.
 Vorschau-Bilder: jeweils `--preview` (Ausgabe nach `PREVIEW_DIR`).
 Qualitätsregel: jedes Sprite-Set in EINEM Raster, Füße auf der letzten Zeile,
@@ -321,6 +321,16 @@ cheated. Hilfeseite „Castles & Secrets“.
 Pro Welt zusätzlich ein Knopf **„Boss“** (v0.9.1): startet die Burg mit
 `checkpoint_pos` 3 Spalten vor `ARENA` (`_start_game(i, cheat, at_boss)`),
 Tod im Bosskampf → Neustart ebenda. Orange = Burg noch nicht erreicht.
+
+## Splash-Screen (v0.9.3)
+
+`splash-screen.png` (Boot-Splash, 1920×1080, schwarzer Rand/Hintergrund,
+2 s) ist die **vom Nutzer gelieferte** Grafik — Original in
+`art_src/mario-clone-splashscreen.jpeg` (`art_src/` hat `.gdignore`, wird
+nicht importiert/exportiert). Neu erzeugen:
+`magick art_src/mario-clone-splashscreen.jpeg -resize 1920x1080 -background black -gravity center -extent 1920x1080 -strip splash-screen.png`.
+`tools/gen_ui.py` erzeugt den Splash NICHT mehr (hat ihn früher überschrieben).
+Godot-Boot-Splash kann nur PNG.
 
 ## App-Icon (v0.5)
 
