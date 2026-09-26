@@ -254,5 +254,9 @@ Ducken und Absteigen auf Touch unmöglich.
 - v0.5: zweite Level je Welt (Abend-/Nachtvarianten `desert_dusk`,
   `snow_night` sind in THEME_BIOME/THEME_MUSIC schon vorgesehen),
   Welt-Auswahl für freigespielte Welten.
+- App-Icon mit dem Helden (Android-Launcher nicht Godot-Standard).
+- Settings: Tastenbelegung änderbar (Tastatur + Gamepad); untere Touch-
+  Tasten (◀ ▼ ▶ X A) ein-/ausschaltbar (Auto = aus, wenn ein Gamepad/D-Pad
+  verbunden ist, z. B. RG552); Pause/Mute oben bleiben immer.
 - `gen_audio.py` rendert Rauschen nicht deterministisch: nach einem Lauf
   unveränderte Stücke per `git checkout` zurücksetzen (sonst Binär-Churn).
