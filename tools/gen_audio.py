@@ -430,6 +430,38 @@ def snow():
     return s.render(loop=True)
 
 
+def castle():
+    """'Castle' — tense D minor ostinato, 140 bpm, 8 bars: driving triangle
+    bass in 8ths, stabbing chords, a chromatic lead."""
+    s = Song(140)
+    lead = bars(
+        "D5:4 r:2 F5:2 E5:4 C#5:4", "D5:4 r:2 A5:2 G#5:4 A5:4",
+        "Bb5:4 A5:2 G5:2 F5:4 E5:4", "F5:2 E5:2 D5:2 C#5:2 D5:8",
+        "D6:4 r:2 C6:2 Bb5:4 A5:4", "G5:4 r:2 F5:2 E5:4 D5:4",
+        "Eb5:4 D5:2 C#5:2 D5:2 E5:2 F5:2 G5:2", "A5:4 C#5:4 D5:8",
+    )
+    prog = ["Dm", "Dm", "Bb", "A", "Dm", "Gm", "Eb", "A"]
+    root = {"Dm": "D2", "Bb": "Bb1", "A": "A1", "Gm": "G1", "Eb": "Eb2"}
+    stab = {"Dm": "F4", "Bb": "D4", "A": "C#4", "Gm": "Bb3", "Eb": "G4"}
+    bass = " ".join(" ".join(["%s:2 %s:2" % (root[c], root[c][:-1] + str(int(root[c][-1]) + 1))] * 4) for c in prog)
+    stabs = " ".join("%s:1 r:3 %s:1 r:3 r:4 %s:1 r:3" % (stab[c], stab[c], stab[c]) for c in prog)
+    s.track("pulse", lead, 0.3, duty=0.25, legato=0.8, vib=0.25, d=0.08, s=0.6, echo=0.25)
+    s.track("pulse", stabs, 0.14, duty=0.5, legato=0.9, d=0.04, s=0.3)
+    s.track("tri", bass, 0.55, legato=0.7, s=0.9)
+    s.drums(("K.hhS.hhK.KhS.hh" * 8), 0.3)
+    return s.render(loop=True)
+
+
+def jingle_world():
+    """world clear fanfare after the boss"""
+    s = Song(150)
+    lead = "C5:2 E5:2 G5:2 C6:4 G5:2 C6:4 r:2 D6:2 E6:2 F6:2 G6:6 E6:2 C6:8"
+    s.track("pulse", lead, 0.34, duty=0.25, legato=0.9, s=0.7, vib=0.2)
+    s.track("pulse", lead, 0.12, duty=0.5, legato=0.9, s=0.5, octave=-1)
+    s.track("tri", "C3:8 G2:4 C3:6 B2:4 G2:6 C3:8", 0.55, legato=0.9, s=0.9)
+    return s.render(loop=False)
+
+
 def jingle_clear():
     s = Song(160)
     lead = "G4:1 C5:1 E5:1 G5:1 C6:1 E6:1 G6:4 E6:4 Ab4:1 C5:1 Eb5:1 Ab5:1 C6:1 Eb6:1 Ab6:4 Eb6:4 " \
@@ -465,6 +497,8 @@ def music():
         "music_title": title,
         "music_desert": desert,
         "music_snow": snow,
+        "music_castle": castle,
+        "jingle_world": jingle_world,
         "jingle_clear": jingle_clear,
         "jingle_death": jingle_death,
         "jingle_gameover": jingle_gameover,

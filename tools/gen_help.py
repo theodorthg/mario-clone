@@ -346,10 +346,38 @@ def page_worlds():
     return img
 
 
+def page_castles():
+    img, d = new_page()
+    text(d, (8, 6), "CASTLES & SECRETS", f8, GOLD)
+    blocks = Image.open(os.path.join(GFX, "blocks.png")).convert("RGBA")
+    hard = blocks.crop((7 * 16, 0, 8 * 16, 16))
+    fb = trim(sheet_frame("fireball", 8, 8, 0))
+    img.alpha_composite(hard, (12, 34))
+    for i in range(1, 5):
+        img.alpha_composite(fb, (12 + 4 + i * 7, 38 - i * 5))
+    text(d, (52, 24), "Fire bars spin around their block:")
+    text(d, (52, 34), "time your jump.")
+    bub = trim(sheet_frame("lava_bubble", 14, 14, 0))
+    img.alpha_composite(bub, (16, 62))
+    text(d, (52, 62), "Lava bubbles leap out of the lava.")
+    boss = trim(sheet_frame("boss_2", 32, 34, 0))
+    img.alpha_composite(boss, (8, 88))
+    text(d, (52, 90), "The boss waits at the end of every")
+    text(d, (52, 100), "world: stomp its head 3-4 times", fill=GOLD)
+    text(d, (52, 110), "(or 5 fireballs = 1 hit). Dodge", fill=GOLD)
+    text(d, (52, 120), "its flames and its jumps!", fill=GOLD)
+    d.line((8, 131, 332, 131), fill=DIM)
+    text(d, (8, 135), "LEVEL SELECT on the title screen:", fill=WHITE)
+    text(d, (8, 146), "pad B Y X A - keys L E V E L S - tap title 5x", fill=GOLD)
+    text(d, (8, 157), "Unreached courses: no high score entry.", fill=DIM)
+    return img
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     pages = {"controls": page_controls, "touch": page_touch, "items": page_items,
-             "dragon": page_dragon, "goal": page_goal, "worlds": page_worlds}
+             "dragon": page_dragon, "goal": page_goal, "worlds": page_worlds,
+             "castles": page_castles}
     for n, fn in pages.items():
         fn().save(os.path.join(OUT, n + ".png"))
     print("  help pages:", ", ".join(pages))

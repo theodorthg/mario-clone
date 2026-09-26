@@ -15,7 +15,7 @@ signal restart_pressed
 signal quit_to_menu_pressed
 signal settings_changed(cfg: Dictionary)
 
-enum Screen { NONE, START, SETTINGS, SOUND, PAUSE, GAMEOVER, HELP, HIGHSCORES, VICTORY, WORLDS, CONTROLS }
+enum Screen { NONE, START, SETTINGS, SOUND, PAUSE, GAMEOVER, HELP, HIGHSCORES, VICTORY, WORLDS, CONTROLS, LEVELS }
 
 const PANEL_W := 250.0
 const BTN_H := 22.0
@@ -33,6 +33,7 @@ const HELP_DESKTOP := [
 	{"file": "dragon", "h": "The Dragon"},
 	{"file": "goal", "h": "Goal & Points"},
 	{"file": "worlds", "h": "Turtles & Worlds"},
+	{"file": "castles", "h": "Castles & Secrets"},
 ]
 const HELP_TOUCH := [
 	{"file": "touch", "h": "Touch Controls"},
@@ -40,6 +41,7 @@ const HELP_TOUCH := [
 	{"file": "dragon", "h": "The Dragon"},
 	{"file": "goal", "h": "Goal & Points"},
 	{"file": "worlds", "h": "Turtles & Worlds"},
+	{"file": "castles", "h": "Castles & Secrets"},
 ]
 const HELP_FALLBACK := {
 	"controls": "Move: Arrows / A D / D-pad\nJump: Space / Z / K / W / Up  (A)\nRun, fireball, tongue: Shift / X / J  (X/Y)\nDuck / enter pipe: Down\nPause: Esc / P (Start)   Mute: M (Select)\nScreenshot: F12\nChange keys: Settings > Controls",
@@ -47,6 +49,7 @@ const HELP_FALLBACK := {
 	"items": "Hit ? blocks from below.\nMushroom: grow big.  Fire flower: throw fireballs.\nStar: invincible for a while.  Green mushroom: extra life.\nBig heroes break bricks.",
 	"dragon": "An egg hides in one ? block.\nJump onto the dragon to ride it.\nRun button: tongue eats enemies.\nDown + jump: hop off.  A hit throws you off.",
 	"worlds": "Stomp a turtle, then kick its shell:\nit knocks out every enemy in its way.\nRed turtles turn at edges, winged ones need two stomps.\nIce is slippery. Lava and water: don't fall in!",
+	"castles": "Fire bars spin, lava bubbles leap: time your jumps.\nThe boss ends every world: stomp its head 3-4 times\n(5 fireballs = 1 hit).\nLevel select: on the title press B Y X A, type LEVELS\nor tap the title 5 times (no high score for unreached courses).",
 	"goal": "Stomp enemies from above.\nCoins: points, 100 coins = extra life.\nPipes marked by coins lead to bonus rooms.\nGrab the flag pole as high as you can!",
 }
 
@@ -131,6 +134,8 @@ func _rebuild() -> void:
 			_build_worlds()
 		Screen.CONTROLS:
 			_build_controls()
+		Screen.LEVELS:
+			_build_levels()
 	_panel.reset_size()
 	_recenter_panel.call_deferred()
 	if screen == Screen.HELP and _help_back_btn:
@@ -266,7 +271,18 @@ func _hbox(children: Array) -> HBoxContainer:
 
 # ------------------------------------------------------------------ start --
 func _build_start() -> void:
-	_vbox.add_child(_heading("MARIO CLONE", 32))
+	var title := _heading("MARIO CLONE", 32)
+	# touch cheat: tap the title 5 times quickly -> level select
+	title.mouse_filter = Control.MOUSE_FILTER_STOP
+	title.gui_input.connect(func(e: InputEvent):
+		if (e is InputEventMouseButton or e is InputEventScreenTouch) and e.pressed:
+			var now := Time.get_ticks_msec()
+			_title_taps = _title_taps + 1 if now - _title_tap_t < 600 else 1
+			_title_tap_t = now
+			if _title_taps >= 5:
+				_title_taps = 0
+				_open_level_select())
+	_vbox.add_child(title)
 	var sub := _hint("A pixel platform adventure")
 	sub.add_theme_color_override("font_color", UiStyle.ACCENT)
 	_vbox.add_child(sub)
@@ -311,13 +327,19 @@ func _build_pause() -> void:
 # --------------------------------------------------------------- gameover --
 func _build_gameover(victory: bool) -> void:
 	_panel.custom_minimum_size = Vector2(320, 0)
+	_name_edit = null
+	var cheated := Game.instance != null and Game.instance.cheated
 	var score: int = get_meta("go_score", 0)
 	var world: String = get_meta("go_world", "1-1")
 	var committed: bool = get_meta("go_committed", false)
 	_vbox.add_child(_heading("YOU WIN!" if victory else "GAME OVER"))
 	var score_l := _hint("SCORE %06d  -  WORLD %s" % [score, world], 16)
 	_vbox.add_child(score_l)
-	if HallOfFame.qualifies(score) and not committed:
+	if cheated:
+		var h := _hint("Level select was used - no high score entry.")
+		h.add_theme_color_override("font_color", UiStyle.ACCENT)
+		_vbox.add_child(h)
+	elif HallOfFame.qualifies(score) and not committed:
 		_name_edit = LineEdit.new()
 		_name_edit.placeholder_text = "Your name"
 		_name_edit.max_length = 8
@@ -400,6 +422,80 @@ func _render_hof(grid: GridContainer, list: Array, highlight: int) -> void:
 		grid.add_child(_cell(str(e.name).to_upper(), col))
 		grid.add_child(_cell(str(e.get("world", "1-1")), Color(col.r, col.g, col.b, 0.7)))
 		grid.add_child(_cell("%06d" % int(e.score), col, HORIZONTAL_ALIGNMENT_RIGHT))
+
+# ------------------------------------------------- level select (cheat) --
+## Start screen codes: gamepad B, Y, X, A  /  keyboard L E V E L S  /
+## tap the title 5x. Opens a list of ALL courses. Choosing one beyond the
+## furthest course reached marks the run as cheated (no high score entry).
+const CHEAT_PAD := ["j1", "j3", "j2", "j0"]
+const CHEAT_KEYS := ["kL", "kE", "kV", "kE", "kL", "kS"]
+var _cheat_buf: Array[String] = []
+var _cheat_pending := false
+var _title_taps := 0
+var _title_tap_t := 0
+
+func take_cheat() -> bool:
+	var c := _cheat_pending
+	_cheat_pending = false
+	return c
+
+func _cheat_input(event: InputEvent) -> void:
+	var tok := ""
+	if event is InputEventJoypadButton and event.pressed:
+		tok = "j%d" % event.button_index
+	elif event is InputEventKey and event.pressed and not event.echo:
+		var k: int = event.physical_keycode if event.physical_keycode != 0 else event.keycode
+		tok = "k" + OS.get_keycode_string(k).to_upper()
+	if tok == "":
+		return
+	_cheat_buf.append(tok)
+	if _cheat_buf.size() > 8:
+		_cheat_buf.remove_at(0)
+	for code in [CHEAT_PAD, CHEAT_KEYS]:
+		if _cheat_buf.size() >= code.size() and _cheat_buf.slice(-code.size()) == code:
+			_cheat_buf.clear()
+			get_viewport().set_input_as_handled()     # the final A must not press "Play"
+			_open_level_select()
+			return
+
+func _open_level_select() -> void:
+	var snd := get_node_or_null("/root/Snd")
+	if snd:
+		snd.play("oneup")
+	_show_screen(Screen.LEVELS)
+
+func _build_levels() -> void:
+	_panel.custom_minimum_size = Vector2(300, 0)
+	_vbox.add_child(_heading("LEVEL SELECT"))
+	var reached := Game.reached_level_index()
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 4)
+	grid.add_theme_constant_override("v_separation", 3)
+	for w in range(1, Game.WORLD_NAMES.size() + 1):
+		var n := 0
+		for i in Game.LEVELS.size():
+			if Game.world_of(i) != w:
+				continue
+			var lv: Script = Game.LEVELS[i]
+			var is_castle: bool = lv.FLAG.x < 0
+			var b := _button(String(lv.ID) + (" *" if is_castle else ""), func():
+				_cheat_pending = i > reached
+				hide_all()
+				play_pressed.emit(i))
+			b.custom_minimum_size = Vector2(66, BTN_H)
+			if i > reached:
+				b.add_theme_color_override("font_color", Color(1.0, 0.75, 0.5))
+			grid.add_child(b)
+			n += 1
+		while n < 4:
+			grid.add_child(Control.new())
+			n += 1
+	_vbox.add_child(grid)
+	var h := _hint("* = castle.  Orange courses not reached yet:\nno high score entry for that run.")
+	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_vbox.add_child(h)
+	_vbox.add_child(_button("Back", func(): _show_screen(Screen.START), true))
 
 # ----------------------------------------------------------- world select --
 func _build_worlds() -> void:
@@ -542,6 +638,9 @@ func _start_listen(action: String, kind: String, b: Button) -> void:
 			_refresh_slots())
 
 func _input(event: InputEvent) -> void:
+	if screen == Screen.START:
+		_cheat_input(event)
+		return
 	if _listen.is_empty() or screen != Screen.CONTROLS:
 		return
 	if Time.get_ticks_msec() - int(_listen.t) < 150 or not event.is_pressed() or event.is_echo():

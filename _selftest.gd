@@ -14,7 +14,8 @@ const SCRIPTS := [
 	"res://score_popup.gd", "res://shroom.gd", "res://powerup.gd", "res://fireball.gd",
 	"res://dino.gd", "res://egg.gd", "res://flagpole.gd", "res://warp_zone.gd",
 	"res://checkpoint.gd", "res://backdrop.gd", "res://hud.gd", "res://menus.gd",
-	"res://touch_controls.gd", "res://chomper.gd", "res://turtle.gd", "res://controls_config.gd", "res://game.gd",
+	"res://touch_controls.gd", "res://chomper.gd", "res://turtle.gd", "res://controls_config.gd", "res://firebar.gd",
+	"res://lava_bubble.gd", "res://boss.gd", "res://boss_flame.gd", "res://game.gd",
 ]
 
 func _init() -> void:
@@ -44,7 +45,14 @@ func _init() -> void:
 		for row in grid:
 			same = same and row.length() == w
 		fails += _expect(same, "%s rows all have width %d" % [lv.ID, w])
-		fails += _expect(grid[lv.FLAG.y][lv.FLAG.x] == "X", "%s flag pole stands on a hard block" % lv.ID)
+		if lv.FLAG.x >= 0:
+			fails += _expect(grid[lv.FLAG.y][lv.FLAG.x] == "X", "%s flag pole stands on a hard block" % lv.ID)
+		else:
+			var has_boss := false
+			for row in grid:
+				has_boss = has_boss or "Z" in row
+			var ar: Vector2i = lv.get_script_constant_map().get("ARENA", Vector2i(-1, -1))
+			fails += _expect(has_boss and ar.y - ar.x + 1 >= 38, "%s castle has a boss + 38-wide arena" % lv.ID)
 		fails += _expect(grid[lv.START.y + 1][lv.START.x] == "#", "%s start cell is on ground" % lv.ID)
 		for wp in lv.WARPS:
 			var e: Vector2i = wp["entry"]

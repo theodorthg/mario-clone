@@ -88,6 +88,84 @@ ICE = [
 SANDSTONE_PAL = {"k": OUTLINE, "l": "#fbe0a0", "b": "#e0b060", "B": "#b0803a", "m": "#6a4418"}
 ICEBRICK_PAL = {"k": OUTLINE, "l": "#f0faff", "b": "#b8e4fa", "B": "#78b8e4", "m": "#34608e"}
 
+CASTLE_PAL = {"k": OUTLINE, "l": "#8c8aa0", "s": "#6a687e", "S": "#4e4c62", "m": "#2c2a3a", "L": "#b0aec4"}
+CASTLE_STONE = [
+    "sssssssmssssssss",
+    "sllllllmslllllls",
+    "slssssSmslsssssS",
+    "sssssSSmsssssSSS",
+    "SSSSSSSmSSSSSSSS",
+    "mmmmmmmmmmmmmmmm",
+    "sssmsssssssmssss",
+    "lllmslllllsmslll",
+    "sssmslssssSmslss",
+    "sSSmsssssSSmsssS",
+    "SSSmSSSSSSSmSSSS",
+    "mmmmmmmmmmmmmmmm",
+    "sssssssmssssssss",
+    "sllllllmslllllls",
+    "slssssSmslsssssS",
+    "mmmmmmmmmmmmmmmm",
+]
+CASTLE_WALL_PAL = {"k": OUTLINE, "l": "#b0584a", "b": "#843a30", "B": "#5a2420", "m": "#2a1014"}
+TORCH = [
+    "..y..",
+    ".yfy.",
+    "yfwfy",
+    "yfwfy",
+    ".yfy.",
+    "kbbbk",
+    ".bBb.",
+    ".bBb.",
+    "..B..",
+    "..B..",
+    ".kkk.",
+]
+TORCH_PAL = {"k": OUTLINE, "w": "#fffbe0", "f": "#ffd84a", "y": "#ff8a1a", "b": "#8a5a2a", "B": "#5a3414"}
+BANNER = [
+    "kkkkkkkkkk",
+    "krrrrrrrrk",
+    "krRyyyyRrk",
+    "krRyrryRrk",
+    "krRyrryRrk",
+    "krRyyyyRrk",
+    "krrrrrrrrk",
+    "krrrrrrrrk",
+    "krrRrrRrrk",
+    "krRk..kRrk",
+    "kRk....kRk",
+    "kk......kk",
+]
+BANNER_PAL = {"k": OUTLINE, "r": "#c02838", "R": "#80141e", "y": "#ffd83c"}
+SKULL = [".www.", "wwwww", "wkwkw", "wwwww", ".wkw."]
+SKULL_PAL = {"w": "#ece4d4", "k": "#2a2030"}
+
+
+def castle_tile(mask):
+    img = parse(CASTLE_STONE, CASTLE_PAL)
+    px = img.load()
+    ol = hex_rgba(OUTLINE)
+    hi = hex_rgba(CASTLE_PAL["L"])
+    dk = hex_rgba(CASTLE_PAL["m"])
+    if mask & 1:
+        for x in range(T):
+            px[x, 0] = ol
+            px[x, 1] = hi
+    if mask & 2:
+        for x in range(T):
+            px[x, T - 1] = ol
+            px[x, T - 2] = dk
+    if mask & 4:
+        for y in range(T):
+            px[0, y] = ol
+            if not (mask & 1 and y < 2):
+                px[1, y] = hi
+    if mask & 8:
+        for y in range(T):
+            px[T - 1, y] = ol
+            px[T - 2, y] = dk if not (mask & 1 and y < 2) else px[T - 2, y]
+    return img
+
 DIRT_BASE = [
     "aaabaaaaaaabaaaa",
     "aabbbaaeaaaaabaa",
@@ -572,6 +650,10 @@ def biome_decor():
         ("glowshroom", ol_(parse(GLOWSHROOM, GLOW))),
         ("tuft_cave", recolored(TUFT, L="#8ae0d0", g="#4aa8a0", G="#2a7078")),
         ("rock_cave", ol_(recolored(ROCK, s="#6a78a8", T="#9aa8d4", S="#3e4876"))),
+        ("torch", parse(TORCH, TORCH_PAL)),
+        ("banner", parse(BANNER, BANNER_PAL)),
+        ("skull", ol_(parse(SKULL, SKULL_PAL))),
+        ("rock_castle", ol_(recolored(ROCK, s="#6a687e", T="#8c8aa0", S="#4e4c62"))),
     ]
 
 
@@ -744,12 +826,19 @@ def water_body():
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    atlas = Image.new("RGBA", (16 * T, 7 * T), TRANSPARENT)
+    atlas = Image.new("RGBA", (16 * T, 9 * T), TRANSPARENT)
     for m in range(16):
         atlas.paste(edge_tile(m, DIRT, GRASS), (m * T, 0))
         atlas.paste(edge_tile(m, CAVE, CAVE_TOP), (m * T, 3 * T))
         atlas.paste(edge_tile(m, SAND, SAND_TOP), (m * T, 4 * T))
         atlas.paste(edge_tile(m, SNOW, SNOW_TOP), (m * T, 5 * T))
+        atlas.paste(castle_tile(m), (m * T, 7 * T))
+    # row 8: castle interior 0 (plain) 1 (cracked), castle wall brick 2
+    atlas.paste(castle_tile(0), (0, 8 * T))
+    cracked = castle_tile(0)
+    stamp(cracked, FEATURES["crack"], {"c": CASTLE_PAL["m"]}, 9, 7)
+    atlas.paste(cracked, (T, 8 * T))
+    atlas.paste(parse(BRICK, CASTLE_WALL_PAL), (2 * T, 8 * T))
     # row 6: sand interior 0-3, snow interior 4-7, ice 8, lava top 9-12
     # (animation), lava 13, sandstone brick 14, ice brick 15
     for i in range(4):

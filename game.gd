@@ -14,18 +14,22 @@ extends Node2D
 enum State { TITLE, INTRO, PLAYING, TRANSITION, DYING, CLEAR, GAMEOVER }
 
 const THEME_MUSIC := {"cave": "music_cave", "cavern": "music_cave", "desert": "music_desert",
-	"desert_dusk": "music_desert", "snow": "music_snow", "snow_night": "music_snow"}
+	"desert_dusk": "music_desert", "snow": "music_snow", "snow_night": "music_snow", "fortress": "music_castle"}
 const WORLD_NAMES := ["Meadows", "Caverns", "Desert", "Snow"]
 const LEVELS := [
 	preload("res://levels/level_1_1.gd"),
 	preload("res://levels/level_1_2.gd"),
 	preload("res://levels/level_1_3.gd"),
+	preload("res://levels/level_1_4.gd"),
 	preload("res://levels/level_2_1.gd"),
 	preload("res://levels/level_2_2.gd"),
+	preload("res://levels/level_2_3.gd"),
 	preload("res://levels/level_3_1.gd"),
 	preload("res://levels/level_3_2.gd"),
+	preload("res://levels/level_3_3.gd"),
 	preload("res://levels/level_4_1.gd"),
 	preload("res://levels/level_4_2.gd"),
+	preload("res://levels/level_4_3.gd"),
 ]
 const CHAIN := [100, 200, 400, 500, 800, 1000, 2000, 4000, 5000, 8000]
 const TIME_TICK := 0.4
@@ -64,6 +68,9 @@ var _attract_dir := 1.0
 var _cam_pos := Vector2.ZERO
 var _freeze_tween: Tween
 var _tally_step := 1
+## true once the level select cheat started a course not reached yet:
+## the whole run then gets no high score entry and saves no progress
+var cheated := false
 
 func _ready() -> void:
 	instance = self
@@ -77,9 +84,9 @@ func _ready() -> void:
 	hud.pause_pressed.connect(_toggle_pause)
 	hud.mute_pressed.connect(_toggle_mute)
 	hud.set_muted(_snd_call("is_muted", false))
-	menus.play_pressed.connect(_start_game)
+	menus.play_pressed.connect(func(i: int): _start_game(i, menus.take_cheat()))
 	menus.resume_pressed.connect(_resume)
-	menus.restart_pressed.connect(func(): _start_game(first_level_of_world(world_of(level_index))))
+	menus.restart_pressed.connect(func(): _start_game(first_level_of_world(world_of(level_index)), cheated))
 	menus.quit_to_menu_pressed.connect(_to_title)
 	menus.settings_changed.connect(func(c):
 		cfg = c
@@ -143,6 +150,14 @@ func _to_title() -> void:
 static func world_of(idx: int) -> int:
 	return int(String(LEVELS[idx].ID).get_slice("-", 0))
 
+## Index of the furthest course ever reached (without cheating).
+static func reached_level_index() -> int:
+	var id := GameSettings.reached_level_id()
+	for i in LEVELS.size():
+		if LEVELS[i].ID == id:
+			return i
+	return first_level_of_world(GameSettings.reached_world())
+
 static func first_level_of_world(w: int) -> int:
 	for i in LEVELS.size():
 		if world_of(i) == w:
@@ -151,7 +166,8 @@ static func first_level_of_world(w: int) -> int:
 
 ## New run starting at LEVELS[start] (world select / "Play Again" continues
 ## at the first course of the world where the last run ended).
-func _start_game(start := 0) -> void:
+func _start_game(start := 0, cheat := false) -> void:
+	cheated = cheat
 	cfg = GameSettings.load_all()
 	score = 0
 	coins = 0
@@ -171,8 +187,11 @@ func _begin_level() -> void:
 	hud.set_buttons_visible(false)
 	touch.visible = false
 	var data: Script = LEVELS[level_index]
-	GameSettings.set_reached_world(world_of(level_index))
+	if not cheated:
+		GameSettings.set_reached_world(world_of(level_index))
+		GameSettings.set_reached_level_id(data.ID, level_index, reached_level_index())
 	hud.show_card(data.ID, data.NAME, lives)
+	hud.set_boss(-1, 0)
 	_update_hud()
 	_set_world_active(false)
 	_build_level(level_index, true)
@@ -621,6 +640,46 @@ func _level_done() -> void:
 			_game_over(true)
 		else:
 			_begin_level())
+
+# =================================================================== boss --
+## The boss woke up: lock the camera to the arena, wall off the way back.
+func start_boss(boss: Boss) -> void:
+	camera.limit_left = int(boss.arena_left)
+	camera.limit_right = int(boss.arena_right)
+	if player:
+		player.left_limit = boss.arena_left
+		player.right_limit = boss.arena_right
+	var gate_c := int(boss.arena_left / Level.T)
+	for r in range(0, Level.ROWS):
+		if level.tiles.get_cell_source_id(Vector2i(gate_c, r)) == -1 and r < Level.ROWS - 3:
+			level.tiles.set_cell(Vector2i(gate_c, r), 0, Level.CASTLE_WALL)
+	_snd_call("play", null, ["break"])
+	_snd_call("set_music_pitch", null, [1.12])
+	hud.show_banner("BOSS!", 1.2)
+	hud.set_boss(boss.hp, boss.max_hp)
+
+func boss_hp_changed(hp: int, max_hp: int) -> void:
+	hud.set_boss(hp, max_hp)
+
+func boss_defeated(_boss: Boss) -> void:
+	if state != State.PLAYING:
+		return
+	state = State.CLEAR
+	touch.visible = false
+	hud.set_boss(-1, 0)
+	_snd_call("stop_music")
+	_snd_call("play", null, ["jingle_world"])
+	has_dino = player != null and player.riding != null
+	hud.show_banner("WORLD %d CLEAR!" % world_of(level_index), 3.0)
+	if player:
+		player.input_enabled = false
+		player.velocity.x = 0.0
+	add_score(5000, player.global_position + Vector2(0, -40) if player else null)
+	var tw := create_tween()
+	tw.tween_interval(3.2)
+	tw.tween_callback(func():
+		_tally_step = maxi(1, ceili(time_left / 60.0))
+		_tally_time())
 
 # ================================================================== pause --
 func _toggle_pause() -> void:

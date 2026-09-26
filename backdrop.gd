@@ -79,6 +79,15 @@ const THEMES := {
 		"world": Color(0.96, 0.98, 1.0),
 		"fx": "snow",
 	},
+	"fortress": {
+		"sky": [Color("0a0206"), Color("3a0a14"), Color("8a2a18"), 0.5, 0.0, 0.0],
+		"layers": [
+			["res://assets/graphics/bg_castle_wall.png", 50.0, 0.15, 0.15, 0.0, Color.WHITE],
+			["res://assets/graphics/bg_castle_pillars.png", 84.0, 0.42, 0.8, 0.0, Color(0.8, 0.76, 0.84)],
+		],
+		"world": Color(1.0, 0.92, 0.88),
+		"fx": "embers",
+	},
 	"desert_dusk": {
 		# sun sinking behind the dunes: purple-orange sky, warm dark layers
 		"sky": [Color("2c2466"), Color("c05a78"), Color("ffb870"), 0.45, 0.0, 0.0, 1.0, Vector2(0.72, 0.52)],
@@ -217,6 +226,20 @@ func _set_fx(kind: String) -> void:
 			g.add_point(0.3, Color(0.6, 0.95, 1.0, 0.8))
 			g.add_point(0.7, Color(0.85, 0.7, 1.0, 0.7))
 			p.color_ramp = g
+		"embers":
+			p.amount = 40
+			p.lifetime = 6.0
+			p.direction = Vector2(0.15, -1.0)
+			p.spread = 25.0
+			p.initial_velocity_min = 12.0
+			p.initial_velocity_max = 30.0
+			p.gravity = Vector2(0, -4)
+			p.scale_amount_min = 1.0
+			p.scale_amount_max = 2.0
+			var ge := Gradient.new()
+			ge.set_color(0, Color(1.0, 0.8, 0.3, 0.9))
+			ge.set_color(1, Color(0.9, 0.2, 0.1, 0.0))
+			p.color_ramp = ge
 		"sand":
 			p.amount = 40
 			p.lifetime = 5.0

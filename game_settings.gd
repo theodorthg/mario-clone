@@ -57,6 +57,22 @@ static func reached_world() -> int:
 		return 1
 	return int(c.get_value("progress", "world", 1))
 
+## Highest course index reached (by level ID, so inserting courses later
+## keeps the progress meaningful). -1 = nothing stored yet.
+static func reached_level_id() -> String:
+	var c := ConfigFile.new()
+	if c.load(CFG_PATH) != OK:
+		return ""
+	return String(c.get_value("progress", "level", ""))
+
+static func set_reached_level_id(id: String, index: int, current_best: int) -> void:
+	if index <= current_best:
+		return
+	var c := ConfigFile.new()
+	c.load(CFG_PATH)
+	c.set_value("progress", "level", id)
+	c.save(CFG_PATH)
+
 static func set_reached_world(w: int) -> void:
 	if w <= reached_world():
 		return

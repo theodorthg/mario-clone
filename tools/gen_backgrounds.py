@@ -354,6 +354,78 @@ def cave_near():
     return img
 
 
+# ------------------------------------------------------------------ castle --
+def castle_wall():
+    """dark brick wall, full height, with tall arched windows (transparent ->
+    the red night sky of the sky shader shows through)"""
+    h = 270
+    img = Image.new("RGBA", (BG_W, h), TRANSPARENT)
+    px = img.load()
+    brick, brick_d, mortar = hex_rgba("#2c2838"), hex_rgba("#24202e"), hex_rgba("#16131e")
+    for y in range(h):
+        for x in range(BG_W):
+            row = y // 8
+            off = 8 if row % 2 else 0
+            if y % 8 == 7 or (x + off) % 16 == 15:
+                px[x, y] = mortar
+            else:
+                px[x, y] = brick if (x // 16 + row) % 3 else brick_d
+    frame = hex_rgba("#3e3850")
+    for cx in range(40, BG_W, 160):
+        top, bot, hw = 46, 150, 14
+        for y in range(top - 18, bot + 3):
+            for x in range(cx - hw - 3, cx + hw + 4):
+                dx = x - cx
+                if y < top:
+                    inside = dx * dx + (y - top) ** 2 <= hw * hw
+                    rim = dx * dx + (y - top) ** 2 <= (hw + 3) ** 2
+                else:
+                    inside = abs(dx) <= hw and y <= bot
+                    rim = abs(dx) <= hw + 3
+                if inside:
+                    px[x % BG_W, y] = TRANSPARENT
+                elif rim:
+                    px[x % BG_W, y] = frame
+        for x in range(cx - hw, cx + hw + 1):      # window bars
+            if (x - cx) % 7 == 0:
+                for y in range(top - 12, bot):
+                    if px[x % BG_W, y][3] == 0:
+                        px[x % BG_W, y] = hex_rgba("#1a1622")
+    return img
+
+
+def castle_pillars():
+    h = 200
+    img = Image.new("RGBA", (BG_W, h), TRANSPARENT)
+    px = img.load()
+    col, col_l, col_d, line = (hex_rgba(c) for c in ("#3a3448", "#524a64", "#26202e", "#120e18"))
+    red, red_d, gold = hex_rgba("#8a1e2c"), hex_rgba("#5a121c"), hex_rgba("#c8a030")
+    for cx in range(60, BG_W, 128):
+        for y in range(h):
+            for dx in range(-11, 12):
+                x = (cx + dx) % BG_W
+                c = col_l if dx < -6 else (col_d if dx > 6 else col)
+                if abs(dx) == 11:
+                    c = line
+                if y < 10 or y > h - 12:     # capital + base
+                    c = col_l if y % 5 else line
+                px[x, y] = c
+        # hanging banner between pillars
+        bx = cx + 64
+        for y in range(14, 90):
+            for dx in range(-9, 10):
+                x = (bx + dx) % BG_W
+                if y > 80 and abs(dx) < (y - 80):
+                    continue
+                c = red if abs(dx) < 8 else red_d
+                if abs(dx) == 9:
+                    c = line
+                if 30 < y < 50 and abs(dx) < 4:
+                    c = gold
+                px[x, y] = c
+    return img
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     layers = {
@@ -378,6 +450,9 @@ def main():
         "bg_cave_far": cave_far(),
         "bg_cave_crystals": cave_crystals(),
         "bg_cave_near": cave_near(),
+        # castle
+        "bg_castle_wall": castle_wall(),
+        "bg_castle_pillars": castle_pillars(),
     }
     for name, im in layers.items():
         im.save(os.path.join(OUT, name + ".png"))

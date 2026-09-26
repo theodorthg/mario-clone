@@ -927,6 +927,167 @@ def turtles():
 
 
 # =========================================================================
+# BOSS — horned dragon-ogre king (own design), built from shapes + details
+# =========================================================================
+BOSS_PAL = {
+    "b": "#8a4ac0", "B": "#5a2a88", "l": "#b27ae0",       # skin
+    "c": "#f4d8a0", "C": "#c8a060",                        # belly plate
+    "h": "#f4ecd8", "H": "#b8ae98",                        # horns, spikes, claws
+    "y": "#ffd83c", "Y": "#d09018",                        # crown
+    "e": "#ffffff", "p": "#d01818", "m": "#3a0a14", "t": "#ffffff",
+}
+BOSS_WORLD_SWAP = {
+    1: {"#8a4ac0": "#4aa84a", "#5a2a88": "#2a6a30", "#b27ae0": "#86d86a"},   # green
+    2: {},                                                                      # purple
+    3: {"#8a4ac0": "#d86a2a", "#5a2a88": "#8a3414", "#b27ae0": "#f4a060"},   # orange
+    4: {"#8a4ac0": "#3a78c8", "#5a2a88": "#1e4488", "#b27ae0": "#7ab4f0"},   # blue
+}
+BW, BH = 30, 32
+
+
+def _boss_canvas(legs=0, mouth=False, crouch=0):
+    g = [["."] * BW for _ in range(BH)]
+
+    def put(x, y, ch):
+        if 0 <= x < BW and 0 <= y < BH:
+            g[y][x] = ch
+
+    def ell(cx, cy, rx, ry, fill, shade=True):
+        for y in range(BH):
+            for x in range(BW):
+                dx, dy = (x - cx) / rx, (y - cy) / ry
+                if dx * dx + dy * dy <= 1.0:
+                    ch = fill
+                    if shade and fill == "b":
+                        if dx + dy < -0.9:
+                            ch = "l"
+                        elif dx + dy > 0.8:
+                            ch = "B"
+                    put(x, y, ch)
+    oy = crouch
+    # tail
+    for i in range(7):
+        for k in range(3 - i // 3):
+            put(5 - i, 22 + oy + i // 2 + k, "b" if k else "B")
+    # legs (behind body)
+    for lx, dy in ((9, legs), (17, -legs)):
+        for y in range(24 + oy, 30 + min(0, dy)):
+            for x in range(lx, lx + 5):
+                put(x, y, "B" if x == lx + 4 else "b")
+        for x in range(lx - 1, lx + 6):
+            put(x, 30 + min(0, dy), "h" if x % 2 == 0 else "H")
+        for x in range(lx - 1, lx + 6):
+            put(x, 31 + min(0, dy), "H")
+    # body + belly
+    ell(13, 19 + oy, 10, 8, "b")
+    ell(16, 21 + oy, 5.5, 5.5, "c", False)
+    for y in range(17 + oy, 27 + oy):
+        if (y - oy) % 3 == 0:
+            for x in range(12, 21):
+                if g[y][x] == "c":
+                    g[y][x] = "C"
+    # back spikes
+    for sx, sy in ((5, 14), (8, 11), (12, 10)):
+        for k in range(3):
+            put(sx - 1 + k, sy + oy, "h")
+        put(sx, sy - 1 + oy, "h")
+        put(sx, sy - 2 + oy, "H")
+    # head
+    ell(21, 9 + oy, 7, 6, "b")
+    # jaw + teeth
+    jaw_y = 12 + oy
+    if mouth:
+        for y in range(jaw_y, jaw_y + 4):
+            for x in range(20, 29):
+                put(x, y, "m")
+        for x in range(21, 29, 2):
+            put(x, jaw_y, "t")
+            put(x, jaw_y + 3, "t")
+        for x in range(19, 29):
+            put(x, jaw_y + 4, "b")
+            put(x, jaw_y + 5, "B")
+    else:
+        for x in range(21, 29):
+            put(x, jaw_y, "m")
+        for x in range(22, 29, 2):
+            put(x, jaw_y - 1, "t")
+            put(x, jaw_y + 1, "t")
+        for x in range(19, 28):
+            put(x, jaw_y + 2, "b")
+            put(x, jaw_y + 3, "B")
+    # snout nostril
+    put(27, 8 + oy, "B")
+    # eye (angry brow)
+    for x, y, ch in ((22, 7, "e"), (23, 7, "e"), (22, 8, "e"), (23, 8, "p"), (21, 6, "B"), (22, 6, "B"), (23, 5, "B")):
+        put(x, y + oy, ch)
+    # horns
+    for i, (x, y) in enumerate(((16, 4), (15, 3), (14, 2), (14, 1), (13, 0))):
+        put(x, y + oy, "h" if i < 4 else "H")
+        put(x + 1, y + oy, "H")
+    for i, (x, y) in enumerate(((25, 4), (26, 3), (27, 2), (27, 1), (28, 0))):
+        put(x, y + oy, "h")
+        put(x - 1, y + oy, "H")
+    # crown
+    for x in range(18, 24):
+        put(x, 3 + oy, "y")
+        put(x, 2 + oy, "Y" if x % 2 else "y")
+    for x in (18, 20, 22):
+        put(x, 1 + oy, "y")
+    # arm with claws
+    ell(21, 18 + oy, 3, 2.5, "b")
+    for x in (23, 24, 25):
+        put(x, 19 + oy, "h")
+    return ["".join(r) for r in g]
+
+
+FLAME = [
+    "....yyyrr.......",
+    "..yyfffyyrrr....",
+    ".yfffwwffyyrrrr.",
+    "yffwwwwwfffyyrrr",
+    ".yfffwwffyyrrrr.",
+    "..yyfffyyrrr....",
+    "....yyyrr.......",
+]
+FLAME_PAL = {"w": "#fffbe0", "f": "#ffd84a", "y": "#ff9a2a", "r": "#e03a1a"}
+BUBBLE = [
+    "....rrrr....",
+    "..rryyyyrr..",
+    ".ryyffffyyr.",
+    ".ryfwwwwfyr.",
+    "ryfwewwewfyr",
+    "ryfwewwewfyr",
+    "ryffwwwwffyr",
+    "ryyffffffyyr",
+    ".ryyyyyyyyr.",
+    ".rryyyyyyrr.",
+    "..rrryyrrr..",
+    "...rr..rr...",
+]
+BUBBLE_PAL = {"w": "#fffbe0", "f": "#ffd84a", "y": "#ff8a1a", "r": "#c82a14", "e": "#3a0a14"}
+
+
+def boss():
+    frames_def = [("walk1", dict(legs=1)), ("walk2", dict(legs=-1)), ("roar", dict(mouth=True)),
+                  ("jump", dict(legs=-2, crouch=0))]
+    for w, swap in BOSS_WORLD_SWAP.items():
+        frames = []
+        for n, kw in frames_def:
+            im = parse(_boss_canvas(**kw), BOSS_PAL, "boss." + n)
+            frames.append((n, ol(recolor(im, swap) if swap else im)))
+        save_set("boss_%d" % w, frames, BW + 2, BH + 2, {
+            "walk": (["walk1", "walk2"], 5, True),
+            "roar": (["roar"], 1, False),
+            "jump": (["jump"], 1, False),
+        })
+    fl = ol(parse(FLAME, FLAME_PAL, "flame"))
+    fl2 = ol(parse([r[::-1][::-1] for r in FLAME[1:] + FLAME[:1]], FLAME_PAL, "flame2"))
+    save_set("boss_flame", [("f0", fl), ("f1", fl2)], 18, 9, {"burn": (["f0", "f1"], 10, True)})
+    b = ol(parse(BUBBLE, BUBBLE_PAL, "bubble"))
+    save_set("lava_bubble", [("b0", b)], 14, 14, {"idle": (["b0"], 1, False)})
+
+
+# =========================================================================
 # ITEMS
 # =========================================================================
 COIN_PAL = {"y": "#ffd83c", "Y": "#e09a18", "o": "#a8600c", "w": "#fff8c0", "l": "#ffea80"}
@@ -1088,4 +1249,5 @@ if __name__ == "__main__":
     dino()
     enemies()
     turtles()
+    boss()
     items()

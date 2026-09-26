@@ -180,6 +180,40 @@ func set_buttons_visible(v: bool) -> void:
 	_mute_icon.visible = v
 
 # ----------------------------------------------------------------- banners --
+## Boss health pips under the HUD row (hp < 0 hides them).
+var _boss_box: HBoxContainer
+
+func set_boss(hp: int, max_hp: int) -> void:
+	if _boss_box == null:
+		_boss_box = HBoxContainer.new()
+		_boss_box.anchor_left = 0.5
+		_boss_box.anchor_right = 0.5
+		_boss_box.offset_left = -60
+		_boss_box.offset_right = 60
+		_boss_box.offset_top = 26
+		_boss_box.alignment = BoxContainer.ALIGNMENT_CENTER
+		_boss_box.add_theme_constant_override("separation", 3)
+		_boss_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_boss_box)
+	for c in _boss_box.get_children():
+		c.queue_free()
+	_boss_box.visible = hp >= 0
+	if hp < 0:
+		return
+	var l := Label.new()
+	l.text = "BOSS"
+	l.add_theme_font_size_override("font_size", 8)
+	l.add_theme_color_override("font_color", UiStyle.ACCENT)
+	l.add_theme_color_override("font_outline_color", UiStyle.INK)
+	l.add_theme_constant_override("outline_size", 2)
+	_boss_box.add_child(l)
+	for i in max_hp:
+		var pip := ColorRect.new()
+		pip.custom_minimum_size = Vector2(10, 6)
+		pip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		pip.color = Color("e8402e") if i < hp else Color(0.2, 0.15, 0.2, 0.8)
+		_boss_box.add_child(pip)
+
 func show_banner(text: String, duration: float) -> void:
 	if _banner_tween and _banner_tween.is_valid():
 		_banner_tween.kill()

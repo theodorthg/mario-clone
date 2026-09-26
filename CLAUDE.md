@@ -149,8 +149,8 @@ eine Nachtwiese. 3-2 (Thema `desert_dusk`: tiefe Sonne `sky[7]` =
 Dach, Schildkröten-Reihe auf einem Sims (Kombo), Stufenpyramide mit Tunnel.
 4-2 (Thema `snow_night`: Sterne + Mond, blaue Tönung): lange Eisbahn,
 Eisziegel-Türme, See mit Eisschollen, Eisbrücke über Wasser.
-Reihenfolge in `game.gd::LEVELS`: 1-1 … 1-3, 2-1, 2-2, 3-1, 3-2, 4-1, 4-2;
-nach 4-2 Siegerbildschirm.
+Reihenfolge in `game.gd::LEVELS`: 1-1 … 1-4, 2-1 … 2-3, 3-1 … 3-3,
+4-1 … 4-3 (x-4/x-3 = Burg); nach 4-3 Siegerbildschirm.
 
 ### 1-1 „Green Hills“ (312 Spalten, davon 262 Hauptlevel)
 Start-Wiese mit ?-Blöcken → Röhrenfeld (Warp-Röhre Spalte 53 → Münzhöhle,
@@ -270,6 +270,38 @@ Seiten aus wie das Spiel selbst).
 X / A unten rechts. Der ▼-Knopf kam in v0.3 dazu — ohne ihn waren Röhren,
 Ducken und Absteigen auf Touch unmöglich.
 
+## Burgen + Boss (v0.8)
+
+Letzter Kurs jeder Welt: 1-4, 2-3, 3-3, 4-3 (`make_levels.py::castle_level`,
+mit der Welt steigende Schwierigkeit). Thema `fortress` (Biom `castle`:
+Steinquader-Autotile Atlas-Reihe 7, Reihe 8 Innen/rissig/Burgziegel `w`;
+Hintergrund Ziegelwand mit Bogenfenstern + Säulen mit Bannern, Glut-
+Partikel, Musik `music_castle`). Deko: `*` Banner, `+`/`t` Fackel
+(flackert), `f` Schädel.
+- `F` = Hartblock mit Feuerstab (`firebar.gd`, 5–6 Kugeln, Richtung nach
+  Spaltenparität, schneller je Welt). `b` = Lavablase (`lava_bubble.gd`,
+  in der obersten Lava-Zeile einer Grube, springt periodisch).
+- `Z` = Boss (`boss.gd`), Arena = Level-Konstante `ARENA` (≥ 38 Spalten).
+  Betritt der Held die Arena: `game.start_boss()` sperrt Kamera + Spieler-
+  Grenzen auf die Arena, mauert die linke Spalte zu, HUD-Boss-Leiste.
+  Boss (eigenes Design: gehörnter Drachen-Oger-König, 32×34 Pixel, 2×
+  gezeichnet, je Welt andere Farbe `boss_<welt>.png`): läuft, springt,
+  speit gezielte Flammen (`boss_flame.gd`); 3 HP (ab Welt 3: 4), Stampfen/
+  Stern = 1, 5 Feuerbälle = 1; danach 1,2 s unverwundbar, wird schneller.
+  Kein `kill_flip()` → immun gegen Panzer, Blöcke, Zunge. Sieg:
+  `boss_defeated()` → „WORLD n CLEAR!“, `jingle_world`, +5000, Zeitbonus,
+  nächste Welt. Burg-Level haben `FLAG`/`CASTLE` = (-1, -1).
+
+## Levelauswahl-Cheat (v0.8)
+
+Auf dem Titelbildschirm: Gamepad **B, Y, X, A** (A zuletzt, wird abgefangen,
+damit es nicht „Play“ drückt), Tastatur **L E V E L S** oder den Titel 5×
+antippen → „LEVEL SELECT“ mit allen Kursen. Kurse jenseits des weitesten
+erreichten (`[progress] level`, ID-basiert) sind orange; wer so einen
+startet, spielt einen „cheated“ Lauf: kein Hall-of-Fame-Eintrag (Hinweis
+statt Namensfeld), kein Fortschritt gespeichert, „Play Again“ bleibt
+cheated. Hilfeseite „Castles & Secrets“.
+
 ## App-Icon (v0.5)
 
 `tools/gen_icon.py` baut das Icon aus den Spiel-Sprites (Held springt gegen
@@ -295,6 +327,6 @@ skaliert (NEAREST). Adaptive-Vordergrund bleibt im sichtbaren Kreis (~61 %).
 
 ## Offen / nächste Schritte
 
-- Weitere Welten/Level, Boss-Burg am Ende einer Welt, weitere Gegner.
+- v0.9: neue Gegner je Biom (Fledermaus Höhle, Kaktusturm Wüste, Pinguin Schnee).
 - `gen_audio.py` rendert Rauschen nicht deterministisch: nach einem Lauf
   unveränderte Stücke per `git checkout` zurücksetzen (sonst Binär-Churn).

@@ -24,6 +24,8 @@ Grid legend (one char per 16x16 cell, row 0 = top):
   k  green shell turtle (walks off ledges)   K  red one (turns at ledges)
   J  winged green turtle (hops)
   I  ice block (solid, slippery)            L  lava (no collision, drawn in front)
+  F  hard block with a rotating fire bar     b  lava bubble (in a lava pit's top row)
+  Z  castle boss (arena = Level.arena)
   decorations: * bush  + small bush  f flower  t grass tuft  r rock
                s sign  n fence
   Ground '#', bricks 'w' and decorations take the look of the BIOME of the
@@ -41,7 +43,7 @@ ROWS = 20
 GROUND = 17          # top row of the default ground
 SOLID = set("#cXwBP W?MYSCUh>I")
 THEME_BIOME = {"cave": "cave", "cavern": "cave", "desert": "sand", "desert_dusk": "sand",
-               "snow": "snow", "snow_night": "snow"}
+               "snow": "snow", "snow_night": "snow", "fortress": "castle"}
 
 
 class Level:
@@ -59,6 +61,7 @@ class Level:
         self.warps = []
         self.areas = {}
         self.top = 0
+        self.arena = None
 
     # ---------------------------------------------------------------- basics
     def set(self, c, r, ch):
@@ -164,8 +167,10 @@ class Level:
             fh.write('const NAME := "%s"\n' % self.name)
             fh.write("const TIME := %d\n" % self.time)
             fh.write("const START := Vector2i(%d, %d)\n" % self.start)
-            fh.write("const FLAG := Vector2i(%d, %d)\n" % self.flag)
-            fh.write("const CASTLE := Vector2i(%d, %d)\n" % self.castle)
+            fh.write("const FLAG := Vector2i(%d, %d)\n" % (self.flag or (-1, -1)))
+            fh.write("const CASTLE := Vector2i(%d, %d)\n" % (self.castle or (-1, -1)))
+            if self.arena:
+                fh.write("const ARENA := Vector2i(%d, %d)\n" % self.arena)
             fh.write("const CHECKPOINTS := [%s]\n" % ", ".join("Vector2i(%d, %d)" % p for p in self.checkpoints))
             fh.write("const AREAS := {\n")
             for k, (c0, c1, theme) in self.areas.items():
@@ -1148,6 +1153,86 @@ def level_4_2():
 
 
 # =========================================================================
+# castles — the last course of every world: fire bars, lava bubbles,
+# a power-up before the arena and the boss. Harder with every world.
+# =========================================================================
+CASTLE_NAMES = {1: "STONE KEEP", 2: "MAGMA FORT", 3: "SUN CITADEL", 4: "FROST BASTION"}
+
+
+def castle_level(world, lid):
+    L = Level(lid, CASTLE_NAMES[world], 160, time=300)
+    L.top = 6
+    A0 = 120
+    A1 = A0 + 37
+    L.ground(0, 159)
+    L.ceiling(0, 159, 3)
+    hard = world >= 3
+    # entrance hall
+    for c in (2, 9):
+        L.decor(c, "+", 12)
+    L.decor(5, "*", 3)
+    L.blocks(6, 13, "?M?")
+    # A: lava pit with bubbles and stone pillars
+    L.lava(12, 23)
+    L.fill(15, 16, 14, ROWS - 1, "#")
+    L.fill(20, 21, 13 if hard else 14, ROWS - 1, "#")
+    for c in (13, 18, 23) if world > 1 else (13, 18):
+        L.set(c, GROUND + 1, "b")
+    L.coin_arc(12, 10, 12)
+    # B: walkway with fire bars on single floor blocks (jump over them)
+    L.decor(26, "*", 3)
+    L.set(29, GROUND - 1, "F")
+    L.set(37, GROUND - 1, "F")
+    if world >= 2:
+        L.set(45, GROUND - 1, "F")
+    L.fill(33, 33, 3, 8, "#")
+    L.set(33, 9, "F")
+    L.decor(41, "+", 12)
+    L.coins(30, 12, 3)
+    L.coins(38, 12, 3)
+    # C: low ceiling passage with ? blocks, a fire bar block in mid-air
+    L.fill(50, 64, 3, 8, "#")
+    L.blocks(52, 13, "B?B")
+    L.set(58, 12, "F")
+    if world >= 3:
+        L.set(62, GROUND - 1, "F")
+    L.decor(55, "f")
+    # D: lava lake with narrow platforms, bubbles, a fire bar in the middle
+    L.lava(68, 90 if hard else 87)
+    L.ledge(71, 72, 14)
+    L.ledge(76, 78, 12)
+    L.set(77, 11, "F") if world >= 2 else None
+    L.ledge(82, 83, 14)
+    if hard:
+        L.ledge(86, 87, 13)
+    for c in (69, 74, 80, 85):
+        L.set(c, GROUND + 1, "b")
+    L.coins(76, 9, 3)
+    # E: last stretch — power-up + coins before the boss
+    L.decor(94, "*", 3)
+    L.blocks(98, 13, "?M?")
+    L.coins(104, 13, 6)
+    L.decor(96, "+", 12)
+    L.decor(110, "+", 12)
+    L.decor(116, "f")
+    if world >= 2:
+        L.set(107, GROUND - 1, "F")
+    # arena (38 columns) with a lava moat near the right wall
+    L.decor(A0 + 6, "*", 3)
+    L.decor(A0 + 18, "*", 3)
+    L.decor(A0 + 30, "*", 3)
+    for c in (A0 + 4, A0 + 14, A0 + 24):
+        L.decor(c, "+", 12)
+    L.fill(A1 - 1, 159, 3, GROUND - 1, "w")
+    L.set(A1 - 8, GROUND - 1, "Z")
+    L.arena = (A0, A1)
+    L.start = (3, GROUND - 1)
+    L.checkpoints.append((96, GROUND - 1))
+    L.areas = {"main": (0, 159, "fortress")}
+    return L
+
+
+# =========================================================================
 # preview rendering (uses the real generated art)
 # =========================================================================
 def render_preview(L, path):
@@ -1158,6 +1243,8 @@ def render_preview(L, path):
     shroom = Image.open(os.path.join(gfx, "enemy_shroom.png")).convert("RGBA").crop((0, 0, 26, 18))
     turtle = Image.open(os.path.join(gfx, "enemy_turtle.png")).convert("RGBA").crop((0, 0, 28, 26))
     turtle_r = Image.open(os.path.join(gfx, "enemy_turtle_red.png")).convert("RGBA").crop((0, 0, 28, 26))
+    boss_im = Image.open(os.path.join(gfx, "boss_1.png")).convert("RGBA").crop((0, 0, 32, 34))
+    bubble = Image.open(os.path.join(gfx, "lava_bubble.png")).convert("RGBA")
     coin = Image.open(os.path.join(gfx, "coin.png")).convert("RGBA").crop((0, 0, 12, 16))
     decor = Image.open(os.path.join(gfx, "decor.png")).convert("RGBA")
     hero = Image.open(os.path.join(gfx, "hero_small.png")).convert("RGBA").crop((0, 0, 20, 20))
@@ -1190,6 +1277,7 @@ def render_preview(L, path):
         "sand": {"*": "cactus_l", "+": "cactus_s", "f": "dflower", "t": "tuft_sand", "r": "rock_sand"},
         "snow": {"*": "pine", "+": "bush_snow", "f": "frost", "t": "tuft_snow", "r": "rock_snow"},
         "cave": {"*": "crystal_l", "+": "crystal_s", "f": "glowshroom", "t": "tuft_cave", "r": "rock_cave"},
+        "castle": {"*": "banner", "+": "torch", "f": "skull", "t": "torch", "r": "rock_castle"},
     }
     col_biome = ["grass"] * L.cols
     for c0, c1, theme in L.areas.values():
@@ -1211,16 +1299,25 @@ def render_preview(L, path):
                     m |= 4
                 if not solid_ground(c + 1, r, ch):
                     m |= 8
-                row = {"grass": 0, "cave": 3, "sand": 4, "snow": 5}[bio] if ch == "#" else 3
+                row = {"grass": 0, "cave": 3, "sand": 4, "snow": 5, "castle": 7}[bio] if ch == "#" else 3
                 img.alpha_composite(tile(m, row), (x, y))
             elif ch == "I":
                 img.alpha_composite(tile(8, 6), (x, y))
-            elif ch == "L":
-                later.append((tile(13 if L.get(c, r - 1) == "L" else 9, 6), x, y))
+            elif ch in "Lb":
+                later.append((tile(13 if L.get(c, r - 1) in "Lb" else 9, 6), x, y))
+                if ch == "b":
+                    later.append((bubble, x + 1, y - 40))
+            elif ch == "F":
+                img.alpha_composite(blk(7), (x, y))
+                later.append((bubble.resize((6, 6)), x + 5, y - 30))
+            elif ch == "Z":
+                later.append((boss_im, x - 8, y - 18))
             elif ch == "X":
                 img.alpha_composite(blk(7), (x, y))
             elif ch == "w":
-                if bio in ("sand", "snow"):
+                if bio == "castle":
+                    img.alpha_composite(tile(2, 8), (x, y))
+                elif bio in ("sand", "snow"):
                     img.alpha_composite(tile(14 if bio == "sand" else 15, 6), (x, y))
                 else:
                     img.alpha_composite(blk(6), (x, y))
@@ -1261,14 +1358,14 @@ def render_preview(L, path):
                 later.append((d, x + (T - d.size[0]) // 2, y + T - d.size[1]))
     for im, x, y in later:
         img.alpha_composite(im, (x, y))
-    if L.flag:
+    if L.flag and L.flag[0] >= 0:
         c, r = L.flag
         pole = idx["pole"]
         for k in range(1, 10):
             img.alpha_composite(pole, (c * T + 6, (r - k) * T))
         img.alpha_composite(idx["pole_ball"], (c * T + 4, (r - 10) * T + 8))
         img.alpha_composite(idx["flag"], (c * T - 9, (r - 9) * T + 2))
-    if L.castle:
+    if L.castle and L.castle[0] >= 0:
         c, r = L.castle
         cs = idx["castle"]
         img.alpha_composite(cs, (c * T, (r + 1) * T - cs.size[1]))
@@ -1288,9 +1385,13 @@ if __name__ == "__main__":
     level_1_1().emit()
     level_1_2().emit()
     level_1_3().emit()
+    castle_level(1, "1-4").emit()
     level_2_1().emit()
     level_2_2().emit()
+    castle_level(2, "2-3").emit()
     level_3_1().emit()
     level_3_2().emit()
+    castle_level(3, "3-3").emit()
     level_4_1().emit()
     level_4_2().emit()
+    castle_level(4, "4-3").emit()

@@ -454,6 +454,66 @@ func _run() -> void:
 			await shot("rebound")
 			ControlsConfig.reset()
 			print("CTRL after reset jump=", names.call("jump"), "  run=", names.call("run"))
+		"castle":
+			game.menus.hide_all()
+			game._start_game(3)
+			await _wait(Game.CARD_TIME + 0.4)
+			state("castle start")
+			await teleport(Vector2i(28, 16))
+			await _wait(0.8)
+			await shot("firebars")
+			await teleport(Vector2i(66, 16))
+			await _wait(1.5)
+			await shot("lava_lake")
+			game.change_power(Player.Power.FIRE, false)
+			await _wait(1.0)
+			await teleport(Vector2i(125, 16))
+			await _wait(1.0)
+			var boss: Boss = game.get_tree().get_nodes_in_group("boss")[0]
+			print("BOSS active=%s hp=%d cam_left=%d" % [boss.active, boss.hp, game.camera.limit_left])
+			await shot("arena")
+			# stomp it three times (drop onto its head, invulnerability between)
+			for i in 3:
+				if not is_instance_valid(boss) or boss.dead:
+					break
+				boss._act = 99.0          # no jumps / flames while the test drops onto it
+				await _wait(maxf(boss._inv, 0.0) + 0.1)
+				game.player.global_position = boss.global_position + Vector2(0, -80)
+				game.player.velocity = Vector2(0, 150)
+				await _wait(1.4)
+				print("BOSS after stomp %d: hp=%d power=%d" % [i + 1, boss.hp if is_instance_valid(boss) else -1, game.player.power])
+			await _wait(1.0)
+			await shot("defeated")
+			await _wait(5.0)
+			state("after boss")
+			print("level now: ", Game.LEVELS[game.level_index].ID)
+		"cheat":
+			await _wait(1.0)
+			for b in [1, 3, 2, 0]:
+				var ev := InputEventJoypadButton.new()
+				ev.button_index = b
+				ev.pressed = true
+				ev.device = 0
+				Input.parse_input_event(ev)
+				await _frames(2)
+				var up := ev.duplicate()
+				up.pressed = false
+				Input.parse_input_event(up)
+				await _frames(2)
+			await _wait(0.3)
+			print("CHEAT screen=%d (LEVELS=%d)" % [game.menus.screen, Menus.Screen.LEVELS])
+			await shot("level_select")
+			var idx := Game.first_level_of_world(4) + 2
+			game.menus._cheat_pending = idx > Game.reached_level_index()
+			game.menus.hide_all()
+			game.menus.play_pressed.emit(idx)
+			await _wait(Game.CARD_TIME + 0.4)
+			print("CHEAT level=%s cheated=%s reached=%s" % [Game.LEVELS[game.level_index].ID, game.cheated, GameSettings.reached_level_id()])
+			game.lives = 1
+			game.player_died(false)
+			await _wait(6.5)
+			await shot("gameover_cheated")
+			print("CHEAT gameover screen=%d name_edit=%s" % [game.menus.screen, game.menus._name_edit])
 		"pause":
 			await start_play()
 			game._toggle_pause()

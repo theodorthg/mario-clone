@@ -22,15 +22,19 @@ const ROW_CAVE := 3
 const ROW_SAND := 4
 const ROW_SNOW := 5
 const ROW_EXTRA := 6
+const ROW_CASTLE := 7
+const ROW_CASTLE_EXTRA := 8
+const CASTLE_WALL := Vector2i(2, 8)
 const ICE := Vector2i(8, 6)
 const LAVA_TOP := Vector2i(9, 6)      # 4-frame tile animation (9..12)
 const LAVA := Vector2i(13, 6)
 const SANDSTONE := Vector2i(14, 6)
 const ICE_BRICK := Vector2i(15, 6)
-const BIOME_ROW := {"grass": ROW_GRASS, "cave": ROW_CAVE, "sand": ROW_SAND, "snow": ROW_SNOW}
+const BIOME_ROW := {"grass": ROW_GRASS, "cave": ROW_CAVE, "sand": ROW_SAND, "snow": ROW_SNOW,
+	"castle": ROW_CASTLE}
 ## area theme (AREAS in the level data) -> ground/decor biome of those columns
 const THEME_BIOME := {"cave": "cave", "cavern": "cave", "desert": "sand", "desert_dusk": "sand",
-	"snow": "snow", "snow_night": "snow"}
+	"snow": "snow", "snow_night": "snow", "fortress": "castle"}
 const HARD := Vector2i(4, 1)
 const BRIDGE_L := Vector2i(5, 1)
 const BRIDGE_M := Vector2i(6, 1)
@@ -54,6 +58,7 @@ const DECOR_BIOME := {
 	"sand": {"*": "cactus_l", "+": "cactus_s", "f": "dflower", "t": "tuft_sand", "r": "rock_sand"},
 	"snow": {"*": "pine", "+": "bush_snow", "f": "frost", "t": "tuft_snow", "r": "rock_snow"},
 	"cave": {"*": "crystal_l", "+": "crystal_s", "f": "glowshroom", "t": "tuft_cave", "r": "rock_cave"},
+	"castle": {"*": "banner", "+": "torch", "f": "skull", "t": "torch", "r": "rock_castle"},
 }
 const FLOWERS := ["flower_a", "flower_b", "flower_c"]
 
@@ -70,6 +75,7 @@ var castle_flag: Sprite2D
 var areas := {}                 # name -> {"rect": Rect2, "theme": String}
 var warps: Array = []           # [{zone: WarpZone, ...}]
 var decor_tex: Texture2D
+var world := 1
 var biome := "grass"                 # biome of the "main" area
 var _col_biome := PackedStringArray()
 
@@ -79,6 +85,7 @@ func setup(level_script: Script) -> void:
 	data = level_script
 	grid = PackedStringArray(data.GRID)
 	cols = grid[0].length()
+	world = int(String(data.ID).get_slice("-", 0))
 	_col_biome.resize(cols)
 	_col_biome.fill("grass")
 	for name in data.AREAS:
@@ -143,6 +150,8 @@ static func tileset() -> TileSet:
 				continue      # animation frames of WATER_TOP, not tiles of their own
 			if y == ROW_EXTRA and x > LAVA_TOP.x and x < LAVA.x:
 				continue
+			if y == ROW_CASTLE_EXTRA and x > CASTLE_WALL.x:
+				continue
 			src.create_tile(coords)
 			if coords == WATER_TOP or coords == LAVA_TOP:
 				src.set_tile_animation_columns(coords, 4)
@@ -181,14 +190,17 @@ func _build_tiles() -> void:
 					tiles.set_cell(Vector2i(c, r), 0, _ground_tile(c, r, "#", BIOME_ROW.get(biome_at(c), ROW_GRASS)))
 				"I":
 					tiles.set_cell(Vector2i(c, r), 0, ICE)
-				"L":
-					water.set_cell(Vector2i(c, r), 0, LAVA if at(c, r - 1) == "L" else LAVA_TOP)
+				"L", "b":
+					water.set_cell(Vector2i(c, r), 0, LAVA if at(c, r - 1) in ["L", "b"] else LAVA_TOP)
+				"F":
+					tiles.set_cell(Vector2i(c, r), 0, HARD)
 				"c":
 					tiles.set_cell(Vector2i(c, r), 0, _ground_tile(c, r, "c", ROW_CAVE))
 				"X":
 					tiles.set_cell(Vector2i(c, r), 0, HARD)
 				"w":
-					tiles.set_cell(Vector2i(c, r), 0, {"sand": SANDSTONE, "snow": ICE_BRICK}.get(biome_at(c), CAVE_BRICK))
+					tiles.set_cell(Vector2i(c, r), 0, {"sand": SANDSTONE, "snow": ICE_BRICK,
+						"castle": CASTLE_WALL}.get(biome_at(c), CAVE_BRICK))
 				"=":
 					var l := at(c - 1, r) == "="
 					var rr := at(c + 1, r) == "="
@@ -225,6 +237,8 @@ func _ground_tile(c: int, r: int, ch: String, row: int) -> Vector2i:
 		return Vector2i(0 if v < 12 else (1 if v < 14 else (2 if v < 17 else 3)), ROW_MISC)
 	if m == 0 and row == ROW_CAVE:
 		return Vector2i(8 + (absi(c * 7 + r * 13) % 2), ROW_MISC)
+	if m == 0 and row == ROW_CASTLE:
+		return Vector2i(1 if absi(c * 31 + r * 17) % 7 == 0 else 0, ROW_CASTLE_EXTRA)
 	if m == 0 and (row == ROW_SAND or row == ROW_SNOW):
 		var hv := absi((c * 73856093) ^ (r * 19349663)) % 20
 		var k := 0 if hv < 13 else (1 if hv < 15 else (2 if hv < 18 else 3))
@@ -232,7 +246,7 @@ func _ground_tile(c: int, r: int, ch: String, row: int) -> Vector2i:
 	return Vector2i(m, row)
 
 func _pipe_free(ch: String) -> bool:
-	return ch in [".", "o", "g", "G", "k", "K", "J"] or DECOR.has(ch)
+	return ch in [".", "o", "g", "G", "k", "K", "J", "Z"] or DECOR.has(ch)
 
 func _place_pipe(c: int, r: int) -> void:
 	tiles.set_cell(Vector2i(c, r), 0, PIPE_TOP_L)
@@ -296,6 +310,27 @@ func _build_entities() -> void:
 					t.winged = ch == "J"
 					t.position = cell_feet(c, r)
 					add_child(t)
+				"F":
+					var fb := Firebar.new()
+					fb.position = cell_center(c, r)
+					fb.balls = 5 + (1 if world >= 3 else 0)
+					fb.speed = (1.4 + 0.15 * world) * (1.0 if c % 2 == 0 else -1.0)
+					fb.angle = float(c % 4) * PI * 0.5
+					add_child(fb)
+				"b":
+					var lb := LavaBubble.new()
+					lb.position = cell_center(c, r) + Vector2(0, 8)
+					lb.height = 96.0 + float(c % 3) * 16.0
+					lb.delay = float(c % 3) * 0.6
+					add_child(lb)
+				"Z":
+					var boss := Boss.new()
+					boss.world = world
+					boss.position = cell_feet(c, r)
+					var ar: Vector2i = data.get_script_constant_map().get("ARENA", Vector2i(c - 20, c + 10))
+					boss.arena_left = ar.x * T
+					boss.arena_right = (ar.y + 1) * T
+					add_child(boss)
 				"Q":
 					var ch_plant := Chomper.new()
 					ch_plant.pipe_top = Vector2((c + 1) * T, r * T)
@@ -325,6 +360,11 @@ func _add_decor(parent: Node, name: String, feet: Vector2) -> Sprite2D:
 	s.centered = false
 	s.position = Vector2(roundf(feet.x - at_tex.region.size.x * 0.5), feet.y - at_tex.region.size.y)
 	parent.add_child(s)
+	if name == "torch":
+		# flickering flame
+		var tw := s.create_tween().set_loops()
+		tw.tween_property(s, "self_modulate", Color(1.2, 1.05, 0.9), 0.12 + randf() * 0.1)
+		tw.tween_property(s, "self_modulate", Color(0.85, 0.8, 0.75), 0.1 + randf() * 0.1)
 	return s
 
 func _build_meta() -> void:
@@ -338,6 +378,10 @@ func _build_meta() -> void:
 		var a: Dictionary = data.AREAS[name]
 		var rect := Rect2(a["from"] * T, 0, (a["to"] - a["from"] + 1) * T, ROWS * T)
 		areas[name] = {"rect": rect, "theme": a["theme"]}
+	if data.FLAG.x < 0:
+		# castle course: no flag pole / castle, the boss ends it
+		_build_warps()
+		return
 	# flag pole: base block is the grid's X at FLAG; pole rises above it
 	flagpole = Flagpole.new()
 	flagpole.position = Vector2(data.FLAG.x * T + T * 0.5, data.FLAG.y * T)
@@ -350,6 +394,9 @@ func _build_meta() -> void:
 	# flag hidden inside the tower top, raised by raise_castle_flag()
 	castle_flag = _add_decor(self, "castle_flag", Vector2(data.CASTLE.x * T + 46, cs.position.y + 22))
 	castle_flag.z_index = -2
+	_build_warps()
+
+func _build_warps() -> void:
 	for w in data.WARPS:
 		var z := WarpZone.new()
 		z.kind = w["kind"]
