@@ -13,6 +13,7 @@ const DEF := {
 	"coin_points": 200,     # points per coin
 	"coins_per_life": 100,  # 0 = off
 	"start_big": false,     # start every life as big hero (easier)
+	"touch_buttons": 0,     # index into TOUCH_NAMES: on-screen move/jump/run buttons
 }
 
 const LIVES_MIN := 1
@@ -21,6 +22,18 @@ const DIFF_NAMES := ["Easy", "Normal", "Hard"]
 const TIME_NAMES := ["Off", "Level", "Short"]
 const COIN_POINTS := [0, 100, 200, 500]
 const COINS_PER_LIFE := [0, 50, 100, 200]
+## Auto = shown on touch devices unless a gamepad / D-pad is connected
+## (e.g. Anbernic RG552: touchscreen AND D-pad -> hidden). Pause + mute at
+## the top are never affected.
+const TOUCH_NAMES := ["Auto", "On", "Off"]
+
+static func touch_buttons_visible(mode: int, touch_device: bool, joypads: int) -> bool:
+	match mode:
+		1:
+			return true
+		2:
+			return false
+	return touch_device and joypads == 0
 
 static func load_all() -> Dictionary:
 	var out := DEF.duplicate()
@@ -35,6 +48,21 @@ static func save(data: Dictionary) -> void:
 	c.load(CFG_PATH)
 	for k in data:
 		c.set_value("s", k, data[k])
+	c.save(CFG_PATH)
+
+## Highest world the player has reached (for the world select on Play).
+static func reached_world() -> int:
+	var c := ConfigFile.new()
+	if c.load(CFG_PATH) != OK:
+		return 1
+	return int(c.get_value("progress", "world", 1))
+
+static func set_reached_world(w: int) -> void:
+	if w <= reached_world():
+		return
+	var c := ConfigFile.new()
+	c.load(CFG_PATH)
+	c.set_value("progress", "world", w)
 	c.save(CFG_PATH)
 
 static func enemy_speed_mul(difficulty: int) -> float:

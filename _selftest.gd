@@ -55,6 +55,15 @@ func _init() -> void:
 		for wp in lv.WARPS:
 			fails += _expect(lv.AREAS.has(wp["area"]), "%s warp target area %s exists" % [lv.ID, wp["area"]])
 
+	# worlds + touch button rule
+	for w in range(1, Game.WORLD_NAMES.size() + 1):
+		var i := Game.first_level_of_world(w)
+		fails += _expect(Game.world_of(i) == w and String(Game.LEVELS[i].ID).ends_with("-1"), "world %d starts at %s" % [w, Game.LEVELS[i].ID])
+	fails += _expect(not GameSettings.touch_buttons_visible(0, true, 1), "touch auto: hidden with gamepad (RG552)")
+	fails += _expect(GameSettings.touch_buttons_visible(0, true, 0), "touch auto: shown on touch-only phone")
+	fails += _expect(not GameSettings.touch_buttons_visible(0, false, 0), "touch auto: hidden on desktop")
+	fails += _expect(GameSettings.touch_buttons_visible(1, false, 1), "touch on: always shown")
+
 	# scoring tables
 	fails += _expect(Flagpole.points_for_height(200) == 5000, "top of pole = 5000")
 	fails += _expect(Flagpole.points_for_height(0) == 100, "bottom of pole = 100")

@@ -249,14 +249,33 @@ Seiten aus wie das Spiel selbst).
 X / A unten rechts. Der ▼-Knopf kam in v0.3 dazu — ohne ihn waren Röhren,
 Ducken und Absteigen auf Touch unmöglich.
 
+## App-Icon (v0.5)
+
+`tools/gen_icon.py` baut das Icon aus den Spiel-Sprites (Held springt gegen
+einen ?-Block, Münze): `icon.png` 256 (Projekt-Icon, Desktop/Web) und
+`assets/icon/android_{main,fg,bg,mono}.png` (192er Legacy + 432er
+Adaptive-Ebenen + Monochrom für Android-13-Themen-Icons), in
+`export_presets.cfg` unter `launcher_icons/*` eingetragen. Nur ganzzahlig
+skaliert (NEAREST). Adaptive-Vordergrund bleibt im sichtbaren Kreis (~61 %).
+
+## Weltauswahl + Touch-Tasten-Schalter (v0.5)
+
+- `GameSettings.reached_world()` (Abschnitt `[progress]` in settings.cfg)
+  wird in `_begin_level()` hochgezählt. Play öffnet ab Welt 2 den Screen
+  „SELECT WORLD“ (gesperrte Welten „???“). „Play Again“ nach Game Over
+  startet am ersten Level der aktuellen Welt, nach dem Sieg bei 1-1.
+- Settings „Touch keys“ Auto/On/Off (`GameSettings.touch_buttons_visible`):
+  Auto = nur auf Touch-Geräten OHNE verbundenes Gamepad (RG552 → aus).
+  `Input.joy_connection_changed` schaltet live um. Die Hilfe zeigt die
+  Touch-only-Seitenliste nur ohne Gamepad.
+- Achtung Playtests: `worldselect` setzt den Fortschritt auf dem
+  Entwicklungsrechner — danach `[progress]` in
+  `~/.local/share/godot/app_userdata/mario-clone/settings.cfg` prüfen.
+
 ## Offen / nächste Schritte
 
-- v0.5: zweite Level je Welt (Abend-/Nachtvarianten `desert_dusk`,
-  `snow_night` sind in THEME_BIOME/THEME_MUSIC schon vorgesehen),
-  Welt-Auswahl für freigespielte Welten.
-- App-Icon mit dem Helden (Android-Launcher nicht Godot-Standard).
-- Settings: Tastenbelegung änderbar (Tastatur + Gamepad); untere Touch-
-  Tasten (◀ ▼ ▶ X A) ein-/ausschaltbar (Auto = aus, wenn ein Gamepad/D-Pad
-  verbunden ist, z. B. RG552); Pause/Mute oben bleiben immer.
+- v0.6: zweite Level je Welt (Abend-/Nachtvarianten `desert_dusk`,
+  `snow_night` sind in THEME_BIOME/THEME_MUSIC schon vorgesehen).
+- Settings: Tastenbelegung änderbar (Tastatur + Gamepad).
 - `gen_audio.py` rendert Rauschen nicht deterministisch: nach einem Lauf
   unveränderte Stücke per `git checkout` zurücksetzen (sonst Binär-Churn).

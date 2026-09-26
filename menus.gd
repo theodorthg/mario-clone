@@ -9,13 +9,13 @@ extends Control
 ## list in a ScrollContainer, LineEdit ui_accept intercept, auto-commit of a
 ## qualifying score as "YOU") — re-scaled for the 480x270 landscape canvas.
 
-signal play_pressed
+signal play_pressed(level_index: int)
 signal resume_pressed
 signal restart_pressed
 signal quit_to_menu_pressed
 signal settings_changed(cfg: Dictionary)
 
-enum Screen { NONE, START, SETTINGS, SOUND, PAUSE, GAMEOVER, HELP, HIGHSCORES, VICTORY }
+enum Screen { NONE, START, SETTINGS, SOUND, PAUSE, GAMEOVER, HELP, HIGHSCORES, VICTORY, WORLDS }
 
 const PANEL_W := 250.0
 const BTN_H := 22.0
@@ -127,6 +127,8 @@ func _rebuild() -> void:
 			_build_help()
 		Screen.HIGHSCORES:
 			_build_highscores()
+		Screen.WORLDS:
+			_build_worlds()
 	_panel.reset_size()
 	_recenter_panel.call_deferred()
 	if screen == Screen.HELP and _help_back_btn:
@@ -267,8 +269,11 @@ func _build_start() -> void:
 	_vbox.add_child(sub)
 	_vbox.add_child(_spacer(2))
 	_vbox.add_child(_button("Play", func():
-		hide_all()
-		play_pressed.emit()))
+		if GameSettings.reached_world() > 1:
+			_show_screen(Screen.WORLDS)
+		else:
+			hide_all()
+			play_pressed.emit(0)))
 	_vbox.add_child(_button("Settings", func():
 		_return_screen = Screen.START
 		_show_screen(Screen.SETTINGS)))
@@ -393,6 +398,21 @@ func _render_hof(grid: GridContainer, list: Array, highlight: int) -> void:
 		grid.add_child(_cell(str(e.get("world", "1-1")), Color(col.r, col.g, col.b, 0.7)))
 		grid.add_child(_cell("%06d" % int(e.score), col, HORIZONTAL_ALIGNMENT_RIGHT))
 
+# ----------------------------------------------------------- world select --
+func _build_worlds() -> void:
+	_vbox.add_child(_heading("SELECT WORLD"))
+	var reached := GameSettings.reached_world()
+	for w in range(1, Game.WORLD_NAMES.size() + 1):
+		var open := w <= reached
+		var idx := Game.first_level_of_world(w)
+		var b := _button("World %d  %s" % [w, Game.WORLD_NAMES[w - 1] if open else "???"], func():
+			hide_all()
+			play_pressed.emit(idx))
+		b.disabled = not open
+		_vbox.add_child(b)
+	_vbox.add_child(_spacer(2))
+	_vbox.add_child(_button("Back", func(): _show_screen(Screen.START), true))
+
 # ------------------------------------------------------------- highscores --
 func _build_highscores() -> void:
 	_vbox.add_child(_heading("HIGH SCORES"))
@@ -442,6 +462,11 @@ func _build_settings() -> void:
 		func(_d): _set_cfg("start_big", not bool(_cfg.start_big)),
 		func(v): return "Yes" if v else "No")
 	_vbox.add_child(big_row)
+	var touch_row := _row("Touch keys")
+	_stepper(touch_row, func(): return int(_cfg.touch_buttons),
+		func(d): _set_cfg("touch_buttons", posmod(int(_cfg.touch_buttons) + d, GameSettings.TOUCH_NAMES.size())),
+		func(v): return GameSettings.TOUCH_NAMES[v])
+	_vbox.add_child(touch_row)
 	_vbox.add_child(_hbox([
 		_button("Sound", func(): _show_screen(Screen.SOUND)),
 		_button("Back", func(): _show_screen(_return_screen), true),

@@ -15,6 +15,7 @@ enum State { TITLE, INTRO, PLAYING, TRANSITION, DYING, CLEAR, GAMEOVER }
 
 const THEME_MUSIC := {"cave": "music_cave", "cavern": "music_cave", "desert": "music_desert",
 	"desert_dusk": "music_desert", "snow": "music_snow", "snow_night": "music_snow"}
+const WORLD_NAMES := ["Meadows", "Caverns", "Desert", "Snow"]
 const LEVELS := [
 	preload("res://levels/level_1_1.gd"),
 	preload("res://levels/level_1_2.gd"),
@@ -68,16 +69,18 @@ func _ready() -> void:
 	world.process_mode = Node.PROCESS_MODE_PAUSABLE
 	backdrop.camera = camera
 	cfg = GameSettings.load_all()
-	_touch = false if Input.get_connected_joypads().size() > 0 \
-		else (OS.has_feature("mobile") or DisplayServer.is_touchscreen_available())
+	_touch = OS.has_feature("mobile") or DisplayServer.is_touchscreen_available()
 	hud.pause_pressed.connect(_toggle_pause)
 	hud.mute_pressed.connect(_toggle_mute)
 	hud.set_muted(_snd_call("is_muted", false))
 	menus.play_pressed.connect(_start_game)
 	menus.resume_pressed.connect(_resume)
-	menus.restart_pressed.connect(_start_game)
+	menus.restart_pressed.connect(func(): _start_game(first_level_of_world(world_of(level_index))))
 	menus.quit_to_menu_pressed.connect(_to_title)
-	menus.settings_changed.connect(func(c): cfg = c)
+	menus.settings_changed.connect(func(c):
+		cfg = c
+		apply_touch_layout())
+	Input.joy_connection_changed.connect(func(_id, _connected): apply_touch_layout())
 	add_to_group("touch_layout_listeners")
 	get_window().size_changed.connect(_apply_display_mode)
 	_last_window = DisplayServer.window_get_size()
@@ -102,8 +105,11 @@ func _apply_display_mode() -> void:
 	touch.relayout()
 
 func apply_touch_layout() -> void:
-	touch.visible = _touch and state == State.PLAYING and not _paused
-	menus.set_touch_context(_touch)
+	var show := GameSettings.touch_buttons_visible(int(cfg.get("touch_buttons", 0)), _touch,
+		Input.get_connected_joypads().size())
+	touch.visible = show and state == State.PLAYING and not _paused
+	# help: touch-only pages unless a gamepad is there (RG552 has both)
+	menus.set_touch_context(_touch and Input.get_connected_joypads().is_empty())
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch or event is InputEventScreenDrag:
@@ -130,12 +136,23 @@ func _to_title() -> void:
 	_snd_call("play_music", null, ["music_title"])
 	menus.show_start()
 
-func _start_game() -> void:
+static func world_of(idx: int) -> int:
+	return int(String(LEVELS[idx].ID).get_slice("-", 0))
+
+static func first_level_of_world(w: int) -> int:
+	for i in LEVELS.size():
+		if world_of(i) == w:
+			return i
+	return 0
+
+## New run starting at LEVELS[start] (world select / "Play Again" continues
+## at the first course of the world where the last run ended).
+func _start_game(start := 0) -> void:
 	cfg = GameSettings.load_all()
 	score = 0
 	coins = 0
 	lives = int(cfg.lives)
-	level_index = 0
+	level_index = clampi(start, 0, LEVELS.size() - 1)
 	power = Player.Power.BIG if cfg.start_big else Player.Power.SMALL
 	has_dino = false
 	checkpoint_pos = null
@@ -150,6 +167,7 @@ func _begin_level() -> void:
 	hud.set_buttons_visible(false)
 	touch.visible = false
 	var data: Script = LEVELS[level_index]
+	GameSettings.set_reached_world(world_of(level_index))
 	hud.show_card(data.ID, data.NAME, lives)
 	_update_hud()
 	_set_world_active(false)
@@ -461,6 +479,8 @@ func _game_over(victory: bool) -> void:
 	if not victory:
 		_snd_call("play", null, ["jingle_gameover"])
 	var data: Script = LEVELS[level_index]
+	if victory:
+		level_index = 0      # "Play Again" after the last course starts over at 1-1
 	hud.show_text_card("GAME OVER" if not victory else "THANK YOU!", "" if not victory else "You cleared every course")
 	var tw := create_tween()
 	tw.tween_interval(2.4)
