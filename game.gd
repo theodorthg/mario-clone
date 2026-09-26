@@ -84,7 +84,7 @@ func _ready() -> void:
 	hud.pause_pressed.connect(_toggle_pause)
 	hud.mute_pressed.connect(_toggle_mute)
 	hud.set_muted(_snd_call("is_muted", false))
-	menus.play_pressed.connect(func(i: int): _start_game(i, menus.take_cheat()))
+	menus.play_pressed.connect(func(i: int): _start_game(i, menus.take_cheat(), menus.take_boss()))
 	menus.resume_pressed.connect(_resume)
 	menus.restart_pressed.connect(func(): _start_game(first_level_of_world(world_of(level_index)), cheated))
 	menus.quit_to_menu_pressed.connect(_to_title)
@@ -158,6 +158,13 @@ static func reached_level_index() -> int:
 			return i
 	return first_level_of_world(GameSettings.reached_world())
 
+## Index of the castle course (the one without a flag pole) of world w.
+static func castle_of_world(w: int) -> int:
+	for i in LEVELS.size():
+		if world_of(i) == w and LEVELS[i].FLAG.x < 0:
+			return i
+	return first_level_of_world(w)
+
 static func first_level_of_world(w: int) -> int:
 	for i in LEVELS.size():
 		if world_of(i) == w:
@@ -166,7 +173,9 @@ static func first_level_of_world(w: int) -> int:
 
 ## New run starting at LEVELS[start] (world select / "Play Again" continues
 ## at the first course of the world where the last run ended).
-func _start_game(start := 0, cheat := false) -> void:
+## at_boss (level select "Boss"): spawn right in front of the castle's boss
+## arena — dying there respawns at the same spot (it acts as the checkpoint).
+func _start_game(start := 0, cheat := false, at_boss := false) -> void:
 	cheated = cheat
 	cfg = GameSettings.load_all()
 	score = 0
@@ -176,6 +185,9 @@ func _start_game(start := 0, cheat := false) -> void:
 	power = Player.Power.BIG if cfg.start_big else Player.Power.SMALL
 	has_dino = false
 	checkpoint_pos = null
+	var arena = LEVELS[level_index].get_script_constant_map().get("ARENA")
+	if at_boss and arena != null:
+		checkpoint_pos = Vector2((arena.x - 3) * Level.T + Level.T * 0.5, (Level.ROWS - 3) * Level.T)
 	_paused = false
 	get_tree().paused = false
 	_begin_level()

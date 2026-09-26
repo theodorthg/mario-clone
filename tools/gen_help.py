@@ -377,7 +377,7 @@ def page_castles():
     d.line((8, 131, 332, 131), fill=DIM)
     text(d, (8, 135), "LEVEL SELECT on the title screen:", fill=WHITE)
     text(d, (8, 146), "pad B Y X A - keys L E V E L S - tap title 5x", fill=GOLD)
-    text(d, (8, 157), "Unreached courses: no high score entry.", fill=DIM)
+    text(d, (8, 157), "\"Boss\" = straight to the arena. Unreached: no high score.", fill=DIM)
     return img
 
 

@@ -49,7 +49,7 @@ const HELP_FALLBACK := {
 	"items": "Hit ? blocks from below.\nMushroom: grow big.  Fire flower: throw fireballs.\nStar: invincible for a while.  Green mushroom: extra life.\nBig heroes break bricks.",
 	"dragon": "An egg hides in one ? block.\nJump onto the dragon to ride it.\nRun button: tongue eats enemies.\nDown + jump: hop off.  A hit throws you off.",
 	"worlds": "Stomp a turtle, then kick its shell:\nit knocks out every enemy in its way.\nRed turtles turn at edges, winged ones need two stomps.\nIce is slippery. Lava and water: don't fall in!\nCave bats swoop, cactus stacks are spiky (use fire),\npenguins belly-slide.",
-	"castles": "Fire bars spin, lava bubbles leap: time your jumps.\nThe boss ends every world: stomp its head 3-4 times\n(5 fireballs = 1 hit).\nLevel select: on the title press B Y X A, type LEVELS\nor tap the title 5 times (no high score for unreached courses).",
+	"castles": "Fire bars spin, lava bubbles leap: time your jumps.\nThe boss ends every world: stomp its head 3-4 times\n(5 fireballs = 1 hit).\nLevel select: on the title press B Y X A, type LEVELS\nor tap the title 5 times. "Boss" starts at the boss arena\n(no high score for unreached courses).",
 	"goal": "Stomp enemies from above.\nCoins: points, 100 coins = extra life.\nPipes marked by coins lead to bonus rooms.\nGrab the flag pole as high as you can!",
 }
 
@@ -431,8 +431,14 @@ const CHEAT_PAD := ["j1", "j3", "j2", "j0"]
 const CHEAT_KEYS := ["kL", "kE", "kV", "kE", "kL", "kS"]
 var _cheat_buf: Array[String] = []
 var _cheat_pending := false
+var _boss_pending := false
 var _title_taps := 0
 var _title_tap_t := 0
+
+func take_boss() -> bool:
+	var b := _boss_pending
+	_boss_pending = false
+	return b
 
 func take_cheat() -> bool:
 	var c := _cheat_pending
@@ -469,7 +475,7 @@ func _build_levels() -> void:
 	_vbox.add_child(_heading("LEVEL SELECT"))
 	var reached := Game.reached_level_index()
 	var grid := GridContainer.new()
-	grid.columns = 4
+	grid.columns = 5
 	grid.add_theme_constant_override("h_separation", 4)
 	grid.add_theme_constant_override("v_separation", 3)
 	for w in range(1, Game.WORLD_NAMES.size() + 1):
@@ -481,6 +487,7 @@ func _build_levels() -> void:
 			var is_castle: bool = lv.FLAG.x < 0
 			var b := _button(String(lv.ID) + (" *" if is_castle else ""), func():
 				_cheat_pending = i > reached
+				_boss_pending = false
 				hide_all()
 				play_pressed.emit(i))
 			b.custom_minimum_size = Vector2(66, BTN_H)
@@ -491,8 +498,19 @@ func _build_levels() -> void:
 		while n < 4:
 			grid.add_child(Control.new())
 			n += 1
+		# straight to the boss arena of this world's castle
+		var ci := Game.castle_of_world(w)
+		var bb := _button("Boss", func():
+			_cheat_pending = ci > reached
+			_boss_pending = true
+			hide_all()
+			play_pressed.emit(ci))
+		bb.custom_minimum_size = Vector2(66, BTN_H)
+		if ci > reached:
+			bb.add_theme_color_override("font_color", Color(1.0, 0.75, 0.5))
+		grid.add_child(bb)
 	_vbox.add_child(grid)
-	var h := _hint("* = castle.  Orange courses not reached yet:\nno high score entry for that run.")
+	var h := _hint("* = castle, Boss = start at the boss arena.\nOrange = not reached yet: no high score entry for that run.")
 	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_vbox.add_child(h)
 	_vbox.add_child(_button("Back", func(): _show_screen(Screen.START), true))

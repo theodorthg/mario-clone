@@ -314,6 +314,9 @@ erreichten (`[progress] level`, ID-basiert) sind orange; wer so einen
 startet, spielt einen „cheated“ Lauf: kein Hall-of-Fame-Eintrag (Hinweis
 statt Namensfeld), kein Fortschritt gespeichert, „Play Again“ bleibt
 cheated. Hilfeseite „Castles & Secrets“.
+Pro Welt zusätzlich ein Knopf **„Boss“** (v0.9.1): startet die Burg mit
+`checkpoint_pos` 3 Spalten vor `ARENA` (`_start_game(i, cheat, at_boss)`),
+Tod im Bosskampf → Neustart ebenda. Orange = Burg noch nicht erreicht.
 
 ## App-Icon (v0.5)
 

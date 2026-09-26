@@ -564,6 +564,22 @@ func _run() -> void:
 					await shot("penguin_slide")
 					break
 			print("PENGUIN slid=%s speed=%.0f" % [slid, pen.speed if is_instance_valid(pen) else -1.0])
+		"bossselect":
+			await _wait(0.8)
+			game.menus._open_level_select()
+			await shot("level_select")
+			game.menus._boss_pending = true
+			game.menus._cheat_pending = true
+			game.menus.hide_all()
+			game.menus.play_pressed.emit(Game.castle_of_world(3))
+			await _wait(Game.CARD_TIME + 0.4)
+			state("at boss 3-3")
+			print("BOSSSEL level=%s cheated=%s" % [Game.LEVELS[game.level_index].ID, game.cheated])
+			await hold("move_right", 1.6)
+			await _wait(0.6)
+			var bosses := game.get_tree().get_nodes_in_group("boss")
+			print("BOSSSEL boss active=%s hp=%d cam_left=%d" % [bosses[0].active, bosses[0].hp, game.camera.limit_left])
+			await shot("boss_arena")
 		"pause":
 			await start_play()
 			game._toggle_pause()
