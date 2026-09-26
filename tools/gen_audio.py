@@ -20,6 +20,7 @@ import os
 import subprocess
 import sys
 import wave
+import zlib
 
 import numpy as np
 
@@ -127,8 +128,10 @@ def write_wav(path, x):
 def write_ogg(path, x):
     tmp = path + ".tmp.wav"
     write_wav(tmp, x)
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", tmp, "-c:a", "libvorbis", "-q:a", "5", path],
-                   check=True)
+    # bitexact: deterministic Ogg stream serial numbers + no encoder-version
+    # tag, so re-running the generator does not rewrite unchanged files
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", tmp, "-c:a", "libvorbis", "-q:a", "5",
+                    "-fflags", "+bitexact", "-flags:a", "+bitexact", path], check=True)
     os.remove(tmp)
 
 
@@ -140,8 +143,16 @@ def tone(kind, f, dur, duty=0.5, f_end=None, a=0.002, d=0.04, s=0.6, r=0.03, vib
     return osc(kind, f, n, duty, f_end, vib=vib) * env(n, a, d, s, r) * vol
 
 
+def reseed(name):
+    """per-piece noise seed: output no longer depends on which other pieces
+    were rendered before (e.g. `gen_audio.py music` vs. a full run)"""
+    global rng
+    rng = np.random.default_rng(zlib.crc32(name.encode()))
+
+
 def sfx():
     os.makedirs(SND, exist_ok=True)
+    reseed("sfx")
     S = {}
     # jumps: rising pulse sweep with a soft tail
     n = seg(0.2)
@@ -504,6 +515,7 @@ def music():
         "jingle_gameover": jingle_gameover,
     }
     for k, fn in pieces.items():
+        reseed(k)
         x = fn()
         write_ogg(os.path.join(MUS, k + ".ogg"), x)
         print("  %-16s %5.1f s" % (k, len(x) / SR))

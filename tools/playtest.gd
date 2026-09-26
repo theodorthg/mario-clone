@@ -353,7 +353,7 @@ func _run() -> void:
 		"turtle":
 			game.menus.hide_all()
 			game._start_game()
-			game.level_index = 3
+			game.level_index = Game.first_level_of_world(2)
 			game._begin_level()
 			await _wait(Game.CARD_TIME + 0.4)
 			var tt: Turtle = null
@@ -398,7 +398,7 @@ func _run() -> void:
 		"exitpipe":
 			game.menus.hide_all()
 			game._start_game()
-			game.level_index = 3
+			game.level_index = Game.first_level_of_world(2)
 			game._begin_level()
 			await _wait(Game.CARD_TIME + 0.4)
 			await teleport(Vector2i(205, 14))
@@ -641,6 +641,86 @@ func _run() -> void:
 			print("SPLASH active=%s menu=%d" % [is_instance_valid(game.splash) and game.splash._active, game.menus.screen])
 			await _wait(2.2)
 			print("SPLASH after: menu=%d (START=%d)" % [game.menus.screen, Menus.Screen.START])
+		"bossstress":
+			# wall-up stress test (RG552 one-off crash hunt): enter every boss
+			# arena repeatedly, sometimes dying right at the moment it walls up
+			var runs := int(OS.get_environment("RUNS")) if OS.get_environment("RUNS") != "" else 12
+			for i in runs:
+				var w := i % 4 + 1
+				game.menus.hide_all()
+				game._start_game(Game.castle_of_world(w), true, true)
+				await _wait(Game.CARD_TIME + 0.3)
+				Input.action_press("move_right")
+				var started := false
+				for f in 90:
+					await _frames(1)
+					if game.level and game.level.get_meta("boss_started", false):
+						started = true
+						break
+				Input.action_release("move_right")
+				if i % 3 == 1 and game.player:
+					game.player_died(false)          # die in the same frame as the wall-up
+				await _frames(20 + i * 3)
+				var b := game.get_tree().get_nodes_in_group("boss")
+				print("STRESS run=%d world=%d started=%s state=%d bosses=%d" % [i, w, started, game.state, b.size()])
+			print("STRESS done")
+		"lifts":
+			game.menus.hide_all()
+			game._start_game(2)                  # 1-3: sideways lift over the pond
+			await _wait(Game.CARD_TIME + 0.3)
+			var lift: MovingPlatform = null
+			for n in game.level.get_children():
+				if n is MovingPlatform:
+					lift = n
+			game.player.global_position = lift.global_position + Vector2(24, -20)
+			game.player.velocity = Vector2.ZERO
+			game.player.star_t = 30.0           # enemies nearby: invulnerable observer
+			game._update_camera(0.0, true)
+			await _wait(0.6)
+			var x0 := game.player.global_position.x
+			var lx0 := lift.global_position.x
+			await _wait(1.2)
+			print("LIFT h: lift moved %.0f px, hero moved %.0f px, on_floor=%s y=%.0f (lift top %.0f) state=%d" % [
+				lift.global_position.x - lx0, game.player.global_position.x - x0, game.player.is_on_floor(),
+				game.player.global_position.y, lift.global_position.y, game.state])
+			await shot("lift_h")
+			game._start_game(Game.first_level_of_world(2) + 1)   # 2-2: vertical lift over lava
+			await _wait(Game.CARD_TIME + 0.3)
+			for n in game.level.get_children():
+				if n is MovingPlatform:
+					lift = n
+			game.player.global_position = lift.global_position + Vector2(24, -20)
+			game.player.velocity = Vector2.ZERO
+			game.player.star_t = 30.0
+			game._update_camera(0.0, true)
+			await _wait(0.5)
+			var y0 := game.player.global_position.y
+			await _wait(1.3)
+			print("LIFT v: hero dy=%.0f on_floor=%s alive_state=%d" % [game.player.global_position.y - y0, game.player.is_on_floor(), game.state])
+			await shot("lift_v")
+		"bossvariants":
+			for w in [2, 3, 4]:
+				game.menus.hide_all()
+				game._start_game(Game.castle_of_world(w), true, true)
+				await _wait(Game.CARD_TIME + 0.3)
+				game.player.star_t = 30.0       # invulnerable observer
+				Input.action_press("move_right")
+				await _wait(1.8)
+				Input.action_release("move_right")
+				await _wait(0.3)
+				var boss: Boss = game.get_tree().get_nodes_in_group("boss")[0]
+				boss._act = 99.0
+				boss._breathe(game.player)
+				if w == 3:
+					boss.velocity.y = -360.0
+					boss._jumping = true
+				await _wait(0.7)
+				var kinds := {}
+				for n in game.level.get_children():
+					if n is BossFlame:
+						kinds[n.kind] = int(kinds.get(n.kind, 0)) + 1
+				print("VARIANT world=%d projectiles=%s" % [w, kinds])
+				await shot("boss_w%d" % w)
 		"pause":
 			await start_play()
 			game._toggle_pause()

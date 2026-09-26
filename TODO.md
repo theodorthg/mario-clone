@@ -7,25 +7,26 @@ Git-Log.
 
 ## Offen
 
-- [ ] **Absturz RG552 beim Einmauern der Boss-Arena** (einmalig vom Nutzer
-      beobachtet, v0.9.x, 2026-09-26). Android-Logs des RG552 zeigten keine
-      Absturzspur (kein SIGSEGV/Fatal signal, kein Godot-Fehler) — Ursache
-      unbelegt. Vermutung: TileMapLayer-Zellen + Kollision wurden mitten im
-      Physik-Schritt (aus `boss.gd::_physics_process`) geändert. v0.9.7:
-      `start_boss` jetzt `call_deferred`, idempotent, mit Zustands-Guards,
-      schiebt den Helden aus der Mauerspalte. **Falls es wieder passiert:**
-      sofort (bevor das Log rotiert) `adb logcat -b crash -d` und
-      `adb logcat -d | grep -iE "fatal|signal|godot|marioclone"` sichern und
-      tiefer analysieren (ggf. Debug-APK mit Symbolen).
-- [ ] Boss-Balancing nach Spieltests (HP, Tempo, Flammenrate).
+- [ ] Boss-Balancing nach Spieltests (HP, Tempo, Angriffsrate der neuen
+      Varianten) — wartet auf Nutzer-Feedback.
 - [ ] Optional: weißer Hintergrund des Android-12-System-Splash (nur per
       Gradle-Build änderbar).
-- [ ] `tools/gen_audio.py` rendert Rauschen nicht deterministisch → Seed
-      setzen, damit unveränderte Stücke keinen Binär-Churn erzeugen.
-- [ ] Ideen: weitere Welten, bewegliche Plattformen, Boss-Varianten.
+- [ ] Ideen: weitere Welten (z. B. Wolken/Himmel, Unterwasser), weitere
+      Gegner, Plattform-Varianten (fallende/kippende Plattformen).
 
 ## Erledigt
 
+- [x] v0.10.0 Bewegliche Plattformen (`~` seitwärts, `^` auf/ab) in 1-3,
+      2-2, 3-1, 4-1 und den Burgen 3-3/4-3.
+- [x] v0.10.0 Boss-Varianten je Welt: 1 gezielte Flamme, 2 Dreifach-Fächer,
+      3 Sand-Schockwellen bei jeder Landung, 4 springende Eisbälle.
+- [x] v0.10.0 `gen_audio.py` deterministisch (Rausch-Seed pro Stück,
+      ffmpeg `+bitexact`): zwei Läufe → byte-identische Dateien.
+- [x] 2026-09-27 Absturz RG552 beim Einmauern der Boss-Arena: laut Nutzer
+      direkt nach dem Einmauer-Sound beim Betreten der Arena → passt genau
+      zur behobenen Ursache (Tile-Änderung im Physik-Schritt, v0.9.7);
+      zusätzlich Belastungstest `bossstress` (16 Arena-Starts, teils mit Tod
+      im selben Frame) ohne Fehler. Abgehakt.
 - [x] 2026-09-26 Splash in den anderen Projekten geprüft: tetris + galaga
       haben ihren Ladebalken-Splash schon; centipede bekam `splash.gd`;
       pacman hat noch gar keinen Splash (→ dort offen, Nutzer fragen).

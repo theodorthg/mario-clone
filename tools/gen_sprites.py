@@ -1155,6 +1155,28 @@ def boss():
     save_set("boss_flame", [("f0", fl), ("f1", fl2)], 18, 9, {"burn": (["f0", "f1"], 10, True)})
     b = ol(parse(BUBBLE, BUBBLE_PAL, "bubble"))
     save_set("lava_bubble", [("b0", b)], 14, 14, {"idle": (["b0"], 1, False)})
+    # world-4 boss: ice ball (shaded circle, sparkle rotates between frames)
+    ice = []
+    for f in range(2):
+        rows = []
+        for y in range(12):
+            r = ""
+            for x in range(12):
+                dx, dy = (x - 5.5) / 6.0, (y - 5.5) / 6.0
+                d = dx * dx + dy * dy
+                if d > 1.0:
+                    r += "."
+                elif (f == 0 and (x, y) in ((3, 3), (4, 2), (2, 4))) or (f == 1 and (x, y) in ((8, 3), (7, 2), (9, 4))):
+                    r += "w"
+                elif dx + dy < -0.6:
+                    r += "l"
+                elif dx + dy > 0.7:
+                    r += "I"
+                else:
+                    r += "i"
+            rows.append(r)
+        ice.append(("i%d" % f, ol(parse(rows, {"w": "#ffffff", "l": "#d8f4ff", "i": "#8ad4f8", "I": "#3a8ac8"}, "ice"))))
+    save_set("ice_ball", ice, 14, 14, {"spin": (["i0", "i1"], 8, True)})
 
 
 # =========================================================================

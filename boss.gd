@@ -1,7 +1,8 @@
 class_name Boss
 extends CharacterBody2D
 
-## Castle boss (grid 'Z'): a horned dragon-ogre king, recoloured per world.
+## Castle boss (grid 'Z'): a horned dragon-ogre king, recoloured per world,
+## with a different attack per world (see _breathe()).
 ## Wakes when the hero walks into the arena (level ARENA columns): the game
 ## locks the camera + closes a wall behind the hero. Paces, jumps and breathes
 ## flames aimed at the hero; faster with every hit.
@@ -27,6 +28,7 @@ var _fire_hits := 0
 var _target_x := 0.0
 var _roar := 0.0
 var _hit_rect: RectangleShape2D
+var _jumping := false        # own jump in progress (world 3: shock waves on landing)
 
 func _ready() -> void:
 	collision_layer = 4
@@ -95,12 +97,17 @@ func _physics_process(delta: float) -> void:
 				_breathe(p)
 			else:
 				velocity.y = -360.0
+				_jumping = true
 				sprite.play(&"jump")
 	var was_air := not is_on_floor()
 	move_and_slide()
 	if was_air and is_on_floor():
 		if sprite.animation == &"jump":
 			sprite.play(&"walk")
+		if _jumping:
+			_jumping = false
+			if world == 3:
+				_shock_waves()
 		_snd("bump")
 	global_position.x = clampf(global_position.x, arena_left + 36.0, arena_right - 28.0)
 	for b in hitbox.get_overlapping_bodies():
@@ -108,17 +115,38 @@ func _physics_process(delta: float) -> void:
 			_touch_player(b)
 			break
 
+## Attack by world (each castle's boss fights a little differently):
+## 1 one aimed flame · 2 a fan of three flames · 3 aimed flame, and every
+## landing sends sand shock waves along the floor · 4 two bouncing ice balls
 func _breathe(p: Player) -> void:
 	_roar = 0.6
 	sprite.play(&"roar")
 	_snd("dino")
-	var f := BossFlame.new()
 	var mouth := global_position + Vector2(facing * 28.0, -40.0)
 	var aim := (p.global_position + Vector2(0, -10) - mouth).normalized()
 	aim.x = signf(aim.x) * maxf(absf(aim.x), 0.8)
-	f.velocity = aim.normalized() * 115.0
-	f.position = mouth
+	aim = aim.normalized()
+	match world:
+		2:
+			for a in [-0.32, 0.0, 0.32]:
+				_shoot("flame", mouth, aim.rotated(a) * 110.0)
+		4:
+			_shoot("ice", mouth, Vector2(facing * 95.0, -230.0))
+			_shoot("ice", mouth, Vector2(facing * 140.0, -150.0))
+		_:
+			_shoot("flame", mouth, aim * 115.0)
+
+func _shoot(kind: String, at: Vector2, vel: Vector2) -> void:
+	var f := BossFlame.new()
+	f.kind = kind
+	f.velocity = vel
+	f.floor_y = global_position.y
+	f.position = at
 	get_parent().add_child(f)
+
+func _shock_waves() -> void:
+	for d in [-1.0, 1.0]:
+		_shoot("wave", global_position + Vector2(d * 22.0, -5.0), Vector2(d * 125.0, 0.0))
 
 func _touch_player(p: Player) -> void:
 	if p.mode != Player.Mode.NORMAL or _inv > 0.0:

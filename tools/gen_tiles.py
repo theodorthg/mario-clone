@@ -895,6 +895,18 @@ def main():
         "hard": (["hard"], 1, False),
     })
 
+    # moving platform ("lift"): 3-tile orange girder, one sprite
+    lift_seg = [
+        "LLLLLLLLLLLLLLLL",
+        "oobooooooooooboo",
+        "oooooooooooooooo",
+        "OoooOOOOOOOOoooO",
+        "OOOOO......OOOOO",
+    ]
+    lift_pal = {"L": "#ffd8a0", "o": "#e8872a", "O": "#a8561a", "b": "#fff4c8"}
+    lift = parse([r * 3 for r in lift_seg], lift_pal)
+    outline(lift, color=OUTLINE, selective=False).save(os.path.join(OUT, "lift.png"))
+
     # brick shards (4 frames rotating)
     shard = parse(["lbb.", "bbbB", "bbBB", ".BB."], BRICK_PAL)
     shard = outline(shard, color=OUTLINE, selective=False)

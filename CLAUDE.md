@@ -230,7 +230,10 @@ Eigener kleiner NES-artiger Synth (Puls mit Duty, Dreieck, Rauschen,
 Hüllkurven, Glissando, Vibrato). 23 Effekte → `assets/sounds/*.wav`; Musik
 (Oberwelt 150 bpm C-Dur, Höhle 118 bpm a-Moll mit Echo, Stern 184 bpm,
 Titel 112 bpm, Wüste „Dune Drift“ 132 bpm D-phrygisch-dominant, Schnee
-„Frosty Peaks“ 138 bpm F-Dur-Walzer mit Glocken-Lead) + Jingles (Ziel, Tod, Game Over) → `assets/music/*.ogg`.
+„Frosty Peaks“ 138 bpm F-Dur-Walzer mit Glocken-Lead) + Jingles.
+**Deterministisch** (v0.10): Rausch-Seed pro Stück (`reseed(name)`),
+ffmpeg mit `-fflags +bitexact` (feste Ogg-Seriennummern) — ein erneuter
+Lauf ändert unveränderte Dateien nicht mehr (Ziel, Tod, Game Over) → `assets/music/*.ogg`.
 **Eigenkompositionen** in Tracker-Notation im Skript — bewusst nicht die
 Nintendo-Themen. Loops werden mit umgeklapptem Nachhall gerendert (nahtlos);
 `sound_manager.gd` setzt `AudioStreamOggVorbis.loop = true` zur Laufzeit.
@@ -273,6 +276,25 @@ Seiten aus wie das Spiel selbst).
 ◀ ▼ ▶ unten links (▼ = ducken, Röhre, mit A vom Drachen absteigen),
 X / A unten rechts. Der ▼-Knopf kam in v0.3 dazu — ohne ihn waren Röhren,
 Ducken und Absteigen auf Touch unmöglich.
+
+## Bewegliche Plattformen + Boss-Varianten (v0.10)
+
+- `~` / `^` im Level-Raster = 3 Kacheln breiter Lift (`moving_platform.gd`,
+  `AnimatableBody2D` mit `sync_to_physics`, Einweg-Kollision von unten),
+  linke obere Ecke an der Zelle; `~` fährt 64 px nach rechts und zurück,
+  `^` 72 px hoch und zurück (Sinus, 3,6 s), Phase nach Spalte versetzt.
+  Nicht Teil von `surface()` im Level-Generator. Grafik `lift.png`
+  (`gen_tiles.py`). **Vorsicht beim Platzieren von `^`**: über dem Lift
+  darf in Hubhöhe + Heldengröße kein fester Block liegen (sonst wird der
+  Held eingeklemmt).
+- Boss-Angriff je Welt (`boss.gd::_breathe()`, Geschosse `boss_flame.gd`
+  mit `kind`): 1 gezielte Flamme, 2 Fächer aus drei Flammen, 3 gezielte
+  Flamme + bei jeder Landung zwei Sand-Schockwellen über den Boden
+  (`_jumping`-Flag, nicht am Animationsnamen erkennen — das Brüllen
+  überschreibt ihn), 4 zwei springende Eisbälle (`ice_ball.png`, prallen
+  bis zu 4× vom Arenaboden ab).
+- Playtests: `lifts`, `bossvariants`, `bossstress` (Arena-Einmauern
+  wiederholt, `RUNS=`).
 
 ## Biom-Gegner (v0.9)
 

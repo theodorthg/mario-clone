@@ -28,6 +28,8 @@ Grid legend (one char per 16x16 cell, row 0 = top):
   Z  castle boss (arena = Level.arena)     N  ?-block that always holds a fire flower
   a  cave bat (hangs under the ceiling)      p  desert cactus stack (spiky)
   q  snow penguin (walks, belly-slides)
+  ~  3-tile lift moving sideways (4 tiles)   ^  3-tile lift moving up (4.5 tiles)
+     (top-left at the cell; one-way from below; not part of surface())
   decorations: * bush  + small bush  f flower  t grass tuft  r rock
                s sign  n fence
   Ground '#', bricks 'w' and decorations take the look of the BIOME of the
@@ -489,7 +491,7 @@ def level_1_3():
     L.pit(19, 36)
     L.water(19, 36)
     L.ledge(20, 23, 14)
-    L.ledge(26, 28, 12)
+    L.set(25, 12, "~")
     L.ledge(31, 34, 14)
     L.coins(26, 11, 3)
     L.coins(20, 13, 4)
@@ -734,7 +736,7 @@ def level_3_1():
     # ledge chain over pits
     L.pit(97, 110)
     L.ledge(98, 101, 14, ch="w")
-    L.ledge(104, 106, 12, ch="w")
+    L.set(102, 12, "~")
     L.ledge(108, 110, 14, ch="w")
     L.enemy(99, 13, ch="K")
     L.coins(104, 11, 3)
@@ -817,7 +819,7 @@ def level_4_1():
     L.pit(64, 82)
     L.water(64, 82)
     L.ledge(66, 69, 15, depth=1, ch="I")
-    L.ledge(72, 74, 13, depth=1, ch="I")
+    L.set(71, 13, "~")
     L.ledge(77, 80, 15, depth=1, ch="I")
     L.enemy(67, 14)
     L.coins(72, 12, 3)
@@ -952,8 +954,7 @@ def level_2_2():
     L.set(161, GROUND - 3, "Q")
     L.lava(165, 176)
     L.ledge(167, 169, 14)
-    L.ledge(172, 174, 12)
-    L.set(173, 11, "J")
+    L.set(172, 14, "^")
     L.coin_arc(166, 10, 10)
     L.enemy(180)
     L.enemy(182)
@@ -1223,7 +1224,10 @@ def castle_level(world, lid):
     L.ledge(71, 72, 14)
     L.ledge(76, 78, 12)
     L.set(77, 11, "F") if world >= 2 else None
-    L.ledge(82, 83, 14)
+    if hard:
+        L.set(81, 14, "^")
+    else:
+        L.ledge(82, 83, 14)
     if hard:
         L.ledge(86, 87, 13)
     for c in (69, 74, 80, 85):
@@ -1270,6 +1274,7 @@ def render_preview(L, path):
     turtle_r = Image.open(os.path.join(gfx, "enemy_turtle_red.png")).convert("RGBA").crop((0, 0, 28, 26))
     boss_im = Image.open(os.path.join(gfx, "boss_1.png")).convert("RGBA").crop((0, 0, 32, 34))
     bubble = Image.open(os.path.join(gfx, "lava_bubble.png")).convert("RGBA")
+    lift_im = Image.open(os.path.join(gfx, "lift.png")).convert("RGBA")
     bat_im = Image.open(os.path.join(gfx, "enemy_bat.png")).convert("RGBA").crop((0, 0, 18, 12))
     pen_im = Image.open(os.path.join(gfx, "enemy_penguin.png")).convert("RGBA").crop((0, 0, 18, 18))
     cac_seg = Image.open(os.path.join(gfx, "enemy_cactus.png")).convert("RGBA").crop((0, 0, 16, 17))
@@ -1341,6 +1346,8 @@ def render_preview(L, path):
                 later.append((bubble.resize((6, 6)), x + 5, y - 30))
             elif ch == "Z":
                 later.append((boss_im, x - 8, y - 18))
+            elif ch in "~^":
+                later.append((lift_im, x - 1, y - 1))
             elif ch == "a":
                 later.append((bat_im, x - 1, y))
             elif ch == "q":

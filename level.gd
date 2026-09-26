@@ -246,7 +246,7 @@ func _ground_tile(c: int, r: int, ch: String, row: int) -> Vector2i:
 	return Vector2i(m, row)
 
 func _pipe_free(ch: String) -> bool:
-	return ch in [".", "o", "g", "G", "k", "K", "J", "Z", "a", "p", "q"] or DECOR.has(ch)
+	return ch in [".", "o", "g", "G", "k", "K", "J", "Z", "a", "p", "q", "~", "^"] or DECOR.has(ch)
 
 func _place_pipe(c: int, r: int) -> void:
 	tiles.set_cell(Vector2i(c, r), 0, PIPE_TOP_L)
@@ -333,6 +333,15 @@ func _build_entities() -> void:
 					boss.arena_left = ar.x * T
 					boss.arena_right = (ar.y + 1) * T
 					add_child(boss)
+				"~", "^":
+					# lift: sideways '~' travels right, '^' travels up;
+					# neighbouring lifts start at different phases
+					var lift := MovingPlatform.new()
+					lift.axis = Vector2.RIGHT if ch == "~" else Vector2.UP
+					lift.travel = 64.0 if ch == "~" else 72.0
+					lift.phase = float(c % 4) * 0.25
+					lift.position = Vector2(c * T, r * T)
+					add_child(lift)
 				"a":
 					var bat := Bat.new()
 					bat.position = Vector2(c * T + T * 0.5, r * T)
