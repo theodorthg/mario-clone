@@ -184,11 +184,11 @@ def page_touch():
     glass_btn(d, 294, 24, "pause")
     text(d, (28, 96), "move, down = duck", fill=GOLD)
     text(d, (28, 106), "/ enter pipe", fill=GOLD)
-    text(d, (240, 96), "B: run / fire", fill=GOLD)
+    text(d, (240, 96), "X: run / fire", fill=GOLD)
     text(d, (240, 86), "A: jump", fill=GOLD)
     text(d, (212, 28), "mute  pause", fill=GOLD)
     text(d, (34, 24), "Use both thumbs:", fill=WHITE)
-    text(d, (34, 34), "hold B while moving to run.", fill=WHITE)
+    text(d, (34, 34), "hold X while moving to run.", fill=WHITE)
     text(d, (20, 156), "Riding the dragon? Down + A: hop off.", fill=DIM)
     return img
 

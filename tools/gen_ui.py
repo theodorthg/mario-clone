@@ -92,7 +92,7 @@ def splash():
 
 def main():
     os.makedirs(UI, exist_ok=True)
-    for sym, name in (("left", "left"), ("right", "right"), ("down", "down"), ("A", "a"), ("B", "b")):
+    for sym, name in (("left", "left"), ("right", "right"), ("down", "down"), ("A", "a"), ("X", "b")):
         button(sym, False).save(os.path.join(UI, "touch_%s.png" % name))
         button(sym, True).save(os.path.join(UI, "touch_%s_pressed.png" % name))
     splash()

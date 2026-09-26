@@ -43,7 +43,7 @@ const HELP_TOUCH := [
 ]
 const HELP_FALLBACK := {
 	"controls": "Move: Arrows / A D / D-pad\nJump: Space / Z / K / W / Up  (A)\nRun, fireball, tongue: Shift / X / J  (X/Y)\nDuck / enter pipe: Down\nPause: Esc / P (Start)   Mute: M (Select)\nScreenshot: F12",
-	"touch": "Left / right buttons: move\nA: jump   B: run, fireball, tongue\nHold B while moving to run.\nII: pause   Speaker: mute",
+	"touch": "Left / right buttons: move\nA: jump   X: run, fireball, tongue\nHold X while moving to run.\nII: pause   Speaker: mute",
 	"items": "Hit ? blocks from below.\nMushroom: grow big.  Fire flower: throw fireballs.\nStar: invincible for a while.  Green mushroom: extra life.\nBig heroes break bricks.",
 	"dragon": "An egg hides in one ? block.\nJump onto the dragon to ride it.\nRun button: tongue eats enemies.\nDown + jump: hop off.  A hit throws you off.",
 	"worlds": "Stomp a turtle, then kick its shell:\nit knocks out every enemy in its way.\nRed turtles turn at edges, winged ones need two stomps.\nIce is slippery. Lava and water: don't fall in!",

@@ -30,7 +30,7 @@ davon ist aus Nintendo-Spielen übernommen (Figuren nur „im Stil von“).
   `position_smoothing`): horizontal kleine Totzone (±12 px), vertikal
   „setzt sich“ auf die Bodenlinie und folgt nur größeren Höhenwechseln;
   Grenzen = aktueller Bereich („main“/„bonus“) aus den Level-Daten.
-- **Touch-Steuerung = virtuelle Buttons** (◀ ▼ ▶ unten links, B/A unten rechts,
+- **Touch-Steuerung = virtuelle Buttons** (◀ ▼ ▶ unten links, X/A unten rechts,
   `touch_controls.gd`, `TouchScreenButton` mit `action`-Bindung → Multitouch
   gratis). Abweichung von globaler Vorgabe 4/5 (Swipe + Touch-Elemente nur
   oben): ein Plattformer braucht gehaltene Richtungen und zwei Daumen
@@ -246,7 +246,7 @@ Seiten aus wie das Spiel selbst).
 ## Touch-Tasten
 
 ◀ ▼ ▶ unten links (▼ = ducken, Röhre, mit A vom Drachen absteigen),
-B / A unten rechts. Der ▼-Knopf kam in v0.3 dazu — ohne ihn waren Röhren,
+X / A unten rechts. Der ▼-Knopf kam in v0.3 dazu — ohne ihn waren Röhren,
 Ducken und Absteigen auf Touch unmöglich.
 
 ## Offen / nächste Schritte
