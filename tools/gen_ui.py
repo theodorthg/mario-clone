@@ -30,6 +30,9 @@ def button(symbol, pressed):
         s = -1 if symbol == "left" else 1
         pts = [(c + s * 9, c), (c - s * 6, c - 9), (c - s * 6, c + 9)]
         d.polygon(pts, fill=ink, outline=edge)
+    elif symbol == "down":
+        pts = [(c, c + 9), (c - 9, c - 6), (c + 9, c - 6)]
+        d.polygon(pts, fill=ink, outline=edge)
     else:
         f = ImageFont.truetype(FONT, 16)
         w = d.textlength(symbol, font=f)
@@ -89,7 +92,7 @@ def splash():
 
 def main():
     os.makedirs(UI, exist_ok=True)
-    for sym, name in (("left", "left"), ("right", "right"), ("A", "a"), ("B", "b")):
+    for sym, name in (("left", "left"), ("right", "right"), ("down", "down"), ("A", "a"), ("B", "b")):
         button(sym, False).save(os.path.join(UI, "touch_%s.png" % name))
         button(sym, True).save(os.path.join(UI, "touch_%s_pressed.png" % name))
     splash()

@@ -718,13 +718,101 @@ SHROOM = {
 }
 
 
+WING_PAL = {"w": "#ffffff", "W": "#c9d3e6", "V": "#8f9ab4"}
+WING_UP = [
+    "w....",
+    "ww...",
+    "wWw..",
+    "wWWw.",
+    ".wWWw",
+    "..wVw",
+]
+WING_DOWN = [
+    ".....",
+    ".....",
+    "..wVw",
+    ".wWWw",
+    "wWWw.",
+    "ww...",
+]
+
+
+def winged(frame_rows, wing):
+    """shroom fill (16 wide) on a 24-wide canvas with a wing on each side"""
+    from PIL import Image as _I
+    body = parse(frame_rows, SHROOM_PAL)
+    canvas = _I.new("RGBA", (24, body.height), (0, 0, 0, 0))
+    canvas.paste(body, (4, 0), body)
+    wr = parse(wing, WING_PAL)
+    canvas.paste(wr.transpose(_I.FLIP_LEFT_RIGHT), (0, 1), wr.transpose(_I.FLIP_LEFT_RIGHT))
+    canvas.paste(wr, (19, 1), wr)
+    return canvas
+
+
+CHOMP_PAL = {
+    "r": "#e0302e", "R": "#a01c2c", "w": "#ffffff", "m": "#4a0a16", "t": "#f4f0e8",
+    "g": "#3cc43c", "G": "#1f8a2c", "l": "#9af07e",
+}
+CHOMP_STEM = [
+    ".......gG.......",
+    "..ll...gG...ll..",
+    ".lggl..gG..lggl.",
+    "..lggl.gG.lggl..",
+    "...lgggGgggl....",
+    ".......gG.......",
+    ".......gG.......",
+    ".......gG.......",
+    ".......gG.......",
+]
+CHOMP_OPEN = [
+    "...rrrrrrrrrr...",
+    "..rrwrrrrrrwrr..",
+    ".rrrrrrwwrrrrrr.",
+    ".rwrrrrrrrrrrwr.",
+    "rrrrrrrrrrrrrrrr",
+    "RRRRRRRRRRRRRRRR",
+    "RtmtmtmtmtmtmtmR",
+    "RmmmmmmmmmmmmmmR",
+    "RmmmmmmmmmmmmmmR",
+    "RmtmtmtmtmtmtmtR",
+    "RRRRRRRRRRRRRRRR",
+    "rrrrrrrrrrrrrrrr",
+    ".rrwrrrrrrrwrrr.",
+    "..rrrrrrrrrrrr..",
+    "....rrrrrrrr....",
+]
+CHOMP_SHUT = [
+    "................",
+    "................",
+    "...rrrrrrrrrr...",
+    "..rrwrrrrrrwrr..",
+    ".rrrrrrwwrrrrrr.",
+    ".rwrrrrrrrrrrwr.",
+    "rrrrrrrrrrrrrrrr",
+    "RtRtRtRtRtRtRtRR",
+    "RRRRRRRRRRRRRRRR",
+    "rrrrrrrrrrrrrrrr",
+    "rrrrrrrrrrrrrrrr",
+    ".rrwrrrrrrrwrrr.",
+    "..rrrrrrrrrrrr..",
+    "....rrrrrrrr....",
+    "................",
+]
+
+
 def enemies():
     frames = [(n, ol(parse(SHROOM[n], SHROOM_PAL, "shroom." + n))) for n in ["walk1", "walk2", "squish"]]
-    save_set("enemy_shroom", frames, 18, 17, {
+    frames.append(("fly1", ol(winged(SHROOM["walk1"], WING_UP))))
+    frames.append(("fly2", ol(winged(SHROOM["walk2"], WING_DOWN))))
+    save_set("enemy_shroom", frames, 26, 18, {
         "walk": (["walk1", "walk2"], 6, True),
         "squish": (["squish"], 1, False),
         "flipped": (["walk1"], 1, False),
+        "fly": (["fly1", "fly2"], 8, True),
     })
+    chomp = [("open", ol(parse(CHOMP_OPEN + CHOMP_STEM, CHOMP_PAL, "chomp.open"))),
+             ("shut", ol(parse(CHOMP_SHUT + CHOMP_STEM, CHOMP_PAL, "chomp.shut")))]
+    save_set("chomper", chomp, 18, 26, {"chomp": (["open", "shut"], 5, True)})
 
 
 # =========================================================================

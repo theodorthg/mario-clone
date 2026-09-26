@@ -15,6 +15,8 @@ enum State { TITLE, INTRO, PLAYING, TRANSITION, DYING, CLEAR, GAMEOVER }
 
 const LEVELS := [
 	preload("res://levels/level_1_1.gd"),
+	preload("res://levels/level_1_2.gd"),
+	preload("res://levels/level_1_3.gd"),
 ]
 const CHAIN := [100, 200, 400, 500, 800, 1000, 2000, 4000, 5000, 8000]
 const TIME_TICK := 0.4
@@ -52,6 +54,7 @@ var _last_window := Vector2i.ZERO
 var _attract_dir := 1.0
 var _cam_pos := Vector2.ZERO
 var _freeze_tween: Tween
+var _tally_step := 1
 
 func _ready() -> void:
 	instance = self
@@ -557,6 +560,8 @@ func _walk_to_castle() -> void:
 		player.visible = false
 		player.auto_walk = 0.0
 		player.set_scripted(true)
+		# ~60 ticks regardless of how much time is left (about 2 s)
+		_tally_step = maxi(1, ceili(time_left / 60.0))
 		_tally_time()
 		return
 	get_tree().create_timer(0.05, true, true).timeout.connect(_walk_to_castle)
@@ -565,8 +570,8 @@ func _tally_time() -> void:
 	if time_left <= 0:
 		_level_done()
 		return
-	var step := maxi(1, int(time_left / 60.0))
-	time_left = maxi(time_left - step, 0)
+	var step := mini(_tally_step, time_left)
+	time_left -= step
 	add_score(50 * step)
 	hud.set_time(time_left)
 	_snd_call("play", null, ["tick"])
@@ -574,6 +579,8 @@ func _tally_time() -> void:
 
 func _level_done() -> void:
 	checkpoint_pos = null
+	level.raise_castle_flag()
+	_snd_call("play", null, ["checkpoint"])
 	power = player.power if player else power
 	var tw := create_tween()
 	tw.tween_interval(2.0)

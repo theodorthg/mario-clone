@@ -86,6 +86,21 @@ func _ready() -> void:
 	_card_name = _card_label(8, -6)
 	_card_name.add_theme_color_override("font_color", UiStyle.ACCENT)
 	_card_lives = _card_label(16, 14)
+	_card_lives.offset_left = -180
+	var icon := TextureRect.new()
+	var at_h := AtlasTexture.new()
+	at_h.atlas = preload("res://assets/graphics/hero_small.png")
+	at_h.region = Rect2(0, 0, 20, 20)
+	icon.texture = at_h
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_SCALE
+	icon.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	icon.offset_left = -34
+	icon.offset_right = -14
+	icon.offset_top = 8
+	icon.offset_bottom = 28
+	_card.add_child(icon)
+	set_meta("card_icon", icon)
 
 func _column(title: String, x: float) -> Label:
 	var t := Label.new()
@@ -180,7 +195,8 @@ func show_banner(text: String, duration: float) -> void:
 func show_card(world: String, name: String, lives_total: int) -> void:
 	_card_title.text = "WORLD " + world
 	_card_name.text = name
-	_card_lives.text = "x %d" % maxi(lives_total, 0)
+	_card_lives.text = "   x %d" % maxi(lives_total, 0)
+	get_meta("card_icon").visible = true
 	_card.visible = true
 	queue_redraw()
 
@@ -188,6 +204,7 @@ func show_text_card(title: String, sub := "") -> void:
 	_card_title.text = title
 	_card_name.text = sub
 	_card_lives.text = ""
+	get_meta("card_icon").visible = false
 	_card.visible = true
 
 func hide_card() -> void:

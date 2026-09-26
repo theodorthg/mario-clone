@@ -11,21 +11,38 @@ extends Node2D
 ## Vertically the layer sits at a world y and follows the camera by
 ## (1 - vfactor), so far layers barely move up/down.
 
+const LAYERS := [
+	# texture, world y of top edge, x factor, y factor, autoscroll px/s
+	["res://assets/graphics/bg_clouds.png", 26.0, 0.12, 0.1, 5.0],
+	["res://assets/graphics/bg_mountains.png", 72.0, 0.18, 0.35, 0.0],
+	["res://assets/graphics/bg_hills_far.png", 150.0, 0.32, 0.6, 0.0],
+	["res://assets/graphics/bg_hills_near.png", 178.0, 0.48, 0.75, 0.0],
+	["res://assets/graphics/bg_trees.png", 196.0, 0.66, 0.9, 0.0],
+]
+## sky: [top, mid, horizon, mid_pos, stars, moon]; tints: one per LAYERS
+## entry (same order); world: CanvasModulate tint for tiles + actors.
 const THEMES := {
 	"grass": {
-		"sky": [Color("3b6bd6"), Color("73acf0"), Color("d8eefa"), 0.55],
-		"layers": [
-			# texture, world y of top edge, x factor, y factor, autoscroll px/s
-			["res://assets/graphics/bg_clouds.png", 26.0, 0.12, 0.1, 5.0],
-			["res://assets/graphics/bg_mountains.png", 72.0, 0.18, 0.35, 0.0],
-			["res://assets/graphics/bg_hills_far.png", 150.0, 0.32, 0.6, 0.0],
-			["res://assets/graphics/bg_hills_near.png", 178.0, 0.48, 0.75, 0.0],
-			["res://assets/graphics/bg_trees.png", 196.0, 0.66, 0.9, 0.0],
-		],
+		"sky": [Color("3b6bd6"), Color("73acf0"), Color("d8eefa"), 0.55, 0.0, 0.0],
+		"tints": [Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE],
+		"world": Color.WHITE,
+	},
+	"sunset": {
+		"sky": [Color("2a2a6c"), Color("c85f7c"), Color("ffc27a"), 0.5, 0.0, 0.0],
+		"tints": [Color(1.0, 0.72, 0.66), Color(0.86, 0.6, 0.78), Color(0.95, 0.7, 0.62),
+			Color(0.9, 0.76, 0.6), Color(0.6, 0.5, 0.55)],
+		"world": Color(1.0, 0.9, 0.82),
+	},
+	"night": {
+		"sky": [Color("04061a"), Color("122250"), Color("2c3d78"), 0.55, 1.0, 1.0],
+		"tints": [Color(0.42, 0.48, 0.72), Color(0.34, 0.4, 0.66), Color(0.3, 0.4, 0.58),
+			Color(0.28, 0.4, 0.52), Color(0.2, 0.28, 0.4)],
+		"world": Color(0.66, 0.72, 0.96),
 	},
 	"cave": {
-		"sky": [Color("05060d"), Color("0c1024"), Color("1a2140"), 0.5],
-		"layers": [],
+		"sky": [Color("05060d"), Color("0c1024"), Color("1a2140"), 0.5, 0.0, 0.0],
+		"tints": [],
+		"world": Color.WHITE,
 	},
 }
 const REF_CAM_Y := 185.0
@@ -36,6 +53,8 @@ var _sky: ColorRect
 var _layers: Array = []    # [{sprite, y, fx, fy, auto}]
 var _time := 0.0
 var theme := ""
+var _world_tint: CanvasModulate
+var _para_layer: CanvasLayer
 
 func _ready() -> void:
 	z_index = -50
@@ -49,6 +68,15 @@ func _ready() -> void:
 	mat.shader = preload("res://assets/ui/sky.gdshader")
 	_sky.material = mat
 	_sky_layer.add_child(_sky)
+	# parallax sprites live on their own CanvasLayer that follows the camera
+	# like the world does, so the world's CanvasModulate tint does not darken
+	# them a second time (they carry their own per-theme tint)
+	_para_layer = CanvasLayer.new()
+	_para_layer.layer = -50
+	_para_layer.follow_viewport_enabled = true
+	add_child(_para_layer)
+	_world_tint = CanvasModulate.new()
+	add_child(_world_tint)
 
 func set_theme(name: String) -> void:
 	if name == theme:
@@ -60,16 +88,22 @@ func set_theme(name: String) -> void:
 	mat.set_shader_parameter("mid_color", th.sky[1])
 	mat.set_shader_parameter("horizon_color", th.sky[2])
 	mat.set_shader_parameter("mid_pos", th.sky[3])
+	mat.set_shader_parameter("stars", th.sky[4])
+	mat.set_shader_parameter("moon", th.sky[5])
+	_world_tint.color = th.world
 	for l in _layers:
 		l.sprite.queue_free()
 	_layers.clear()
-	for spec in th.layers:
+	var tints: Array = th.tints
+	for i in tints.size():
+		var spec: Array = LAYERS[i]
 		var s := Sprite2D.new()
 		s.texture = load(spec[0])
 		s.centered = false
 		s.region_enabled = true
 		s.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
-		add_child(s)
+		s.self_modulate = tints[i]
+		_para_layer.add_child(s)
 		_layers.append({"sprite": s, "y": spec[1], "fx": spec[2], "fy": spec[3], "auto": spec[4]})
 	_process(0.0)
 

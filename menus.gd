@@ -28,6 +28,7 @@ const FONT := 16
 const HELP_DIR := "res://assets/graphics/help/"
 const HELP_DESKTOP := [
 	{"file": "controls", "h": "Controls"},
+	{"file": "touch", "h": "Touch Controls"},
 	{"file": "items", "h": "Blocks & Items"},
 	{"file": "dragon", "h": "The Dragon"},
 	{"file": "goal", "h": "Goal & Points"},
@@ -515,7 +516,7 @@ func _build_help() -> void:
 		img.custom_minimum_size = Vector2(340, 170)
 		img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		img.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		img.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		img.texture = load(path)
 		_vbox.add_child(img)
 	else:

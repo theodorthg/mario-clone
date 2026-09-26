@@ -15,11 +15,12 @@ Grid legend (one char per 16x16 cell, row 0 = top):
   X  hard block       w  cave wall brick (solid)    =  log bridge (one-way)
   B  brick            ?  ?-block (coin)             M  ?-block (power-up)
   Y  ?-block (dragon egg)  S brick (star)  C brick (10 coins)  U brick (1-UP)
-  h  hidden 1-UP block
+  h  hidden 1-UP block   v  water (no collision, drawn in front)
   P  pipe top-left (body extends down to the next solid cell)
   W  warp pipe top-left (enterable, see WARPS)
   >  side pipe mouth (top cell, 2 high; body extends right)
-  o  coin             g  walking mushroom enemy
+  o  coin             g  walking mushroom enemy   G  winged (hopping) one
+  Q  pipe top-left with a biting plant inside
   decorations: * bush  + small bush  f flower  t grass tuft  r rock
                s sign  n fence
 """
@@ -75,6 +76,9 @@ class Level:
     def ledge(self, c0, c1, top, depth=2, ch="#"):
         """floating grass ledge"""
         self.fill(c0, c1, top, top + depth - 1, ch)
+
+    def water(self, c0, c1, top=GROUND):
+        self.fill(c0, c1, top, ROWS - 1, "v")
 
     def bridge(self, c0, c1, r):
         self.fill(c0, c1, r, r, "=")
@@ -240,6 +244,7 @@ def level_1_1():
     L.enemy(148, 12)
     # pond crossing on a log bridge
     L.pit(155, 163)
+    L.water(155, 163)
     L.bridge(154, 164, 14)
     L.coins(156, 12, 7)
     L.enemy(160, 13)
@@ -308,6 +313,227 @@ def level_1_1():
     return L
 
 
+def coin_room(L, B0, B1, exit_row=GROUND - 2):
+    """standard 40-column coin cave; returns the side-pipe exit mouth"""
+    L.ground(B0, B1, top=GROUND, ch="c")
+    L.fill(B0, B0 + 1, 0, GROUND - 1, "w")
+    L.fill(B0, B1, 0, 2, "w")
+    L.fill(B1 - 1, B1, 0, GROUND - 1, "w")
+    L.blocks(B0 + 5, 14, "wwww")
+    L.coins(B0 + 5, 13, 4)
+    L.blocks(B0 + 11, 11, "wwww")
+    L.coins(B0 + 11, 10, 4)
+    L.blocks(B0 + 17, 8, "wwwwww")
+    L.coins(B0 + 17, 7, 6)
+    L.coins(B0 + 17, 6, 6)
+    L.blocks(B0 + 25, 11, "wwww")
+    L.coins(B0 + 25, 10, 4)
+    L.coins(B0 + 10, 16, 14)
+    L.coins(B0 + 10, 15, 14)
+    mouth = L.side_pipe(B1 - 6, exit_row)
+    L.fill(B1 - 5, B1 - 2, 3, exit_row - 1, "w")
+    return mouth
+
+
+def finale(L, stairs_at, flag_at, castle_at):
+    L.stairs(stairs_at, 8, up=True)
+    L.fill(stairs_at + 8, stairs_at + 8, GROUND - 8, GROUND - 1, "X")
+    L.flag = (flag_at, GROUND - 1)
+    L.set(flag_at, GROUND - 1, "X")
+    L.castle = (castle_at, GROUND - 1)
+
+
+# =========================================================================
+# 1-2  "Sunset Meadows" — evening light, hills, ponds, winged enemies,
+#      biting plants in pipes
+# =========================================================================
+def level_1_2():
+    L = Level("1-2", "SUNSET MEADOWS", 286, time=400)
+    MAIN_END = 238
+    L.ground(0, MAIN_END - 1)
+    L.decor(1, "s")
+    L.decor(6, "*")
+    L.decor(10, "f")
+    L.blocks(14, 13, "B?BMB")
+    L.blocks(16, 9, "?")
+    L.enemy(19)
+    # hill with a biting plant on top
+    L.fill(22, 30, 15, GROUND - 1, "#")
+    L.set(26, 13, "Q")
+    L.decor(23, "t")
+    L.set(33, 16, "G")
+    L.enemy(35)
+    # small pond
+    L.pit(37, 39)
+    L.water(37, 39)
+    L.coin_arc(36, 12, 5)
+    # pipes: normal, biting plant, warp
+    L.pipe(44, 3)
+    L.set(47, 16, "G")
+    L.set(50, GROUND - 3, "Q")
+    warp_in = L.pipe(56, 2, warp=True)
+    L.decor(59, "+")
+    # floating ledge with coins over enemies
+    L.ledge(61, 65, 13)
+    L.coins(61, 12, 5)
+    L.enemy(62)
+    L.enemy(64)
+    # stepped terrain
+    L.fill(68, 71, 16, GROUND - 1, "#")
+    L.fill(72, 75, 15, GROUND - 1, "#")
+    L.fill(76, 79, 14, GROUND - 1, "#")
+    L.set(77, 13, "G")
+    L.decor(79, "f")
+    # long pond with a log bridge
+    L.pit(82, 89)
+    L.water(82, 89)
+    L.bridge(81, 90, 14)
+    L.set(86, 13, "G")
+    L.coins(83, 11, 6)
+    # blocks + egg
+    L.blocks(95, 13, "?C?")
+    L.set(99, 9, "h")
+    L.blocks(103, 13, "BYB")
+    L.enemy(108)
+    L.enemy(110)
+    L.enemy(112)
+    L.decor(114, "*")
+    L.checkpoints.append((116, GROUND - 1))
+    # ledge staircase with a star brick
+    L.ledge(118, 121, 14)
+    L.ledge(123, 126, 11)
+    L.ledge(128, 131, 8)
+    L.coins(128, 7, 4)
+    L.set(124, 7, "S")
+    L.enemy(120, 13)
+    L.enemy(125)
+    L.enemy(127)
+    # pit jump with coin arc
+    L.pit(134, 136)
+    L.coin_arc(133, 11, 5)
+    # exit pipe of the coin room + more plants
+    warp_out = L.pipe(146, 2)
+    L.set(152, GROUND - 3, "Q")
+    L.set(156, 16, "G")
+    L.set(158, 16, "G")
+    L.blocks(161, 13, "BBMB")
+    L.blocks(162, 9, "B?B")
+    L.enemy(166)
+    # double staircase
+    L.stairs(178, 4, up=True)
+    L.pit(182, 183)
+    L.stairs(184, 4, up=False)
+    # final meadow
+    L.ledge(194, 199, 13)
+    L.coins(194, 12, 6)
+    L.set(197, 12, "G")
+    L.enemy(201)
+    L.enemy(203)
+    L.decor(206, "*")
+    finale(L, 212, 228, 232)
+    L.decor(225, "t")
+    B0, B1 = 244, 283
+    exit_mouth = coin_room(L, B0, B1)
+    L.areas = {"main": (0, MAIN_END - 1, "sunset"), "bonus": (B0, B1, "cave")}
+    L.warps = [
+        {"entry": warp_in, "kind": "down", "arrive": (B0 + 3, 4), "arrive_kind": "drop", "area": "bonus"},
+        {"entry": exit_mouth, "kind": "right", "arrive": warp_out, "arrive_kind": "up", "area": "main"},
+    ]
+    return L
+
+
+# =========================================================================
+# 1-3  "Moonlit Heights" — night, more platforming over water, ledges
+# =========================================================================
+def level_1_3():
+    L = Level("1-3", "MOONLIT HEIGHTS", 292, time=400)
+    MAIN_END = 244
+    L.ground(0, MAIN_END - 1)
+    L.decor(1, "s")
+    L.decor(8, "+")
+    L.blocks(11, 13, "?M?")
+    # ledge crossing over a wide pond
+    L.pit(19, 36)
+    L.water(19, 36)
+    L.ledge(20, 23, 14)
+    L.ledge(26, 28, 12)
+    L.ledge(31, 34, 14)
+    L.coins(26, 11, 3)
+    L.coins(20, 13, 4)
+    L.set(32, 13, "G")
+    # pipes
+    L.set(42, GROUND - 2, "Q")
+    L.pipe(48, 4)
+    L.set(45, 16, "G")
+    L.blocks(52, 13, "B?BB")
+    L.blocks(53, 9, "M")
+    L.enemy(56)
+    L.enemy(58)
+    # long bridge over water with walkers
+    L.pit(63, 74)
+    L.water(63, 74)
+    L.bridge(62, 75, 15)
+    L.enemy(66, 14)
+    L.enemy(71, 14)
+    L.coins(64, 11, 10)
+    # stepped hill with a plant on the plateau
+    L.fill(78, 81, 15, GROUND - 1, "#")
+    L.fill(82, 85, 13, GROUND - 1, "#")
+    L.fill(86, 93, 12, GROUND - 1, "#")
+    L.set(89, 10, "Q")
+    L.blocks(87, 8, "?")
+    L.fill(94, 96, 14, GROUND - 1, "#")
+    L.checkpoints.append((99, GROUND - 1))
+    # brick bridge row and blocks
+    L.blocks(103, 13, "BBB?BBB")
+    L.blocks(106, 9, "C")
+    L.enemy(104, 12)
+    L.enemy(108)
+    L.set(111, 16, "G")
+    L.blocks(116, 13, "BYB")
+    # warp pipe to the coin room
+    warp_in = L.pipe(123, 3, warp=True)
+    L.enemy(127)
+    L.enemy(129)
+    # pits and ledges
+    L.pit(133, 135)
+    L.ledge(137, 140, 14)
+    L.pit(141, 143)
+    L.set(139, 13, "G")
+    L.coin_arc(132, 11, 5)
+    L.coin_arc(140, 10, 5)
+    L.blocks(147, 12, "? ?")
+    L.set(148, 8, "h")
+    L.enemy(152)
+    L.enemy(154)
+    # high ledges with a star
+    L.ledge(158, 161, 13)
+    L.ledge(164, 167, 10)
+    L.set(165, 6, "S")
+    L.coins(158, 12, 4)
+    # exit pipe + plants
+    warp_out = L.pipe(172, 2)
+    L.set(178, GROUND - 3, "Q")
+    L.set(183, 16, "G")
+    L.enemy(186)
+    L.blocks(188, 13, "B?B")
+    # staircase with gap
+    L.stairs(194, 4, up=True)
+    L.pit(198, 200)
+    L.stairs(201, 4, up=False)
+    L.set(208, 16, "G")
+    L.enemy(210)
+    finale(L, 216, 234, 238)
+    B0, B1 = 250, 289
+    exit_mouth = coin_room(L, B0, B1)
+    L.areas = {"main": (0, MAIN_END - 1, "night"), "bonus": (B0, B1, "cave")}
+    L.warps = [
+        {"entry": warp_in, "kind": "down", "arrive": (B0 + 3, 4), "arrive_kind": "drop", "area": "bonus"},
+        {"entry": exit_mouth, "kind": "right", "arrive": warp_out, "arrive_kind": "up", "area": "main"},
+    ]
+    return L
+
+
 # =========================================================================
 # preview rendering (uses the real generated art)
 # =========================================================================
@@ -316,7 +542,7 @@ def render_preview(L, path):
     gfx = os.path.join(ROOT, "assets", "graphics")
     tiles = Image.open(os.path.join(gfx, "tiles.png")).convert("RGBA")
     blocks = Image.open(os.path.join(gfx, "blocks.png")).convert("RGBA")
-    shroom = Image.open(os.path.join(gfx, "enemy_shroom.png")).convert("RGBA").crop((0, 0, 18, 17))
+    shroom = Image.open(os.path.join(gfx, "enemy_shroom.png")).convert("RGBA").crop((0, 0, 26, 18))
     coin = Image.open(os.path.join(gfx, "coin.png")).convert("RGBA").crop((0, 0, 12, 16))
     decor = Image.open(os.path.join(gfx, "decor.png")).convert("RGBA")
     hero = Image.open(os.path.join(gfx, "hero_small.png")).convert("RGBA").crop((0, 0, 20, 20))
@@ -368,13 +594,15 @@ def render_preview(L, path):
                 img.alpha_composite(blk(6), (x, y))
             elif ch == "=":
                 img.alpha_composite(tile(6, 1), (x, y))
+            elif ch == "v":
+                later.append((tile(15 if L.get(c, r - 1) == "v" else 11, 1), x, y))
             elif ch in "?MY":
                 img.alpha_composite(blk(0), (x, y))
             elif ch in "BSCU":
                 img.alpha_composite(blk(5), (x, y))
             elif ch == "h":
                 pass
-            elif ch in "PW":
+            elif ch in "PWQ":
                 img.alpha_composite(tile(0, 2), (x, y))
                 img.alpha_composite(tile(1, 2), (x + T, y))
                 rr = r + 1
@@ -392,8 +620,8 @@ def render_preview(L, path):
                     cc += 1
             elif ch == "o":
                 later.append((coin, x + 2, y))
-            elif ch == "g":
-                later.append((shroom, x - 1, y - 1))
+            elif ch in "gG":
+                later.append((shroom, x - 5, y - 2))
             elif ch in deco_map:
                 d = idx[deco_map[ch]]
                 later.append((d, x + (T - d.size[0]) // 2, y + T - d.size[1]))
@@ -424,3 +652,5 @@ def render_preview(L, path):
 if __name__ == "__main__":
     os.makedirs(LEVEL_DIR, exist_ok=True)
     level_1_1().emit()
+    level_1_2().emit()
+    level_1_3().emit()

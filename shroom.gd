@@ -6,6 +6,8 @@ extends CharacterBody2D
 ##   on-screen"), so a long level doesn't start with every enemy marching
 ## - walks off ledges, turns at walls and when bumping into another enemy
 ## - stomped -> squish; fireball / star / block bump / dragon tongue -> flip
+## - `winged` variant hops along; the first stomp only tears the wings off
+##   (it becomes a plain walker), like the classic winged enemies.
 
 const FRAMES := preload("res://assets/graphics/enemy_shroom.tres")
 const GRAVITY := 1100.0
@@ -13,6 +15,8 @@ const BASE_SPEED := 32.0
 
 var dir := -1
 var speed := BASE_SPEED
+var winged := false
+var _hop_wait := 0.0
 var active := false
 var dead := false
 var sprite: AnimatedSprite2D
@@ -26,8 +30,8 @@ func _ready() -> void:
 	add_to_group("enemies")
 	sprite = AnimatedSprite2D.new()
 	sprite.sprite_frames = FRAMES
-	sprite.offset = Vector2(0, -8.5)
-	sprite.play(&"walk")
+	sprite.offset = Vector2(0, -9)
+	sprite.play(&"fly" if winged else &"walk")
 	add_child(sprite)
 	var sh := CollisionShape2D.new()
 	var r := RectangleShape2D.new()
@@ -59,8 +63,13 @@ func _physics_process(delta: float) -> void:
 		else:
 			return
 	_turn_cd = maxf(_turn_cd - delta, 0.0)
-	velocity.y = minf(velocity.y + GRAVITY * delta, 320.0)
+	velocity.y = minf(velocity.y + GRAVITY * (0.7 if winged else 1.0) * delta, 320.0)
 	velocity.x = dir * speed
+	if winged and is_on_floor():
+		_hop_wait -= delta
+		if _hop_wait <= 0.0:
+			velocity.y = -250.0
+			_hop_wait = 0.35
 	move_and_slide()
 	if is_on_wall():
 		dir = -dir
@@ -89,7 +98,12 @@ func _touch_player(p: Player) -> void:
 	var prev_feet := p.global_position.y - p.velocity.y * get_physics_process_delta_time()
 	var my_top := global_position.y - 12.0
 	if p.velocity.y > 0.0 and prev_feet <= my_top + 4.0:
-		squish()
+		if winged:
+			winged = false
+			sprite.play(&"walk")
+			velocity.y = 0.0
+		else:
+			squish()
 		p.bounce()
 		if Game.instance:
 			Game.instance.award_chain(p, global_position)
@@ -122,7 +136,7 @@ func kill_flip(from_x: float, award := false) -> void:
 	hitbox.set_deferred("monitorable", false)
 	sprite.play(&"flipped")
 	sprite.flip_v = true
-	sprite.offset = Vector2(0, -8.5)
+	sprite.offset = Vector2(0, -9)
 	var hop_dir := 1.0 if global_position.x >= from_x else -1.0
 	_snd("kick")
 	if award and Game.instance:

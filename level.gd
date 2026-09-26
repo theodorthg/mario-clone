@@ -24,6 +24,8 @@ const BRIDGE_L := Vector2i(5, 1)
 const BRIDGE_M := Vector2i(6, 1)
 const BRIDGE_R := Vector2i(7, 1)
 const CAVE_BRICK := Vector2i(10, 1)
+const WATER_TOP := Vector2i(11, 1)    # 4-frame tile animation (11..14)
+const WATER := Vector2i(15, 1)
 const PIPE_TOP_L := Vector2i(0, 2)
 const PIPE_TOP_R := Vector2i(1, 2)
 const PIPE_BODY_L := Vector2i(2, 2)
@@ -41,10 +43,12 @@ var data: Script
 var grid: PackedStringArray
 var cols := 0
 var tiles: TileMapLayer
+var water: TileMapLayer
 var start_pos := Vector2.ZERO
 var checkpoints: Array[Vector2] = []
 var flagpole: Flagpole
 var castle_door := Vector2.ZERO
+var castle_flag: Sprite2D
 var areas := {}                 # name -> {"rect": Rect2, "theme": String}
 var warps: Array = []           # [{zone: WarpZone, ...}]
 var decor_tex: Texture2D
@@ -100,7 +104,16 @@ static func tileset() -> TileSet:
 	for y in size.y:
 		for x in size.x:
 			var coords := Vector2i(x, y)
+			if y == ROW_MISC and x > WATER_TOP.x and x < WATER.x:
+				continue      # animation frames of WATER_TOP, not tiles of their own
 			src.create_tile(coords)
+			if coords == WATER_TOP:
+				src.set_tile_animation_columns(coords, 4)
+				src.set_tile_animation_frames_count(coords, 4)
+				for f in 4:
+					src.set_tile_animation_frame_duration(coords, f, 0.18)
+			if coords == WATER_TOP or coords == WATER:
+				continue      # water: no collision (falling in = pit death)
 			var td := src.get_tile_data(coords, 0)
 			var one_way := y == ROW_MISC and x >= BRIDGE_L.x and x <= BRIDGE_R.x
 			td.add_collision_polygon(0)
@@ -116,6 +129,13 @@ func _build_tiles() -> void:
 	tiles.tile_set = tileset()
 	tiles.z_index = 0
 	add_child(tiles)
+	# water sits in FRONT of actors (you sink behind the surface), see-through
+	water = TileMapLayer.new()
+	water.name = "Water"
+	water.tile_set = tiles.tile_set
+	water.z_index = 2
+	water.collision_enabled = false
+	add_child(water)
 	for r in ROWS:
 		for c in cols:
 			var ch := grid[r][c]
@@ -132,7 +152,9 @@ func _build_tiles() -> void:
 					var l := at(c - 1, r) == "="
 					var rr := at(c + 1, r) == "="
 					tiles.set_cell(Vector2i(c, r), 0, BRIDGE_M if (l and rr) else (BRIDGE_L if rr else BRIDGE_R))
-				"P", "W":
+				"v":
+					water.set_cell(Vector2i(c, r), 0, WATER if at(c, r - 1) == "v" else WATER_TOP)
+				"P", "W", "Q":
 					_place_pipe(c, r)
 				">":
 					_place_side_pipe(c, r)
@@ -165,7 +187,7 @@ func _ground_tile(c: int, r: int, ch: String, row: int) -> Vector2i:
 	return Vector2i(m, row)
 
 func _pipe_free(ch: String) -> bool:
-	return ch in [".", "o", "g"] or DECOR.has(ch)
+	return ch in [".", "o", "g", "G"] or DECOR.has(ch)
 
 func _place_pipe(c: int, r: int) -> void:
 	tiles.set_cell(Vector2i(c, r), 0, PIPE_TOP_L)
@@ -218,10 +240,16 @@ func _build_entities() -> void:
 					var coin := Coin.new()
 					coin.position = cell_feet(c, r)
 					add_child(coin)
-				"g":
+				"g", "G":
 					var e := Shroom.new()
+					e.winged = ch == "G"
 					e.position = cell_feet(c, r)
 					add_child(e)
+				"Q":
+					var ch_plant := Chomper.new()
+					ch_plant.pipe_top = Vector2((c + 1) * T, r * T)
+					ch_plant.z_index = -1
+					add_child(ch_plant)
 				_:
 					if DECOR.has(ch):
 						var name: String = DECOR[ch]
@@ -268,6 +296,9 @@ func _build_meta() -> void:
 	var cs := _add_decor(self, "castle", Vector2(data.CASTLE.x * T + 40, (data.CASTLE.y + 1) * T))
 	cs.z_index = -1
 	castle_door = Vector2(data.CASTLE.x * T + 40, (data.CASTLE.y + 1) * T)
+	# flag hidden inside the tower top, raised by raise_castle_flag()
+	castle_flag = _add_decor(self, "castle_flag", Vector2(data.CASTLE.x * T + 46, cs.position.y + 22))
+	castle_flag.z_index = -2
 	for w in data.WARPS:
 		var z := WarpZone.new()
 		z.kind = w["kind"]
@@ -279,6 +310,11 @@ func _build_meta() -> void:
 		z.warp = w
 		add_child(z)
 		warps.append(w)
+
+func raise_castle_flag() -> void:
+	if castle_flag:
+		var tw := create_tween()
+		tw.tween_property(castle_flag, "position:y", castle_flag.position.y - 15.0, 0.8)
 
 func arrive_position(w: Dictionary) -> Vector2:
 	var a: Vector2i = w["arrive"]

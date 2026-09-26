@@ -63,9 +63,13 @@ func _ready() -> void:
 	_tongue_area.collision_layer = 0
 	_tongue_area.collision_mask = 4 | 8
 	var tsh := CollisionShape2D.new()
+	# Tall hitbox: the tongue is drawn at mouth height, but must also catch
+	# enemies standing on the same ground as the dragon (they are only ~14 px
+	# tall, the mouth sits ~20 px above the feet).
 	var tr := RectangleShape2D.new()
-	tr.size = Vector2(10, 10)
+	tr.size = Vector2(12, 28)
 	tsh.shape = tr
+	tsh.position = Vector2(0, 9)
 	_tongue_area.add_child(tsh)
 	_tongue_area.monitoring = false
 	_tongue.add_child(_tongue_area)
@@ -202,11 +206,11 @@ func _update_tongue(delta: float) -> void:
 	if not _tongue_caught and _tongue_area.monitoring:
 		for a in _tongue_area.get_overlapping_areas():
 			var e := a.get_parent()
-			if e is Shroom and not e.dead:
+			if (e is Shroom or e is Chomper) and not e.dead:
 				_eat(e)
 				break
 
-func _eat(e: Shroom) -> void:
+func _eat(e: Node2D) -> void:
 	_tongue_caught = true
 	e.dead = true
 	e.remove_from_group("enemies")

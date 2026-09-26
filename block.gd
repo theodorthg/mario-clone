@@ -92,6 +92,12 @@ func bump(player: Player) -> void:
 			_set_used()
 		"egg":
 			_snd("sprout")
+			if player.riding != null or not get_tree().get_nodes_in_group("dino").is_empty():
+				# already have a dragon: the egg block pays out an extra life instead
+				_spawn_item(PowerUp.Kind.ONEUP)
+				_set_used()
+				_bounce_anim()
+				return
 			var egg := Egg.new()
 			egg.position = position + Vector2(0, 8)
 			egg.z_index = -1

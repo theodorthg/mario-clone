@@ -30,7 +30,7 @@ davon ist aus Nintendo-Spielen übernommen (Figuren nur „im Stil von“).
   `position_smoothing`): horizontal kleine Totzone (±12 px), vertikal
   „setzt sich“ auf die Bodenlinie und folgt nur größeren Höhenwechseln;
   Grenzen = aktueller Bereich („main“/„bonus“) aus den Level-Daten.
-- **Touch-Steuerung = virtuelle Buttons** (◀ ▶ unten links, B/A unten rechts,
+- **Touch-Steuerung = virtuelle Buttons** (◀ ▼ ▶ unten links, B/A unten rechts,
   `touch_controls.gd`, `TouchScreenButton` mit `action`-Bindung → Multitouch
   gratis). Abweichung von globaler Vorgabe 4/5 (Swipe + Touch-Elemente nur
   oben): ein Plattformer braucht gehaltene Richtungen und zwei Daumen
@@ -98,6 +98,15 @@ der Welt; Spieler-/Gegner-Kontakt läuft über die Hitbox-`Area2D` des Gegners.
   8 rechts), wählt Innen-Erde-Varianten deterministisch per Zell-Hash.
   Röhren wachsen vom `P`/`W`-Kopf nach unten bis zum nächsten festen Feld.
 
+### Themen / Stimmungen (`backdrop.gd::THEMES`)
+`grass` (Tag), `sunset` (Abend: violett-orange Himmel, warm getönte
+Ebenen), `night` (Nacht: Sterne + Mond im Himmel-Shader, blau getönte
+Ebenen), `cave` (Bonusraum). Jede Ebene bekommt ihren eigenen Farbton
+(`self_modulate`), die Welt (Tiles + Figuren) einen `CanvasModulate`. Die
+Parallax-Ebenen liegen deshalb in einem eigenen `CanvasLayer`
+(`follow_viewport_enabled`), sonst würde der Welt-Ton sie doppelt abdunkeln.
+Thema pro Bereich in `AREAS` des Levels.
+
 ### 1-1 „Green Hills“ (312 Spalten, davon 262 Hauptlevel)
 Start-Wiese mit ?-Blöcken → Röhrenfeld (Warp-Röhre Spalte 53 → Münzhöhle,
 Rückkehr aus Röhre Spalte 203) → Hügel mit verstecktem 1-UP → Grube mit
@@ -105,6 +114,24 @@ Münzbogen → Ziegelreihen (Mehrfachmünz-Ziegel, Stern-Ziegel) → Dracheneier
 Block (Spalte 129) + lange Wiese mit Gegnergruppen, Checkpoint (142),
 Teich mit Holzbrücke → Doppeltreppe mit Lücke → Zieltreppe (8 hoch),
 Fahnenstange (252), Burg (256).
+
+### 1-2 „Sunset Meadows“ (Abend) und 1-3 „Moonlit Heights“ (Nacht)
+1-2: Hügel mit Schnapp-Pflanze, Teiche mit Wasser + Holzbrücke,
+geflügelte Pilzlinge, Stufengelände, Ei-Block (gibt 1-UP, wenn man schon
+einen Drachen hat), Checkpoint, Plattform-Treppe mit Stern, Münzhöhle.
+1-3: Plattform-Überquerung eines breiten Teichs, lange Brücke über Wasser,
+Stufenhügel mit Pflanze auf dem Plateau, Ziegelbrücke, Münzhöhle,
+hohe Plattformen mit Stern, Doppeltreppe. Nach 1-3: „THANK YOU!“ +
+Siegerbildschirm mit Hall-of-Fame-Eintrag.
+
+### Gegner
+- `shroom.gd`: Pilzling (Stampfen = platt, sonst Umkippen); `winged`-
+  Variante (`G`) hüpft, erster Stampfer reißt nur die Flügel ab.
+- `chomper.gd`: Schnapp-Pflanze in Röhren (`Q`), hinter den Röhren-Tiles
+  (z −1), bleibt unten, solange der Spieler < 26 px neben der Röhre steht;
+  nur Feuerball/Stern/Drachenzunge besiegen sie.
+- Wasser (`v`): eigener `TileMapLayer` VOR den Figuren (z 2), animierte
+  Oberfläche als Tile-Animation (4 Frames), keine Kollision (= Grube).
 
 ## Punkte
 
@@ -173,10 +200,22 @@ Nintendo-Themen. Loops werden mit umgeklapptem Nachhall gerendert (nahtlos);
   auf dem Testgerät gibt es eine fremde `com.thg.de.thg.mario`-App).
 - Web-Testserver: `.claude/launch.json` → Port **8096**.
 
+## Hilfeseiten
+
+`tools/gen_help.py` rendert 5 bebilderte Seiten (Steuerung Tastatur +
+Gamepad inkl. D-Pad/A/B/X/Y/Start/Select und Mute-/Pause-Knopf, Touch,
+Blöcke & Items, Drache, Ziel & Punkte) mit den echten Sprites und der
+Pixelschrift, 1:1 in Design-Pixeln (340×170) → im Menü mit NEAREST-Filter.
+Kein SVG/Inkscape nötig (Abweichung von Centipede, bewusst: so sehen die
+Seiten aus wie das Spiel selbst).
+
+## Touch-Tasten
+
+◀ ▼ ▶ unten links (▼ = ducken, Röhre, mit A vom Drachen absteigen),
+B / A unten rechts. Der ▼-Knopf kam in v0.3 dazu — ohne ihn waren Röhren,
+Ducken und Absteigen auf Touch unmöglich.
+
 ## Offen / nächste Schritte
 
-- Illustrierte Hilfeseiten (SVG → PNG, inkl. D-Pad/Buttons und Mute-Button,
-  globale Vorgabe 15) — aktuell Text-Fallback in `menus.gd::HELP_FALLBACK`.
-- Weitere Level (1-2, 1-3 …), weitere Gegnertypen.
 - Referenz-Implementierung der Screenshot-Taste (`screenshot_capture.gd`)
   in der globalen CLAUDE.md Punkt 20 nachtragen.

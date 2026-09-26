@@ -8,7 +8,7 @@ level.gd (see TILE_* constants there; keep the two in sync):
   row 0  grass ground, variant = neighbour mask (1 up-open, 2 down-open,
          4 left-open, 8 right-open)
   row 1  interior dirt variants 0..3, hard block, log bridge L/M/R,
-         cave interior 0..1
+         cave interior 0..1, cave brick, water surface x4 (animation), water body
   row 2  pipe: top L/R, body L/R, side-mouth top/bottom, side-body top/bottom
   row 3  cave (bonus room) ground, variant = neighbour mask
 blocks.png  ?-block x4, used, brick, cave brick (single 16x16 cells)
@@ -514,6 +514,39 @@ def checkpoint(flag_col):
     return outline(parse(CHECKPOINT, pal), color=OUTLINE, selective=False)
 
 
+WATER_PAL = {"f": "#f4fbff", "l": "#a8dcff", "w": "#4a9ae8", "m": "#3a82d6", "d": "#2a64b8"}
+
+
+def water_surface(frame):
+    """16x16, 4 animation frames: a travelling wave crest + foam on top."""
+    img = Image.new("RGBA", (T, T), TRANSPARENT)
+    px = img.load()
+    import math as _m
+    for x in range(T):
+        crest = 2 + round(1.2 * _m.sin(2 * _m.pi * (x + frame * 4) / T))
+        for y in range(crest, T):
+            d = y - crest
+            ch = "f" if d == 0 else ("l" if d == 1 else ("w" if d < 7 else "m"))
+            if d > 2 and (x + y * 3 + frame * 5) % 13 == 0:
+                ch = "l"
+            c = hex_rgba(WATER_PAL[ch])
+            px[x, y] = (c[0], c[1], c[2], 225)
+    return img
+
+
+def water_body():
+    img = Image.new("RGBA", (T, T), TRANSPARENT)
+    px = img.load()
+    for y in range(T):
+        for x in range(T):
+            ch = "m" if y < 10 else "d"
+            if (x * 5 + y * 7) % 23 == 0:
+                ch = "w"
+            c = hex_rgba(WATER_PAL[ch])
+            px[x, y] = (c[0], c[1], c[2], 225)
+    return img
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     atlas = Image.new("RGBA", (16 * T, 4 * T), TRANSPARENT)
@@ -529,6 +562,9 @@ def main():
     atlas.paste(dirt_variant(0, CAVE), (8 * T, T))
     atlas.paste(dirt_variant(1, CAVE), (9 * T, T))
     atlas.paste(parse(BRICK, CAVE_BRICK_PAL), (10 * T, T))
+    for f in range(4):                       # water surface animation 11..14
+        atlas.paste(water_surface(f), ((11 + f) * T, T))
+    atlas.paste(water_body(), (15 * T, T))
     lip, body, side_mouth, side_body = pipe_tiles()
     atlas.paste(lip.crop((0, 0, 16, 16)), (0, 2 * T))
     atlas.paste(lip.crop((16, 0, 32, 16)), (T, 2 * T))
