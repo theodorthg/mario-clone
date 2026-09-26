@@ -1,56 +1,56 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3 uid="uid://54fjpfehs5a4"]
 
-[ext_resource type="PackedScene" path="res://player.tscn" id="1_player"]
-[ext_resource type="PackedScene" path="res://ground_piece.tscn" id="2_ground"]
-[ext_resource type="PackedScene" path="res://platform_piece.tscn" id="3_platform"]
+[ext_resource type="PackedScene" path="res://ground_piece.tscn" id="1_6uqi0"]
+[ext_resource type="PackedScene" path="res://platform_piece.tscn" id="2_ppyta"]
+[ext_resource type="PackedScene" path="res://player.tscn" id="3_ykrsh"]
 
-[node name="Main" type="Node2D"]
+[node name="Main" type="Node2D" unique_id=1882436348]
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="ColorRect" parent="." unique_id=756552322]
 offset_right = 426.0
 offset_bottom = 240.0
 color = Color(0.42, 0.68, 0.93, 1)
 
-[node name="Camera2D" type="Camera2D" parent="."]
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1046163128]
 position = Vector2(213, 120)
 
-[node name="Ground" type="Node2D" parent="."]
+[node name="Ground" type="Node2D" parent="." unique_id=1593487480]
 
-[node name="Ground0" parent="Ground" instance=ExtResource("2_ground")]
+[node name="Ground0" parent="Ground" unique_id=1487091251 instance=ExtResource("1_6uqi0")]
 position = Vector2(20, 222)
 
-[node name="Ground1" parent="Ground" instance=ExtResource("2_ground")]
+[node name="Ground1" parent="Ground" unique_id=277035090 instance=ExtResource("1_6uqi0")]
 position = Vector2(60, 222)
 
-[node name="Ground2" parent="Ground" instance=ExtResource("2_ground")]
+[node name="Ground2" parent="Ground" unique_id=1724540815 instance=ExtResource("1_6uqi0")]
 position = Vector2(100, 222)
 
-[node name="Ground3" parent="Ground" instance=ExtResource("2_ground")]
+[node name="Ground3" parent="Ground" unique_id=341545863 instance=ExtResource("1_6uqi0")]
 position = Vector2(140, 222)
 
-[node name="Ground4" parent="Ground" instance=ExtResource("2_ground")]
+[node name="Ground4" parent="Ground" unique_id=201723020 instance=ExtResource("1_6uqi0")]
 position = Vector2(180, 222)
 
-[node name="Ground5" parent="Ground" instance=ExtResource("2_ground")]
+[node name="Ground5" parent="Ground" unique_id=733503838 instance=ExtResource("1_6uqi0")]
 position = Vector2(220, 222)
 
-[node name="Ground6" parent="Ground" instance=ExtResource("2_ground")]
+[node name="Ground6" parent="Ground" unique_id=971113566 instance=ExtResource("1_6uqi0")]
 position = Vector2(260, 222)
 
-[node name="Ground7" parent="Ground" instance=ExtResource("2_ground")]
+[node name="Ground7" parent="Ground" unique_id=1149382719 instance=ExtResource("1_6uqi0")]
 position = Vector2(300, 222)
 
-[node name="Ground8" parent="Ground" instance=ExtResource("2_ground")]
+[node name="Ground8" parent="Ground" unique_id=1782360710 instance=ExtResource("1_6uqi0")]
 position = Vector2(340, 222)
 
-[node name="Ground9" parent="Ground" instance=ExtResource("2_ground")]
+[node name="Ground9" parent="Ground" unique_id=1277066604 instance=ExtResource("1_6uqi0")]
 position = Vector2(380, 222)
 
-[node name="Ground10" parent="Ground" instance=ExtResource("2_ground")]
+[node name="Ground10" parent="Ground" unique_id=196360966 instance=ExtResource("1_6uqi0")]
 position = Vector2(420, 222)
 
-[node name="Platform" parent="." instance=ExtResource("3_platform")]
+[node name="Platform" parent="." unique_id=1021002382 instance=ExtResource("2_ppyta")]
 position = Vector2(220, 148)
 
-[node name="Player" parent="." instance=ExtResource("1_player")]
+[node name="Player" parent="." unique_id=102029173 instance=ExtResource("3_ykrsh")]
 position = Vector2(60, 160)
