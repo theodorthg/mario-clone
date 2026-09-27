@@ -15,7 +15,7 @@ signal restart_pressed
 signal quit_to_menu_pressed
 signal settings_changed(cfg: Dictionary)
 
-enum Screen { NONE, START, SETTINGS, SOUND, PAUSE, GAMEOVER, HELP, HIGHSCORES, VICTORY, WORLDS, CONTROLS, LEVELS }
+enum Screen { NONE, START, SETTINGS, SOUND, PAUSE, GAMEOVER, HELP, HIGHSCORES, VICTORY, CONTROLS, LEVELS }
 
 const PANEL_W := 250.0
 const BTN_H := 22.0
@@ -29,6 +29,7 @@ const HELP_DIR := "res://assets/graphics/help/"
 const HELP_DESKTOP := [
 	{"file": "controls", "h": "Controls"},
 	{"file": "touch", "h": "Touch Controls"},
+	{"file": "map", "h": "World Map"},
 	{"file": "items", "h": "Blocks & Items"},
 	{"file": "dragon", "h": "The Dragon"},
 	{"file": "goal", "h": "Goal & Points"},
@@ -39,6 +40,7 @@ const HELP_DESKTOP := [
 ]
 const HELP_TOUCH := [
 	{"file": "touch", "h": "Touch Controls"},
+	{"file": "map", "h": "World Map"},
 	{"file": "items", "h": "Blocks & Items"},
 	{"file": "dragon", "h": "The Dragon"},
 	{"file": "goal", "h": "Goal & Points"},
@@ -56,6 +58,7 @@ const HELP_FALLBACK := {
 	"castles": "Fire bars spin, lava bubbles leap: time your jumps.\nThe boss ends every world: stomp its head 3-5 times\n(5 fireballs = 1 hit). A fire flower waits before\nthe arena; no fire left? each hit drops one. A win = 1UP.\nLevel select: on the title press B Y X A, type LEVELS\nor tap the title 5 times. 'Boss' starts at the boss arena\n(no high score for unreached courses).",
 	"sky": "Falling slabs shake, then drop: jump off in time.\nTipping planks tip toward your side: keep moving.\nJump up through the clouds.\nThe cloud imp throws spikies: stomp it from up high.\nSpikies can't be stomped: fire, shells or a star.\nGulls glide at you. The storm boss's lightning flashes first.",
 	"sea": "Underwater you swim: every jump press is one stroke up.\nThe side pipe at the end leads to the beach.\nFish can't be stomped while swimming: dodge or use fire.\nJellyfish pulse toward you, crabs can be stomped.\nSea urchins can't be beaten: swim around them.",
+	"map": "Play opens the world map. Walk with left / right,\nA or Space plays the course you stand on.\nTouch: tap a course to walk there, tap it again to play.\nA check = cleared, a lock = not reached yet.\nAfter a course the road to the next one opens.",
 	"goal": "Stomp enemies from above.\nCoins: points, 100 coins = extra life.\nPipes marked by coins lead to bonus rooms.\nGrab the flag pole as high as you can!\nExtra lives for points: Settings > 1-UP points.",
 }
 
@@ -136,8 +139,6 @@ func _rebuild() -> void:
 			_build_help()
 		Screen.HIGHSCORES:
 			_build_highscores()
-		Screen.WORLDS:
-			_build_worlds()
 		Screen.CONTROLS:
 			_build_controls()
 		Screen.LEVELS:
@@ -294,11 +295,8 @@ func _build_start() -> void:
 	_vbox.add_child(sub)
 	_vbox.add_child(_spacer(2))
 	_vbox.add_child(_button("Play", func():
-		if GameSettings.reached_world() > 1:
-			_show_screen(Screen.WORLDS)
-		else:
-			hide_all()
-			play_pressed.emit(0)))
+		hide_all()
+		play_pressed.emit(-1)))           # -1: the world map (v1.1)
 	_vbox.add_child(_button("Settings", func():
 		_return_screen = Screen.START
 		_show_screen(Screen.SETTINGS)))
@@ -519,21 +517,6 @@ func _build_levels() -> void:
 	var h := _hint("* = castle, Boss = start at the boss arena.\nOrange = not reached yet: no high score entry for that run.")
 	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_vbox.add_child(h)
-	_vbox.add_child(_button("Back", func(): _show_screen(Screen.START), true))
-
-# ----------------------------------------------------------- world select --
-func _build_worlds() -> void:
-	_vbox.add_child(_heading("SELECT WORLD"))
-	var reached := GameSettings.reached_world()
-	for w in range(1, Game.WORLD_NAMES.size() + 1):
-		var open := w <= reached
-		var idx := Game.first_level_of_world(w)
-		var b := _button("World %d  %s" % [w, Game.WORLD_NAMES[w - 1] if open else "???"], func():
-			hide_all()
-			play_pressed.emit(idx))
-		b.disabled = not open
-		_vbox.add_child(b)
-	_vbox.add_child(_spacer(2))
 	_vbox.add_child(_button("Back", func(): _show_screen(Screen.START), true))
 
 # ------------------------------------------------------------- highscores --

@@ -26,6 +26,7 @@ const SOUNDS := {
 	"music_castle": ["Music: Castle", 55, -4.0],
 	"music_sky": ["Music: Cloud Nine", 55, -4.0],
 	"music_sea": ["Music: Coral Waltz", 55, -4.0],
+	"music_map": ["Music: World Map", 55, -4.0],
 	"jingle_world": ["Jingle: World Clear", 70, -4.0],
 	"jingle_clear": ["Jingle: Course clear", 60, -3.0],
 	"jingle_death": ["Jingle: Lost a life", 60, -3.0],
@@ -58,14 +59,14 @@ const SOUNDS := {
 }
 const ORDER := [
 	"music_overworld", "music_cave", "music_desert", "music_snow", "music_sky", "music_sea", "music_castle",
-	"music_star", "music_title", "jingle_world",
+	"music_star", "music_title", "music_map", "jingle_world",
 	"jingle_clear", "jingle_death", "jingle_gameover",
 	"jump", "jump_big", "jump2", "swim", "stomp", "kick", "bump", "break", "coin", "sprout",
 	"powerup", "powerdown", "oneup", "fireball", "pipe", "flagpole", "tick",
 	"skid", "hatch", "dino", "tongue", "gulp", "checkpoint", "hurry", "pause",
 ]
 const MUSIC_KEYS := ["music_overworld", "music_cave", "music_desert", "music_snow", "music_sky", "music_sea",
-	"music_castle", "music_star", "music_title"]
+	"music_castle", "music_star", "music_title", "music_map"]
 
 var _muted := false
 var _players := {}

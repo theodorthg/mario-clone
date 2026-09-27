@@ -147,6 +147,12 @@ const THEMES := {
 		"world": Color(1.0, 0.86, 0.78),
 		"fx": "sand",
 	},
+	"map": {
+		# world map (v1.1): the map picture covers the view — no parallax, no fx
+		"sky": [Color("3b6bd6"), Color("73acf0"), Color("d8eefa"), 0.55, 0.0, 0.0],
+		"layers": [],
+		"world": Color.WHITE,
+	},
 	"sky": {
 		# above the clouds: deep blue, sun high up, islands + a sea of clouds
 		"sky": [Color("2a70dc"), Color("78c0f6"), Color("e6f4ff"), 0.55, 0.0, 0.0, 1.0, Vector2(0.78, 0.16)],

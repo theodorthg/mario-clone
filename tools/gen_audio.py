@@ -500,6 +500,28 @@ def sea():
     return s.render(loop=True)
 
 
+def world_map():
+    """'Adventure Map' — cheerful C major march, 116 bpm, 8 bars: bouncy
+    lead, off-beat chord stabs, walking bass (world map, v1.1)."""
+    s = Song(116)
+    melody = bars(
+        "C5:2 E5:2 G5:4 E5:2 G5:2 C6:4", "A5:2 G5:2 E5:2 C5:2 D5:8",
+        "E5:2 G5:2 A5:4 G5:2 E5:2 C5:4", "D5:2 E5:2 F5:2 D5:2 C5:8",
+        "F5:4 A5:4 G5:4 E5:4", "F5:2 E5:2 D5:2 C5:2 D5:8",
+        "E5:4 G5:4 C6:4 B5:2 A5:2", "G5:2 F5:2 E5:2 D5:2 C5:8",
+    )
+    prog = ["C", "F", "Am", "G", "F", "G", "C", "C"]
+    roots = {"C": ("C3", "G2"), "F": ("F2", "C3"), "Am": ("A2", "E2"), "G": ("G2", "D3")}
+    third = {"C": "E4", "F": "A4", "Am": "C5", "G": "B4"}
+    bass = " ".join(" ".join(["%s:2 %s:2" % roots[c]] * 4) for c in prog)
+    stabs = " ".join(" ".join(["r:2 %s:2" % third[c]] * 4) for c in prog)
+    s.track("pulse", melody, 0.3, duty=0.5, legato=0.8, vib=0.15, d=0.06, s=0.6, echo=0.2)
+    s.track("pulse", stabs, 0.1, duty=0.25, legato=0.5, d=0.03, s=0.4)
+    s.track("tri", bass, 0.5, legato=0.7, s=0.9)
+    s.drums(("K...S...K.K.S..." * 8), 0.18)
+    return s.render(loop=True)
+
+
 def castle():
     """'Castle' — tense D minor ostinato, 140 bpm, 8 bars: driving triangle
     bass in 8ths, stabbing chords, a chromatic lead."""
@@ -570,6 +592,7 @@ def music():
         "music_castle": castle,
         "music_sky": sky,
         "music_sea": sea,
+        "music_map": world_map,
         "jingle_world": jingle_world,
         "jingle_clear": jingle_clear,
         "jingle_death": jingle_death,

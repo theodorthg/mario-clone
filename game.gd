@@ -1,8 +1,11 @@
 class_name Game
 extends Node2D
 
-## Top-level conductor: title/attract screen, "WORLD 1-1" card, playing,
-## death, pipe warps, flag-pole finish with time bonus, game over.
+## Top-level conductor: title/attract screen, world map (v1.1), "WORLD 1-1"
+## card, playing, death, pipe warps, flag-pole finish with time bonus, game
+## over. A run: Play -> map -> course -> (clear) -> map -> ... Score, lives
+## and power carry across the map; the level select cheat / "Boss" starts a
+## course directly and joins the same flow afterwards.
 ## Entities talk to it through Game.instance (add_score, add_coin,
 ## award_chain, collect_powerup, change_power, player_died, enter_warp,
 ## flag_reached, set_checkpoint, is_near_view, enemy_speed_mul).
@@ -11,13 +14,14 @@ extends Node2D
 ## process_mode to DISABLED; this node itself always processes and drives
 ## those short sequences with its own tweens.
 
-enum State { TITLE, INTRO, PLAYING, TRANSITION, DYING, CLEAR, GAMEOVER }
+enum State { TITLE, INTRO, PLAYING, TRANSITION, DYING, CLEAR, GAMEOVER, MAP }
 
 const THEME_MUSIC := {"cave": "music_cave", "cavern": "music_cave", "desert": "music_desert",
 	"desert_dusk": "music_desert", "snow": "music_snow", "snow_night": "music_snow", "fortress": "music_castle",
 	"sky": "music_sky", "sky_dusk": "music_sky", "sea": "music_sea", "sea_deep": "music_sea",
 	"fortress_magma": "music_castle", "fortress_sun": "music_castle", "fortress_ice": "music_castle",
 	"fortress_storm": "music_castle", "fortress_tide": "music_castle"}
+const MAP_THEME := "map"
 const WORLD_NAMES := ["Meadows", "Caverns", "Desert", "Snow", "Sky", "Sea"]
 const LEVELS := [
 	preload("res://levels/level_1_1.gd"),
@@ -83,6 +87,10 @@ var _tally_step := 1
 ## true once the level select cheat started a course not reached yet:
 ## the whole run then gets no high score entry and saves no progress
 var cheated := false
+var world_map: WorldMap
+## furthest course this run may enter from the map (saved progress, or
+## further when the level select started a course beyond it)
+var _run_reach := 0
 var splash: Splash
 
 func _ready() -> void:
@@ -100,9 +108,17 @@ func _ready() -> void:
 	var snd := get_node_or_null("/root/Snd")
 	if snd:
 		snd.mute_changed.connect(hud.set_muted)     # also when muted in the Sound menu
-	menus.play_pressed.connect(func(i: int): _start_game(i, menus.take_cheat(), menus.take_boss()))
+	menus.play_pressed.connect(func(i: int):
+		if i < 0:
+			start_map_run()           # "Play": the world map
+		else:
+			_start_game(i, menus.take_cheat(), menus.take_boss()))
 	menus.resume_pressed.connect(_resume)
-	menus.restart_pressed.connect(func(): _start_game(first_level_of_world(world_of(level_index)), cheated))
+	menus.restart_pressed.connect(func():
+		# "Play Again": a fresh run, back on the map where the last one ended
+		_new_run(cheated)
+		_run_reach = maxi(_run_reach, level_index)
+		_show_map(level_index))
 	menus.quit_to_menu_pressed.connect(_to_title)
 	menus.settings_changed.connect(func(c):
 		cfg = c
@@ -142,7 +158,7 @@ func _apply_display_mode() -> void:
 func apply_touch_layout() -> void:
 	var show := GameSettings.touch_buttons_visible(int(cfg.get("touch_buttons", 0)), _touch,
 		Input.get_connected_joypads().size())
-	touch.visible = show and state == State.PLAYING and not _paused
+	touch.visible = show and state in [State.PLAYING, State.MAP] and not _paused
 	# help: touch-only pages unless a gamepad is there (RG552 has both)
 	menus.set_touch_context(_touch and Input.get_connected_joypads().is_empty())
 
@@ -151,7 +167,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if not _touch:
 			_touch = true
 			get_tree().call_group("touch_layout_listeners", "apply_touch_layout")
-	if event.is_action_pressed("pause") and state in [State.PLAYING, State.TRANSITION, State.INTRO] \
+	if event.is_action_pressed("pause") and state in [State.PLAYING, State.TRANSITION, State.INTRO, State.MAP] \
 			and not menus.is_open():
 		_toggle_pause()
 		get_viewport().set_input_as_handled()
@@ -167,6 +183,8 @@ func _to_title() -> void:
 	hud.hide_card()
 	hud.visible = false
 	touch.visible = false
+	if world_map:
+		world_map.hide_map()
 	_build_level(0, false)
 	_snd_call("play_music", null, ["music_title"])
 	menus.show_start()
@@ -200,21 +218,84 @@ static func first_level_of_world(w: int) -> int:
 ## at_boss (level select "Boss"): spawn right in front of the castle's boss
 ## arena — dying there respawns at the same spot (it acts as the checkpoint).
 func _start_game(start := 0, cheat := false, at_boss := false) -> void:
+	_new_run(cheat)
+	level_index = clampi(start, 0, LEVELS.size() - 1)
+	_run_reach = maxi(_run_reach, level_index)
+	var arena = LEVELS[level_index].get_script_constant_map().get("ARENA")
+	if at_boss and arena != null:
+		checkpoint_pos = Vector2((arena.x - 3) * Level.T + Level.T * 0.5, (Level.ROWS - 3) * Level.T)
+	_begin_level()
+
+## Reset everything a run carries (score, coins, lives, power, dragon).
+func _new_run(cheat := false) -> void:
 	cheated = cheat
 	cfg = GameSettings.load_all()
 	score = 0
 	coins = 0
 	lives = int(cfg.lives)
-	level_index = clampi(start, 0, LEVELS.size() - 1)
 	power = Player.Power.BIG if cfg.start_big else Player.Power.SMALL
 	has_dino = false
 	_dino_parked = false
 	checkpoint_pos = null
-	var arena = LEVELS[level_index].get_script_constant_map().get("ARENA")
-	if at_boss and arena != null:
-		checkpoint_pos = Vector2((arena.x - 3) * Level.T + Level.T * 0.5, (Level.ROWS - 3) * Level.T)
 	_paused = false
 	get_tree().paused = false
+	_run_reach = reached_level_index()
+
+## Title "Play": a new run on the world map, the hero on the furthest
+## course reached so far.
+func start_map_run() -> void:
+	_new_run(false)
+	_show_map(_run_reach)
+
+## Switch to the world map, hero on course `at_idx`. With `reveal_to` the
+## road to that (newly unlocked) course draws itself and the hero walks on.
+func _show_map(at_idx: int, reveal_to := -1) -> void:
+	state = State.MAP
+	_paused = false
+	get_tree().paused = false
+	_snd_call("stop_all")
+	if level:
+		world.remove_child(level)
+		level.queue_free()
+		level = null
+	player = null
+	for n in get_tree().get_nodes_in_group("fireball"):
+		n.queue_free()
+	_set_world_active(true)
+	backdrop.set_theme(MAP_THEME)
+	hud.hide_card()
+	hud.set_boss(-1, 0)
+	hud.visible = true
+	hud.set_buttons_visible(true)
+	if world_map == null:
+		world_map = WorldMap.new()
+		world_map.name = "WorldMap"
+		world.add_child(world_map)
+		world_map.course_chosen.connect(_enter_course)
+		world_map.node_changed.connect(func(i: int):
+			level_index = i
+			_update_hud())
+	world_map.setup(reveal_to - 1 if reveal_to >= 0 else _run_reach, at_idx, power)
+	if reveal_to >= 0:
+		world_map.reveal(reveal_to)
+	level_index = world_map.at
+	_update_hud()
+	hud.set_time(-1)
+	camera.limit_left = 0
+	camera.limit_right = WorldMapData.SIZE.x
+	camera.limit_top = 0
+	camera.limit_bottom = WorldMapData.SIZE.y
+	_cam_pos = Vector2(world_map.hero_position().x, WorldMapData.SIZE.y * 0.5)
+	_apply_camera()
+	_snd_call("play_music", null, ["music_map"])
+	apply_touch_layout()
+
+func _enter_course(i: int) -> void:
+	if state != State.MAP:
+		return
+	world_map.hide_map()
+	level_index = i
+	checkpoint_pos = null
 	_begin_level()
 
 func _begin_level() -> void:
@@ -333,6 +414,11 @@ func _process(delta: float) -> void:
 
 func _physics_process(delta: float) -> void:
 	if _paused or state == State.TITLE:
+		return
+	if state == State.MAP:
+		if world_map:
+			_cam_pos = Vector2(world_map.hero_position().x, WorldMapData.SIZE.y * 0.5)
+			_apply_camera()
 		return
 	_update_camera(delta, false)
 
@@ -694,12 +780,17 @@ func _level_done() -> void:
 	var tw := create_tween()
 	tw.tween_interval(2.0)
 	tw.tween_callback(func():
-		level_index += 1
-		if level_index >= LEVELS.size():
-			level_index = LEVELS.size() - 1
+		var next := level_index + 1
+		if next >= LEVELS.size():
 			_game_over(true)
-		else:
-			_begin_level())
+			return
+		# unlock the next course right away (quitting on the map keeps it)
+		if not cheated:
+			GameSettings.set_reached_world(world_of(next))
+			GameSettings.set_reached_level_id(LEVELS[next].ID, next, reached_level_index())
+		var fresh := next > _run_reach
+		_run_reach = maxi(_run_reach, next)
+		_show_map(level_index, next if fresh else -1))
 
 # =================================================================== boss --
 ## The boss woke up: lock the camera to the arena, wall off the way back.
@@ -762,7 +853,7 @@ func boss_defeated(_boss: Boss) -> void:
 
 # ================================================================== pause --
 func _toggle_pause() -> void:
-	if state not in [State.PLAYING, State.TRANSITION, State.INTRO]:
+	if state not in [State.PLAYING, State.TRANSITION, State.INTRO, State.MAP]:
 		return
 	_paused = not _paused
 	get_tree().paused = _paused

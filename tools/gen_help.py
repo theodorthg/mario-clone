@@ -434,6 +434,52 @@ def page_sea():
     return img
 
 
+def page_map():
+    img, d = new_page()
+    text(d, (8, 6), "WORLD MAP", f8, GOLD)
+    import gen_map
+    world = Image.open(os.path.join(GFX, "world_map.png")).convert("RGBA")
+    nodes = Image.open(os.path.join(GFX, "map_nodes.png")).convert("RGBA")
+    castles = Image.open(os.path.join(GFX, "map_castles.png")).convert("RGBA")
+    nw, nh = nodes.width // 3, nodes.height
+    cw, ch = castles.width // 3, castles.height
+    view = world.copy()
+    rds = gen_map.roads()
+    for i in range(2):                       # 1-1 .. 1-3 reached
+        gen_map.draw_road(view, rds[i], gen_map.road_kind(i))
+    for i in range(5):
+        x, y = gen_map.NODES[i]
+        frame = 1 if i < 2 else (0 if i == 2 else 2)
+        if i in gen_map.CASTLES:
+            spr = castles.crop((frame * cw, 0, frame * cw + cw, ch))
+            view.alpha_composite(spr, (x - cw // 2, y - ch + 6))
+        else:
+            spr = nodes.crop((frame * nw, 0, frame * nw + nw, nh))
+            view.alpha_composite(spr, (x - nw // 2, y - nh + 5))
+    hero = trim(sheet_frame("hero_small", 20, 20, 9))
+    x, y = gen_map.NODES[2]
+    view.alpha_composite(hero, (x - hero.width // 2, y - hero.height + 2))
+    crop = view.crop((24, 112, 222, 232))
+    img.alpha_composite(crop, (6, 20))
+    d.rectangle((5, 19, 6 + crop.width, 20 + crop.height), outline=KEY_EDGE)
+    tx = 216
+    for i, (s, col) in enumerate((("Walk: D-pad or", WHITE), ("arrow keys", WHITE), ("A / Space:", GOLD),
+                                  ("play the course", GOLD), ("", WHITE), ("Touch: tap a", WHITE),
+                                  ("course to walk", WHITE), ("there, tap again", WHITE), ("to play it", WHITE))):
+        text(d, (tx, 22 + i * 10), s, fill=col)
+    ny = 146
+    img.alpha_composite(nodes.crop((nw, 0, 2 * nw, nh)), (8, ny))
+    text(d, (30, ny + 2), "cleared", fill=DIM)
+    img.alpha_composite(nodes.crop((0, 0, nw, nh)), (80, ny))
+    text(d, (102, ny + 2), "open", fill=DIM)
+    img.alpha_composite(nodes.crop((2 * nw, 0, 3 * nw, nh)), (140, ny))
+    text(d, (162, ny + 2), "locked", fill=DIM)
+    text(d, (216, ny - 4), "A cleared course", fill=DIM)
+    text(d, (216, ny + 5), "opens the road on.", fill=DIM)
+    text(d, (216, ny + 14), "Replay any you reached.", fill=DIM)
+    return img
+
+
 def page_castles():
     img, d = new_page()
     text(d, (8, 6), "CASTLES & SECRETS", f8, GOLD)
@@ -463,7 +509,7 @@ def page_castles():
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    pages = {"controls": page_controls, "touch": page_touch, "items": page_items,
+    pages = {"controls": page_controls, "touch": page_touch, "map": page_map, "items": page_items,
              "dragon": page_dragon, "goal": page_goal, "worlds": page_worlds,
              "sky": page_sky, "sea": page_sea, "castles": page_castles}
     for n, fn in pages.items():

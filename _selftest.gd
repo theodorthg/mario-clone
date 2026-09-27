@@ -6,23 +6,27 @@ extends SceneTree
 ## Parse-checks every script (a parse error makes load() fail) and sanity-
 ## checks project config, level data and the scoring tables.
 
-const SCRIPTS := [
-	"res://ui_style.gd", "res://game_settings.gd", "res://hall_of_fame.gd",
-	"res://sound_manager.gd", "res://screenshot_capture.gd", "res://mute_icon.gd",
-	"res://decor_index.gd", "res://level.gd", "res://player.gd", "res://block.gd",
-	"res://coin.gd", "res://block_coin.gd", "res://sparkle.gd", "res://brick_shard.gd",
-	"res://score_popup.gd", "res://shroom.gd", "res://powerup.gd", "res://fireball.gd",
-	"res://dino.gd", "res://egg.gd", "res://flagpole.gd", "res://warp_zone.gd",
-	"res://checkpoint.gd", "res://backdrop.gd", "res://hud.gd", "res://menus.gd",
-	"res://touch_controls.gd", "res://chomper.gd", "res://turtle.gd", "res://controls_config.gd", "res://firebar.gd",
-	"res://lava_bubble.gd", "res://boss.gd", "res://boss_flame.gd", "res://bat.gd",
-	"res://cactus.gd", "res://penguin.gd", "res://splash.gd", "res://moving_platform.gd", "res://game.gd",
-]
+## Every script of the game (project root + levels/), found automatically —
+## a hand-kept list silently went stale. A script "parses" only if it also
+## COMPILES: in Godot 4 load() returns the resource even when compilation
+## failed (incl. a broken dependency), so check can_instantiate() (v1.1:
+## a type-inference error in world_map.gd broke game.gd while this test
+## still printed "all checks passed" and exited 0).
+func _all_scripts() -> Array[String]:
+	var out: Array[String] = []
+	for dir in ["res://", "res://levels/"]:
+		for f in DirAccess.get_files_at(dir):
+			if f.ends_with(".gd") and f != "_selftest.gd":
+				out.append(dir + f)
+	return out
 
 func _init() -> void:
 	var fails := 0
-	for path in SCRIPTS:
-		fails += _expect(load(path) != null, "parses: %s" % path)
+	var scripts := _all_scripts()
+	fails += _expect(scripts.size() > 40, "found %d scripts" % scripts.size())
+	for path in scripts:
+		var s: Script = load(path)
+		fails += _expect(s != null and s.can_instantiate(), "compiles: %s" % path)
 
 	var canvas := Vector2(
 		ProjectSettings.get_setting("display/window/size/viewport_width"),

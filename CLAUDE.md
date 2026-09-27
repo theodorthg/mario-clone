@@ -272,7 +272,9 @@ Nintendo-Themen. Loops werden mit umgeklapptem Nachhall gerendert (nahtlos);
 
 ## Testen
 
-- `_selftest.gd` (headless): parst alle Skripte, prüft 16:9, InputMap
+- `_selftest.gd` (headless): sammelt ALLE Skripte selbst (`_all_scripts()`)
+  und verlangt `can_instantiate()` — `load() != null` allein meldete in
+  v1.1 einen Kompilierfehler nicht (Exit 0!). Prüft außerdem 16:9, InputMap
   (inkl. `device=-1` bei allen Joypad-Bindungen), Level-Konsistenz,
   Punktetabellen.
 - **Vor jedem Build/Commit `_selftest.gd` laufen lassen und mit `&&`
@@ -521,18 +523,55 @@ Adaptive-Ebenen + Monochrom für Android-13-Themen-Icons), in
 `export_presets.cfg` unter `launcher_icons/*` eingetragen. Nur ganzzahlig
 skaliert (NEAREST). Adaptive-Vordergrund bleibt im sichtbaren Kreis (~61 %).
 
-## Weltauswahl + Touch-Tasten-Schalter (v0.5)
+## Weltkarte (v1.1, ersetzt „Select World“)
 
-- `GameSettings.reached_world()` (Abschnitt `[progress]` in settings.cfg)
-  wird in `_begin_level()` hochgezählt. Play öffnet ab Welt 2 den Screen
-  „SELECT WORLD“ (gesperrte Welten „???“). „Play Again“ nach Game Over
-  startet am ersten Level der aktuellen Welt, nach dem Sieg bei 1-1.
+- **Ablauf**: Titel „Play“ (`play_pressed(-1)`) → `game.gd::start_map_run()`
+  = neuer Lauf (`_new_run()`: Punkte, Münzen, Leben, Kraft, Drache) → Karte
+  (`State.MAP`, `_show_map()`), Held auf dem weitesten erreichten Kurs →
+  A/Space/Enter oder zweites Antippen → `_enter_course()` → Kurs. Nach dem
+  Ziel/Boss (`_level_done`) zurück zur Karte: der nächste Kurs wird sofort
+  gespeichert (`[progress] level`), der Weg dorthin zeichnet sich (1,1 s)
+  und der Held läuft von selbst hin. Tod = Neustart im Kurs wie bisher;
+  Game Over → „Play Again“ = neuer Lauf auf der Karte an derselben Stelle.
+  Nach 6-3 Siegerbildschirm. Levelauswahl-Cheat/„Boss“ starten direkt
+  (`_start_game`) und landen danach ebenfalls auf der Karte;
+  `_run_reach` = max(Fortschritt, gestarteter Kurs).
+- **Karte** `world_map.gd` (`WorldMap`, Kind von World, eigene Banner-
+  CanvasLayer 9 mit Kursname + Hinweis): Bild + Daten aus
+  `tools/gen_map.py` — `assets/graphics/world_map.png` (1400×270, sechs
+  Regionen nebeneinander: Wiese mit Teich, Höhle mit Bergkamm/Lava, Wüste
+  mit Pyramide/Oase, Schnee mit Gipfeln/See, Himmel mit Wolkeninseln +
+  Regenbogen, Meer mit Strand/Inseln), `map_nodes.png` (offen gelb /
+  geschafft grün mit Haken / gesperrt dunkel mit Schloss), `map_castles.png`
+  (Mini-Burg, rote/grüne/graue Fahne), `world_map_data.gd` (`NODES` in
+  LEVELS-Reihenfolge, `ROADS[i]` = Bezier-Polylinie von Kurs i nach i+1,
+  `ROAD_KIND` dirt/cloud/plank). Wege und Markierungen zeichnet die Karte
+  selbst (`_draw`), damit ein Weg aufgedeckt werden kann; offen = Index ≤
+  `reach`, geschafft = Index < `reach`.
+- **Steuerung**: Richtung → der Nachbar, dessen Weg in diese Richtung
+  abgeht (`_neighbour_toward`, Vergleich mit einem Punkt ein Stück den Weg
+  entlang); Richtungen VOR Sprung prüfen (↑ ist auch eine Sprungtaste; es
+  gibt keine `move_up`-Aktion → `ui_up`). Antippen = emulierter Linksklick,
+  Position über `make_input_local(event)` (kein Mauszeiger auf Touch).
+  0,4 s Eingabesperre nach dem Erscheinen (gehaltenes A aus dem Kurs).
+  Pause geht auch auf der Karte; Touch-Tasten sind dort sichtbar.
+- Kamera folgt dem Kartenhelden waagrecht (`game.gd::_physics_process`),
+  Backdrop-Thema `map` (keine Ebenen, keine Partikel), Musik `music_map`
+  „Adventure Map“ (C-Dur-Marsch, 116 bpm). Hilfeseite „World Map“.
+- Playtest `map` (Laufen, gesperrter Kurs, Pause, Betreten, Ziel → Weg
+  aufdecken + speichern, Antippen) — setzt `[progress]` kurz auf 1-3 und
+  stellt ihn danach wieder her.
+
+## Touch-Tasten-Schalter (v0.5)
+
+- `GameSettings.reached_world()` / `reached_level_id()` (Abschnitt
+  `[progress]` in settings.cfg) merken den weitesten Kurs.
 - Settings „Touch keys“ Auto/On/Off (`GameSettings.touch_buttons_visible`):
   Auto = nur auf Touch-Geräten OHNE verbundenes Gamepad (RG552 → aus).
   `Input.joy_connection_changed` schaltet live um. Die Hilfe zeigt die
   Touch-only-Seitenliste nur ohne Gamepad.
-- Achtung Playtests: `worldselect` setzt den Fortschritt auf dem
-  Entwicklungsrechner — danach `[progress]` in
+- Achtung Playtests, die Kurse ohne Cheat starten, setzen den Fortschritt
+  auf dem Entwicklungsrechner — danach `[progress]` in
   `~/.local/share/godot/app_userdata/mario-clone/settings.cfg` prüfen.
 
 ## Offen / nächste Schritte

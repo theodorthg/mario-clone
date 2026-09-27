@@ -66,6 +66,17 @@ func _pad(b: int) -> void:
 		Input.parse_input_event(ev)
 		await _frames(2)
 
+## An action press + release as input EVENTS (Input.action_press() only
+## sets the state; _unhandled_input handlers such as the world map's
+## never see it).
+func _act(action: String) -> void:
+	for down in [true, false]:
+		var ev := InputEventAction.new()
+		ev.action = action
+		ev.pressed = down
+		Input.parse_input_event(ev)
+		await _frames(2)
+
 func start_play() -> void:
 	await _wait(0.5)
 	game.menus.hide_all()
@@ -195,7 +206,9 @@ func _run() -> void:
 			await shot("castle")
 			for i in 12:
 				await _wait(0.5)
-				print("t+%.1f state=%d time=%d flag=%s" % [i * 0.5, game.state, game.time_left, game.level.castle_flag.position])
+				# (v1.1: after the tally the course makes way for the world map)
+				print("t+%.1f state=%d time=%d flag=%s" % [i * 0.5, game.state, game.time_left,
+					game.level.castle_flag.position if game.level else "-> map"])
 			await shot("castle_flag")
 		"dino":
 			await start_play()
@@ -435,24 +448,6 @@ func _run() -> void:
 				await _wait(1.0)
 				print("ICE slide from col %d: slid %.0f px after release" % [spot.x, game.player.global_position.x - x0])
 			await shot("ice")
-		"worldselect":
-			var c := ConfigFile.new()
-			c.load(GameSettings.CFG_PATH)
-			var saved = c.get_value("progress", "world", 1)
-			c.set_value("progress", "world", 3)
-			c.save(GameSettings.CFG_PATH)
-			await _wait(1.0)
-			game.menus._show_screen(Menus.Screen.SETTINGS)
-			await shot("settings")
-			game.menus._show_screen(Menus.Screen.WORLDS)
-			await shot("worlds")
-			c.set_value("progress", "world", saved)
-			c.save(GameSettings.CFG_PATH)
-			game.menus.hide_all()
-			game._start_game(Game.first_level_of_world(3))
-			await _wait(Game.CARD_TIME + 0.4)
-			state("started world 3")
-			print("level id: ", Game.LEVELS[game.level_index].ID)
 		"controls":
 			await _wait(0.8)
 			game.menus._show_screen(Menus.Screen.CONTROLS)
@@ -1132,15 +1127,82 @@ func _run() -> void:
 				await _wait(0.9)
 			print("BOSS6 hp=%d attacks seen=%s" % [boss.max_hp, seen.keys()])
 			await shot("final_boss")
+		"map":
+			# v1.1 world map: Play -> map, walk, enter, clear -> reveal, pause, tap
+			var c := ConfigFile.new()
+			c.load(GameSettings.CFG_PATH)
+			var saved_level = c.get_value("progress", "level", "")
+			var saved_world = c.get_value("progress", "world", 1)
+			c.set_value("progress", "level", "1-3")
+			c.set_value("progress", "world", 1)
+			c.save(GameSettings.CFG_PATH)
+			await _wait(0.6)
+			game.menus.hide_all()
+			game.menus.play_pressed.emit(-1)
+			await _wait(0.8)
+			var m := game.world_map
+			print("MAP state=%d (MAP=%d) reach=%d at=%d hud_world=%s music=%s" % [game.state, Game.State.MAP, m.reach, m.at,
+				Game.LEVELS[game.level_index].ID, game._snd_call("current_music", "")])
+			await shot("map_start")
+			await _act("move_right")                 # 1-4 is locked: must not move
+			await _wait(0.6)
+			print("MAP right into a locked course: at=%d" % m.at)
+			await _act("move_left")
+			await _wait(1.2)
+			print("MAP left: at=%d" % m.at)
+			await _act("move_right")
+			await _wait(1.2)
+			print("MAP right again: at=%d banner='%s'" % [m.at, m._title.text])
+			await _act("pause")
+			await _wait(0.3)
+			print("MAP pause: paused=%s menu=%d" % [game._paused, game.menus.screen])
+			game.menus.hide_all()
+			game._resume()
+			await _wait(0.3)
+			await _act("jump")
+			await _wait(Game.CARD_TIME + 0.4)
+			print("MAP entered: state=%d course=%s" % [game.state, Game.LEVELS[game.level_index].ID])
+			# clear the course: back to the map, road to 1-4 is revealed
+			game.state = Game.State.CLEAR
+			game._level_done()
+			await _wait(2.3)
+			print("MAP after clear: state=%d busy=%s reach(during)=%d" % [game.state, m.is_busy(), m.reach])
+			await _wait(0.5)
+			await shot("map_reveal")
+			await _wait(2.0)
+			c.load(GameSettings.CFG_PATH)
+			print("MAP after reveal: reach=%d at=%d saved level=%s" % [m.reach, m.at, c.get_value("progress", "level", "")])
+			await shot("map_after")
+			# a tap on the 1-1 marker walks there, a second tap enters it
+			for n in 2:
+				var sp: Vector2 = root.get_viewport().get_final_transform() * (game.get_viewport().get_canvas_transform() \
+					* (WorldMapData.NODES[0] + Vector2(0, -4)))
+				for down in [true, false]:
+					var st := InputEventScreenTouch.new()
+					st.pressed = down
+					st.position = sp
+					Input.parse_input_event(st)
+					await _frames(2)
+				await _wait(4.0)
+				print("MAP tap %d: state=%d at=%d" % [n + 1, game.state, m.at])
+			c.set_value("progress", "level", saved_level)
+			c.set_value("progress", "world", saved_world)
+			c.save(GameSettings.CFG_PATH)
+		"mapview":
+			# screenshots of the map at a given progress (env MAP_AT = course index)
+			var at := int(OS.get_environment("MAP_AT")) if OS.get_environment("MAP_AT") != "" else 14
+			game.menus.hide_all()
+			game._new_run(false)
+			game._run_reach = at
+			game._show_map(at)
+			await _wait(1.0)
+			await shot("map_at_%d" % at)
 		"selects":
-			# level select + world select must fit all worlds on the 270-px canvas
+			# the level select must fit all worlds on the 270-px canvas
 			await _wait(0.5)
 			game.menus._show_screen(Menus.Screen.LEVELS)
 			await _frames(3)
 			await shot("levels")
-			game.menus._show_screen(Menus.Screen.WORLDS)
-			await _frames(3)
-			await shot("worlds")
 		"mutebtn":
 			# the Sound menu's mute label must follow every toggle (v0.11 fix)
 			await _wait(0.5)

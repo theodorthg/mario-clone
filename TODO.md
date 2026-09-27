@@ -7,11 +7,18 @@ Git-Log.
 
 ## Offen
 
-- [ ] Ideen für später (nach 1.0): Unterwasser-Burg mit Wasserabschnitten, Strömungen,
-      weitere Welten (z. B. Vulkan, Geisterhaus), Welt-Karte.
+- [ ] Ideen für später (nach 1.0): Unterwasser-Burg mit Wasserabschnitten,
+      Strömungen, weitere Welten (z. B. Vulkan, Geisterhaus).
 
 ## Erledigt
 
+- [x] v1.1.0 Weltkarte (Nutzerwunsch 2026-09-27): alle 6 Welten auf einer
+      Karte, Held läuft über die Wege, geschaffte/offene/gesperrte Kurse,
+      nach jedem Kurs zurück zur Karte mit aufgedecktem Weg, Musik
+      „Adventure Map“, Hilfeseite; ersetzt „Select World“.
+- [x] v1.1.0 `_selftest.gd` erkennt Kompilierfehler wirklich
+      (`can_instantiate()`, alle Skripte automatisch) — vorher Exit 0 trotz
+      Fehler. Andere Projekte: als eigene Aufgabe vorgeschlagen.
 - [x] 2026-09-27 **v1.0.0 — finales Release** (Nutzer: „mach das finale
       Release“): 6 Welten, 19 Kurse, 6 Bosse; Boss-Balancing nach v0.15
       vom Nutzer abgenommen.
