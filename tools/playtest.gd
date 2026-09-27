@@ -56,6 +56,16 @@ func press(action: String) -> void:
 	await _frames(2)
 	Input.action_release(action)
 
+## Gamepad button press + release through the real input pipeline.
+func _pad(b: int) -> void:
+	for down in [true, false]:
+		var ev := InputEventJoypadButton.new()
+		ev.button_index = b
+		ev.pressed = down
+		ev.device = 0
+		Input.parse_input_event(ev)
+		await _frames(2)
+
 func start_play() -> void:
 	await _wait(0.5)
 	game.menus.hide_all()
@@ -519,6 +529,130 @@ func _run() -> void:
 			await _wait(6.5)
 			await shot("gameover_cheated")
 			print("CHEAT gameover screen=%d name_edit=%s" % [game.menus.screen, game.menus._name_edit])
+		"fixes":
+			# v0.14: lenient stomp, overlapping walkers, double stomp, fair bats
+			await start_play()
+			var p := game.player
+			var lvl := game.level
+			for e in game.get_tree().get_nodes_in_group("enemies"):
+				e.queue_free()             # only the test's own enemies
+			await _frames(2)
+			# 1) edge stomp: hero falls onto the shroom's shoulder (9 px off-centre)
+			var sh := Shroom.new()
+			sh.position = Vector2(20 * 16 + 8, 17 * 16)
+			lvl.add_child(sh)
+			await _frames(3)
+			sh.speed = 0.0
+			p.global_position = sh.global_position + Vector2(-11, -26)
+			p.velocity = Vector2(60, 200)
+			await _wait(0.2)
+			print("FIX edge stomp: shroom dead=%s hero power=%d state=%d" % [sh.dead, p.power, game.state])
+			# 2) turtle dropped exactly onto a shroom: they must walk apart
+			var s2 := Shroom.new()
+			s2.position = Vector2(30 * 16 + 8, 17 * 16)
+			lvl.add_child(s2)
+			var t2 := Turtle.new()
+			t2.position = s2.position + Vector2(0, -2)
+			lvl.add_child(t2)
+			await _wait(1.2)
+			print("FIX overlap: |dx| after 1.2 s = %.0f px (dirs %d / %d)" % [
+				absf(t2.global_position.x - s2.global_position.x), t2.dir, s2.dir])
+			# 3) two enemies on the same spot, stomp them: both go down, no damage
+			var s3 := Shroom.new()
+			s3.position = Vector2(40 * 16 + 8, 17 * 16)
+			lvl.add_child(s3)
+			var t3 := Turtle.new()
+			t3.position = s3.position
+			lvl.add_child(t3)
+			await _frames(3)
+			s3.speed = 0.0
+			t3.speed = 0.0
+			p.star_t = 0.0
+			p.invuln_t = 0.0
+			p.global_position = s3.global_position + Vector2(0, -40)
+			p.velocity = Vector2(0, 150)
+			await _wait(0.5)
+			print("FIX double stomp: shroom dead=%s turtle state=%d hero power=%d lives=%d state=%d" % [
+				s3.dead, t3.state, p.power, game.lives, game.state])
+			# 4) bat: warning phase, then it flies above a small hero's head
+			game.menus.hide_all()
+			game._start_game(Game.first_level_of_world(2))
+			await _wait(Game.CARD_TIME + 0.4)
+			p = game.player
+			var bat: Bat = null
+			for n in game.get_tree().get_nodes_in_group("enemies"):
+				if n is Bat and bat == null:
+					bat = n
+				elif not (n is Bat):
+					n.queue_free()
+			var bc := -1
+			var floor_r := 19
+			for dc in [4, -4, 5, -5, 3, -3, 6, -6]:
+				var c: int = int(bat.global_position.x / 16) + dc
+				var r := int(bat.global_position.y / 16) + 2
+				while r < 19 and not (game.level.at(c, r) in ["#", "c", "X", "w", "B", "?"]):
+					r += 1
+				if r < 19:
+					bc = c
+					floor_r = r
+					break
+			p.global_position = Vector2(bc * 16 + 8, floor_r * 16)
+			p.velocity = Vector2.ZERO
+			p.invuln_t = 30.0
+			game._update_camera(0.0, true)
+			await _wait(0.3)
+			print("FIX bat after 0.3 s: state=%d (3 = warning) bat=%s hero=%s gstate=%d" % [bat._state,
+				bat.global_position.round(), p.global_position.round(), game.state])
+			await shot("bat_warn")
+			var lowest := -INF
+			for i in 90:
+				await physics_frame
+				if is_instance_valid(bat):
+					lowest = maxf(lowest, bat.global_position.y + 10.0)
+			print("FIX bat: state=%d, lowest hitbox edge %.0f px above the hero's feet (small hero 14, big 26, ducking 14)" % [
+				bat._state if is_instance_valid(bat) else -1, p.global_position.y - lowest])
+			await shot("bat_fly")
+			# 5) castle moods
+			for w in range(1, 7):
+				game.menus.hide_all()
+				game._start_game(Game.castle_of_world(w))
+				await _wait(Game.CARD_TIME + 0.3)
+				await teleport(Vector2i(10, 16))      # entrance hall, looking at section A
+				await _wait(0.3)
+				await shot("castle_%d" % w)
+		"cheatpick":
+			# the real way: open the level select with the pad code, move the
+			# focus to a course, confirm with the pad or a tap. (A synthetic
+			# mouse click is only honoured while the REAL pointer is over the
+			# test window — Godot drops GUI mouse input otherwise — so it is
+			# not part of this check.)
+			for how in ["pad", "tap"]:
+				game._to_title()
+				await _wait(0.8)
+				for b in [1, 3, 2, 0]:
+					await _pad(b)
+				await _wait(0.3)
+				var target := "6-1" if how == "pad" else "4-2"
+				var btn: Button = null
+				for n in game.menus.find_children("*", "Button", true, false):
+					if n.text.strip_edges() == target:
+						btn = n
+				print("PICK[%s] screen=%d button %s found=%s" % [how, game.menus.screen, target, btn != null])
+				if how == "pad":
+					btn.grab_focus()
+					await _frames(2)
+					await _pad(0)
+				else:
+					var c: Vector2 = btn.get_viewport().get_final_transform() * btn.get_global_rect().get_center()
+					for down in [true, false]:
+						var st := InputEventScreenTouch.new()
+						st.pressed = down
+						st.position = c
+						Input.parse_input_event(st)
+						await _frames(2)
+				await _wait(Game.CARD_TIME + 0.5)
+				print("PICK[%s] wanted %s -> started %s cheated=%s state=%d screen=%d" % [how, target,
+					Game.LEVELS[game.level_index].ID, game.cheated, game.state, game.menus.screen])
 		"newenemies":
 			# bat (2-1)
 			game.menus.hide_all()

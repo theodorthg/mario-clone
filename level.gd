@@ -45,7 +45,8 @@ const BIOME_ROW := {"grass": ROW_GRASS, "cave": ROW_CAVE, "sand": ROW_SAND, "sno
 ## area theme (AREAS in the level data) -> ground/decor biome of those columns
 const THEME_BIOME := {"cave": "cave", "cavern": "cave", "desert": "sand", "desert_dusk": "sand",
 	"snow": "snow", "snow_night": "snow", "fortress": "castle", "sky": "sky", "sky_dusk": "sky",
-	"sea": "sea", "sea_deep": "sea", "beach": "beach"}
+	"sea": "sea", "sea_deep": "sea", "beach": "beach", "fortress_magma": "castle", "fortress_sun": "castle",
+	"fortress_ice": "castle", "fortress_storm": "castle", "fortress_tide": "castle"}
 const HARD := Vector2i(4, 1)
 const BRIDGE_L := Vector2i(5, 1)
 const BRIDGE_M := Vector2i(6, 1)

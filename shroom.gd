@@ -73,6 +73,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	if is_on_wall():
 		dir = -dir
+	_separate_walkers()
 	if global_position.y > Level.ROWS * Level.T + 40.0:
 		queue_free()
 		return
@@ -88,6 +89,19 @@ func _on_area(a: Area2D) -> void:
 		dir = 1 if global_position.x > other.global_position.x else -1
 		_turn_cd = 0.2
 
+## Walkers that overlap (one fell onto the other, or both met at the same
+## spot) walk apart. area_entered alone missed exact overlaps: both then
+## chose the same direction and moved as one — a turtle hiding a mushroom.
+func _separate_walkers() -> void:
+	for a in hitbox.get_overlapping_areas():
+		var o := a.get_parent()
+		if o == self or not (o is Shroom or (o is Turtle and o.state == Turtle.State.WALK)) or o.dead:
+			continue
+		var dx: float = global_position.x - o.global_position.x
+		if absf(dx) < 12.0:
+			dir = 1 if dx > 0.0 or (dx == 0.0 and get_instance_id() > o.get_instance_id()) else -1
+			return
+
 func _touch_player(p: Player) -> void:
 	if p.mode != Player.Mode.NORMAL:
 		return
@@ -96,9 +110,7 @@ func _touch_player(p: Player) -> void:
 		if Game.instance:
 			Game.instance.award_chain(p, global_position)
 		return
-	var prev_feet := p.global_position.y - p.velocity.y * get_physics_process_delta_time()
-	var my_top := global_position.y - 12.0
-	if p.velocity.y > 0.0 and prev_feet <= my_top + 4.0:
+	if p.can_stomp(global_position.y - 13.0, 13.0):
 		if winged:
 			winged = false
 			sprite.play(&"walk")

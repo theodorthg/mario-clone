@@ -183,6 +183,19 @@ hohe Plattformen mit Stern, Doppeltreppe. Nach 1-3: „THANK YOU!“ +
 Siegerbildschirm mit Hall-of-Fame-Eintrag.
 
 ### Gegner
+- **Stampfen** (v0.14, Nutzer: „zu penibel“, „zwei überlappende Gegner
+  kosten ein Leben“): jeder Gegner fragt `Player.can_stomp(top, h)`. Zählt,
+  wenn der Held fällt ODER vor < 0,12 s noch fiel (`_fall_t`) und seine Füße
+  in den letzten 3 Frames (`_feet_hist`) im oberen ~60 % der Hitbox waren.
+  Grund: Area2D-Überlappungen kommen einen Physik-Frame zu spät an — wer
+  auf der Schulter eines Pilzes landet, steht beim Prüfen oft schon mit
+  vy = 0 am Boden (vorher: nur oberste 4–5 px, nur Vorframe → Leben weg).
+  Nach einem Stampfer (`stomp_grace` 0,12 s) wird ein zweiter berührter
+  Gegner ebenfalls gestampft statt zu verletzen.
+- Überlappende Läufer (Pilz/Schildkröte, eine fällt auf die andere) laufen
+  jeden Frame auseinander (`_separate_walkers()` in shroom.gd/turtle.gd);
+  vorher liefen exakt deckungsgleiche Gegner für immer im Gleichschritt —
+  die Schildkröte verdeckte den Pilz.
 - `shroom.gd`: Pilzling (Stampfen = platt, sonst Umkippen); `winged`-
   Variante (`G`) hüpft, erster Stampfer reißt nur die Flügel ab.
 - `chomper.gd`: Schnapp-Pflanze in Röhren (`Q`), hinter den Röhren-Tiles
@@ -266,7 +279,11 @@ Nintendo-Themen. Loops werden mit umgeklapptem Nachhall gerendert (nahtlos);
   star, gameover, dinohit, checkpoint, levels, card, ridebig, pause, worlds,
   turtle (Stampfen/Kick/Kombo/rote Kante), exitpipe, ice, jumpfeel
   (Sprunghöhen, Nachrutschen, Säulen in 1-4), mutebtn (Mute-Anzeige im
-  Sound-Menü).
+  Sound-Menü), fixes (Stampfen am Rand, Läufer-Überlappung, Doppel-
+  Stampfer, Fledermaus-Warnung/-Flughöhe, Burg-Stimmungen), cheatpick
+  (Levelauswahl per Pad-Code + Pad/Tipp). Synthetische Mausklicks zählen in
+  Godot nur, solange der ECHTE Zeiger über dem Testfenster ist — daher nur
+  Pad und Touch automatisch prüfen.
   `godot --path . --script res://tools/playtest.gd -- <szenario> <ordner>`
   — schneller als der MCP-Editor-Weg und ohne offenen Editor nutzbar.
 - `build.sh`: Editor-Check prüft nur echte `godot`-Prozesse (`pgrep -x`),
@@ -378,8 +395,13 @@ Ducken und Absteigen auf Touch unmöglich.
 ## Biom-Gegner (v0.9)
 
 - `a` Fledermaus (`bat.gd`, Höhle; `L.bat(c)` setzt sie direkt unter die
-  Decke): schläft kopfüber, stürzt sich auf Heldenhöhe herab, fliegt dann
-  wellenförmig weiter (durch Wände). Stampfbar.
+  Decke): schläft kopfüber, erwacht nur deutlich innerhalb des Bildes
+  (Held < 96 px daneben, darunter), flattert 0,5 s auf der Stelle
+  (Warnung + Ton), stürzt dann herab und fliegt wellenförmig weiter (durch
+  Wände). Seit v0.14 (Nutzer: „schlecht zu erkennen, oft kein Ausweichen“)
+  hell violett mit gelben Augen und Flughöhe `FLY_H` = 28 px über den
+  Füßen des Helden (Hitbox-Unterkante ≥ 18 px darüber): klein läuft man
+  drunter durch, groß duckt man sich. Stampfbar.
 - `p` Kaktusturm (`cactus.gd`, Wüste): 3 (Welt 4: 4) schwankende Stachel-
   kugeln, kriecht zum Helden. Stachelig: Stampfen verletzt! Jeder Feuerball
   schlägt eine Kugel ab (`fire_hit()`, +200); Panzer/Stern/Zunge/Block von
@@ -389,6 +411,18 @@ Ducken und Absteigen auf Touch unmöglich.
 Feuerball ruft zuerst `fire_hit()` auf, falls vorhanden (Boss, Kaktus).
 
 ## Burgen + Boss (v0.8)
+
+**Jede Burg eigen (v0.14, Nutzer: 2-3/3-3/4-3 zum Verwechseln — 3-3 und
+4-3 waren sogar byte-gleich, die Levelauswahl schien darum „den alten
+Kurs“ zu starten)**: `make_levels.py::CASTLE_PLAN` wählt pro Welt vier
+Abschnitte (A 12-24: Säulen/Stufen, B 26-47: Feuerstab-Gang/Ziegelbrücke/
+Lifte, C 50-65: niedriger Gang/fallende Platten/Kippplanken, D 68-91:
+Lavasee/Blasen-Säulen/Hublifte) plus je ein Welt-Merkmal im Abschnitt E
+(2 Schildkröte, 3 Kaktus, 4 Eisboden + Pinguin, 5 Stachi, 6 Krabben) und
+eine eigene Stimmung (`backdrop.gd`): `fortress` (1), `fortress_magma`
+(rot), `fortress_sun` (Bernstein, Sand-Partikel), `fortress_ice` (blau,
+Schnee), `fortress_storm` (violett, Wind), `fortress_tide` (türkis, Blasen).
+Alle Themen → Biom `castle`, Musik `music_castle`.
 
 Letzter Kurs jeder Welt: 1-4, 2-3, 3-3, 4-3 (`make_levels.py::castle_level`,
 mit der Welt steigende Schwierigkeit). Thema `fortress` (Biom `castle`:

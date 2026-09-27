@@ -68,8 +68,7 @@ func _touch_player(p: Player) -> void:
 		kill_flip(p.global_position.x)
 		Game.instance.award_chain(p, global_position)
 		return
-	var prev_feet := p.global_position.y - p.velocity.y * get_physics_process_delta_time()
-	if p.velocity.y > 0.0 and prev_feet <= global_position.y - 4.0:
+	if p.can_stomp(global_position.y - 10.0, 8.0):
 		p.bounce()
 		Game.instance.award_chain(p, global_position)
 		_snd("stomp")

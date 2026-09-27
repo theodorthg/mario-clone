@@ -57,7 +57,9 @@ GROUND = 17          # top row of the default ground
 SOLID = set("#cXwBP W?MYSCUh>IN")
 THEME_BIOME = {"cave": "cave", "cavern": "cave", "desert": "sand", "desert_dusk": "sand",
                "snow": "snow", "snow_night": "snow", "fortress": "castle", "sky": "sky", "sky_dusk": "sky",
-               "sea": "sea", "sea_deep": "sea", "beach": "beach"}
+               "sea": "sea", "sea_deep": "sea", "beach": "beach", "fortress_magma": "castle",
+               "fortress_sun": "castle", "fortress_ice": "castle", "fortress_storm": "castle",
+               "fortress_tide": "castle"}
 
 
 class Level:
@@ -1554,32 +1556,38 @@ CASTLE_NAMES = {1: "STONE KEEP", 2: "MAGMA FORT", 3: "SUN CITADEL", 4: "FROST BA
                 6: "TIDE FORTRESS"}
 
 
-def castle_level(world, lid):
-    L = Level(lid, CASTLE_NAMES[world], 160, time=300)
-    L.top = 6
-    A0 = 120
-    A1 = A0 + 37
-    L.ground(0, 159)
-    L.ceiling(0, 159, 3)
-    hard = world >= 3
-    # entrance hall
-    for c in (2, 9):
-        L.decor(c, "+", 12)
-    L.decor(5, "*", 3)
-    L.blocks(6, 13, "?M?")
-    # A: lava pit with bubbles and stone pillars
+# Castle sections (v0.14: every castle gets its own mix — before, 3-3 and 4-3
+# were identical and 2-3/5-3/6-3 nearly so; player feedback). Column ranges:
+# A 12-24, B 26-47, C 50-65, D 68-91; each section rebuilds its own floor.
+def _castle_a_pillars(L, world):
+    """lava pit with two stone pillars (first castle: 3 wide)"""
     L.lava(12, 23)
     if world == 1:
-        # first castle: 3-wide pillars, 2-wide gaps (v0.11, player feedback)
         L.fill(14, 16, 14, ROWS - 1, "#")
         L.fill(19, 21, 14, ROWS - 1, "#")
     else:
         L.fill(15, 16, 14, ROWS - 1, "#")
-        L.fill(20, 21, 13 if hard else 14, ROWS - 1, "#")
+        L.fill(20, 21, 13 if world >= 3 else 14, ROWS - 1, "#")
     for c in (13, 18, 23) if world > 1 else (13, 18):
         L.set(c, GROUND + 1, "b")
     L.coin_arc(12, 10, 12)
-    # B: walkway with fire bars on single floor blocks (jump over them)
+
+
+def _castle_a_steps(L, world):
+    """hard-block stepping stones going up and down over lava"""
+    L.lava(12, 24)
+    L.fill(14, 15, 15, ROWS - 1, "X")
+    L.fill(18, 19, 13, ROWS - 1, "X")
+    L.fill(22, 23, 15, ROWS - 1, "X")
+    for c in (13, 17, 21):
+        L.set(c, GROUND + 1, "b")
+    L.coins(14, 12, 2)
+    L.coins(18, 10, 2)
+    L.coins(22, 12, 2)
+
+
+def _castle_b_walkway(L, world):
+    """walkway with fire bars on single floor blocks (jump over them)"""
     L.decor(26, "*", 3)
     L.set(29, GROUND - 1, "F")
     L.set(37, GROUND - 1, "F")
@@ -1590,31 +1598,127 @@ def castle_level(world, lid):
     L.decor(41, "+", 12)
     L.coins(30, 12, 3)
     L.coins(38, 12, 3)
-    # C: low ceiling passage with ? blocks, a fire bar block in mid-air
+
+
+def _castle_b_brickbridge(L, world):
+    """brick bridge over a lava moat, two holes, a fire bar sweeping it"""
+    L.lava(27, 46)
+    L.fill(27, 46, 15, 15, "w")
+    for c0 in (32, 40):
+        L.fill(c0, c0 + 1, 15, 15, ".")
+        L.set(c0, GROUND + 1, "b")
+        L.coins(c0, 12, 2)
+    L.set(36, 10, "F")
+    L.decor(29, "+", 14)
+    L.decor(44, "+", 14)
+
+
+def _castle_b_lifts(L, world):
+    """two sideways lifts over a lava moat"""
+    L.lava(27, 46)
+    L.set(28, 14, "~")
+    L.set(37, 13, "~")
+    for c in (33, 44):
+        L.set(c, GROUND + 1, "b")
+    L.coins(33, 10, 3)
+    L.coins(41, 9, 3)
+
+
+def _castle_c_low(L, world):
+    """low ceiling passage with ? blocks, a fire bar block in mid-air"""
     L.fill(50, 64, 3, 8, "#")
     L.blocks(52, 13, "B?B")
     L.set(58, 12, "F")
     if world >= 3:
         L.set(62, GROUND - 1, "F")
     L.decor(55, "f")
-    # D: lava lake with narrow platforms, bubbles, a fire bar in the middle
+
+
+def _castle_c_slabs(L, world):
+    """falling slabs over lava: keep moving"""
+    L.lava(50, 64)
+    for c, r in ((51, 15), (55, 14), (59, 15)):
+        L.set(c, r, "D")
+    L.set(63, GROUND + 1, "b")
+    L.coins(55, 11, 3)
+
+
+def _castle_c_tips(L, world):
+    """two tipping planks over lava"""
+    L.lava(50, 64)
+    L.set(51, 15, "T")
+    L.set(57, 14, "T")
+    L.set(56, GROUND + 1, "b")
+    L.coins(57, 11, 4)
+
+
+def _castle_d_lake(L, world):
+    """lava lake with narrow ledges, bubbles, a fire bar in the middle"""
+    hard = world >= 3
     L.lava(68, 90 if hard else 87)
-    if world >= 5:
-        L.set(70, 14, "D")          # falling slab: keep moving!
-    else:
-        L.ledge(71, 72, 14)
+    L.ledge(71, 72, 14)
     L.ledge(76, 78, 12)
-    L.set(77, 11, "F") if world >= 2 else None
+    if world >= 2:
+        L.set(77, 11, "F")
     if hard:
         L.set(81, 14, "^")
+        L.ledge(86, 87, 13)
     else:
         L.ledge(82, 83, 14)
-    if hard:
-        L.ledge(86, 87, 13)
     for c in (69, 74, 80, 85):
         L.set(c, GROUND + 1, "b")
     L.coins(76, 9, 3)
-    # E: last stretch — power-up + coins before the boss
+
+
+def _castle_d_bubbles(L, world):
+    """stepping pillars between five leaping lava bubbles"""
+    L.lava(68, 90)
+    for c0, top in ((71, 15), (76, 14), (81, 15), (86, 14)):
+        L.fill(c0, c0 + 1, top, ROWS - 1, "X")
+        L.coins(c0, top - 3, 2)
+    for c in (69, 74, 79, 84, 89):
+        L.set(c, GROUND + 1, "b")
+
+
+def _castle_d_vlifts(L, world):
+    """four rising lifts over lava (wait for the right height)"""
+    L.lava(68, 90)
+    for c, r in ((70, 15), (76, 14), (82, 15), (87, 14)):
+        L.set(c, r, "^")
+    for c in (74, 80, 85):
+        L.set(c, GROUND + 1, "b")
+    L.coins(77, 8, 3)
+
+
+CASTLE_PLAN = {
+    # world: (A, B, C, D, area theme)
+    1: (_castle_a_pillars, _castle_b_walkway, _castle_c_low, _castle_d_lake, "fortress"),
+    2: (_castle_a_steps, _castle_b_brickbridge, _castle_c_low, _castle_d_bubbles, "fortress_magma"),
+    3: (_castle_a_pillars, _castle_b_lifts, _castle_c_tips, _castle_d_lake, "fortress_sun"),
+    4: (_castle_a_steps, _castle_b_walkway, _castle_c_slabs, _castle_d_bubbles, "fortress_ice"),
+    5: (_castle_a_steps, _castle_b_lifts, _castle_c_tips, _castle_d_vlifts, "fortress_storm"),
+    6: (_castle_a_pillars, _castle_b_brickbridge, _castle_c_slabs, _castle_d_vlifts, "fortress_tide"),
+}
+
+
+def castle_level(world, lid):
+    L = Level(lid, CASTLE_NAMES[world], 160, time=300)
+    L.top = 6
+    A0 = 120
+    A1 = A0 + 37
+    L.ground(0, 159)
+    L.ceiling(0, 159, 3)
+    sec_a, sec_b, sec_c, sec_d, theme = CASTLE_PLAN[world]
+    # entrance hall
+    for c in (2, 9):
+        L.decor(c, "+", 12)
+    L.decor(5, "*", 3)
+    L.blocks(6, 13, "?M?")
+    sec_a(L, world)
+    sec_b(L, world)
+    sec_c(L, world)
+    sec_d(L, world)
+    # E: last stretch — power-up + coins before the boss, a world touch
     L.decor(94, "*", 3)
     L.blocks(98, 13, "?M?")
     L.coins(104, 13, 6)
@@ -1623,6 +1727,18 @@ def castle_level(world, lid):
     L.decor(116, "f")
     if world >= 2:
         L.set(107, GROUND - 1, "F")
+    if world == 2:
+        L.enemy(103, ch="k")
+    elif world == 3:
+        L.enemy(103, ch="p")
+    elif world == 4:
+        L.fill(94, 105, GROUND, GROUND, "I")      # icy floor
+        L.enemy(102, ch="q")
+    elif world == 5:
+        L.enemy(103, ch="x")
+    elif world == 6:
+        L.enemy(101, ch="z")
+        L.enemy(105, ch="z")
     # arena (38 columns) with a lava moat near the right wall
     L.decor(A0 + 6, "*", 3)
     L.decor(A0 + 18, "*", 3)
@@ -1638,7 +1754,7 @@ def castle_level(world, lid):
     # restart here always begins with fire power (game.gd _is_boss_spawn)
     L.checkpoints.append((A0 - 7, GROUND - 1))
     L.set(A0 - 4, 13, "N")
-    L.areas = {"main": (0, 159, "fortress")}
+    L.areas = {"main": (0, 159, theme)}
     return L
 
 

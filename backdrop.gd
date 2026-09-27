@@ -89,6 +89,52 @@ const THEMES := {
 		"world": Color(1.0, 0.92, 0.88),
 		"fx": "embers",
 	},
+	# castle moods per world (v0.14: the castles looked all alike)
+	"fortress_magma": {
+		"sky": [Color("140202"), Color("5a1206"), Color("d0400e"), 0.5, 0.0, 0.0],
+		"layers": [
+			["res://assets/graphics/bg_castle_wall.png", 50.0, 0.15, 0.15, 0.0, Color(1.0, 0.72, 0.6)],
+			["res://assets/graphics/bg_castle_pillars.png", 84.0, 0.42, 0.8, 0.0, Color(0.9, 0.6, 0.55)],
+		],
+		"world": Color(1.0, 0.84, 0.74),
+		"fx": "embers",
+	},
+	"fortress_sun": {
+		"sky": [Color("2a1a08"), Color("7a4a18"), Color("e0a050"), 0.5, 0.0, 0.0],
+		"layers": [
+			["res://assets/graphics/bg_castle_wall.png", 50.0, 0.15, 0.15, 0.0, Color(1.0, 0.88, 0.62)],
+			["res://assets/graphics/bg_castle_pillars.png", 84.0, 0.42, 0.8, 0.0, Color(1.0, 0.86, 0.64)],
+		],
+		"world": Color(1.0, 0.92, 0.74),
+		"fx": "sand",
+	},
+	"fortress_ice": {
+		"sky": [Color("06102a"), Color("1a3a6a"), Color("5a8ac0"), 0.5, 0.0, 0.0],
+		"layers": [
+			["res://assets/graphics/bg_castle_wall.png", 50.0, 0.15, 0.15, 0.0, Color(0.72, 0.86, 1.0)],
+			["res://assets/graphics/bg_castle_pillars.png", 84.0, 0.42, 0.8, 0.0, Color(0.7, 0.84, 1.0)],
+		],
+		"world": Color(0.82, 0.92, 1.0),
+		"fx": "snow",
+	},
+	"fortress_storm": {
+		"sky": [Color("0a0818"), Color("2a2250"), Color("5a4a8a"), 0.5, 0.0, 0.0],
+		"layers": [
+			["res://assets/graphics/bg_castle_wall.png", 50.0, 0.15, 0.15, 0.0, Color(0.72, 0.68, 0.9)],
+			["res://assets/graphics/bg_castle_pillars.png", 84.0, 0.42, 0.8, 0.0, Color(0.66, 0.62, 0.86)],
+		],
+		"world": Color(0.86, 0.84, 0.98),
+		"fx": "wind",
+	},
+	"fortress_tide": {
+		"sky": [Color("021014"), Color("0a3a40"), Color("1a7a7a"), 0.5, 0.0, 0.0],
+		"layers": [
+			["res://assets/graphics/bg_castle_wall.png", 50.0, 0.15, 0.15, 0.0, Color(0.62, 0.9, 0.86)],
+			["res://assets/graphics/bg_castle_pillars.png", 84.0, 0.42, 0.8, 0.0, Color(0.6, 0.86, 0.84)],
+		],
+		"world": Color(0.8, 0.96, 0.94),
+		"fx": "bubbles",
+	},
 	"desert_dusk": {
 		# sun sinking behind the dunes: purple-orange sky, warm dark layers
 		"sky": [Color("2c2466"), Color("c05a78"), Color("ffb870"), 0.45, 0.0, 0.0, 1.0, Vector2(0.72, 0.52)],

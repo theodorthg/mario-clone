@@ -14,6 +14,17 @@ Git-Log.
 
 ## Erledigt
 
+- [x] v0.14.0 Levelauswahl „startet den alten Kurs“: die Auswahl selbst
+      funktionierte (Pad/Tipp getestet, 6-3 beim Nutzer ok) — die Burgen
+      sahen gleich aus (3-3 = 4-3 byte-gleich). Jetzt eigener Aufbau +
+      eigene Farbstimmung je Burg (`CASTLE_PLAN`).
+- [x] v0.14.0 Schildkröten über unsichtbaren Pilzen: überlappende Läufer
+      laufen auseinander; nach einem Stampfer wird ein zweiter berührter
+      Gegner mitgestampft statt zu verletzen.
+- [x] v0.14.0 Stampfen zu penibel: `Player.can_stomp()` — oberes ~60 %
+      der Hitbox, letzte 3 Frames, „fiel gerade noch“ (Area2D-Frame-Verzug).
+- [x] v0.14.0 Fledermäuse: hell violett mit gelben Augen, 0,5 s Warnung vor
+      dem Sturzflug, Flughöhe über dem kleinen Helden (groß: ducken).
 - [x] v0.13.0 Welt 6 „Sea“ (letzte Welt): 6-1 Coral Reef, 6-2 Deep Trench,
       Burg 6-3 Tide Fortress mit Endboss (alle Angriffe, 5 HP); Schwimmen,
       Riff-/Strand-Biome, Fische, Quallen, Krabben, Seeigel, Musik „Coral

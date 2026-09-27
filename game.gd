@@ -15,7 +15,9 @@ enum State { TITLE, INTRO, PLAYING, TRANSITION, DYING, CLEAR, GAMEOVER }
 
 const THEME_MUSIC := {"cave": "music_cave", "cavern": "music_cave", "desert": "music_desert",
 	"desert_dusk": "music_desert", "snow": "music_snow", "snow_night": "music_snow", "fortress": "music_castle",
-	"sky": "music_sky", "sky_dusk": "music_sky", "sea": "music_sea", "sea_deep": "music_sea"}
+	"sky": "music_sky", "sky_dusk": "music_sky", "sea": "music_sea", "sea_deep": "music_sea",
+	"fortress_magma": "music_castle", "fortress_sun": "music_castle", "fortress_ice": "music_castle",
+	"fortress_storm": "music_castle", "fortress_tide": "music_castle"}
 const WORLD_NAMES := ["Meadows", "Caverns", "Desert", "Snow", "Sky", "Sea"]
 const LEVELS := [
 	preload("res://levels/level_1_1.gd"),

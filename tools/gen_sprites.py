@@ -930,7 +930,9 @@ def turtles():
 # =========================================================================
 # BIOME ENEMIES — cave bat, desert cactus stack, snow penguin
 # =========================================================================
-BAT_PAL = {"k": "#3a2a5a", "b": "#6a4a9a", "B": "#4a3278", "r": "#ff4a4a", "t": "#ffffff"}
+# bright violet with glowing yellow eyes: must read well against the dark
+# cave backdrop (v0.14, player feedback "bats are hard to see")
+BAT_PAL = {"k": "#8a5ac8", "b": "#d0a8ff", "B": "#a878e8", "r": "#fff04a", "t": "#ffffff"}
 BAT = {
     "fly1": ["b..............b", "bb....k..k....bb", "bBb...kkkk...bBb", "bBBb.kkkkkk.bBBb",
              ".bBBbkrkkrkbBBb.", "..bBBkkkkkkBBb..", "...bbkktkkkbb...", ".....kkkkkk.....",

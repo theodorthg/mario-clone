@@ -2,15 +2,21 @@ class_name Bat
 extends Node2D
 
 ## Cave bat (grid 'a', placed right under the ceiling). Sleeps upside down
-## until the hero passes below it, then swoops down at the hero's height and
-## flies on sideways with a wavy flight. Flies through walls. Stomp, fireball,
-## star, shell, tongue or a block from below knock it out.
+## until the hero comes near below it, flutters in place for WARN s (warning
+## squeak), then swoops down and flies on sideways with a wavy flight.
+## Fair by design (v0.14, player feedback): it wakes only well inside the
+## screen, and it levels out at FLY_H above the floor the hero stands on —
+## a small hero walks underneath, a big one ducks (or jumps / stomps).
+## Flies through walls. Stomp, fireball, star, shell, tongue or a block from
+## below knock it out.
 
 const FRAMES := preload("res://assets/graphics/enemy_bat.tres")
+const WARN := 0.5
+const FLY_H := 28.0          # origin above the hero's feet (hitbox 20-28 px up)
 
 var dead := false
 var velocity := Vector2.ZERO
-var _state := 0           # 0 hang, 1 dive, 2 fly
+var _state := 0           # 0 hang, 1 dive, 2 fly, 3 waking (warning)
 var _target_y := 0.0
 var _t := 0.0
 var _speed_mul := 1.0
@@ -47,19 +53,29 @@ func _physics_process(delta: float) -> void:
 	match _state:
 		0:
 			var dx := p.global_position.x - global_position.x
-			if absf(dx) < 72.0 and p.global_position.y > global_position.y + 24.0 \
-					and game.is_near_view(global_position, 0.0):
-				_state = 1
-				_target_y = p.global_position.y - 10.0
-				velocity = Vector2(signf(dx) * 55.0, 150.0) * _speed_mul
+			if absf(dx) < 96.0 and p.global_position.y > global_position.y + 24.0 \
+					and game.is_near_view(global_position, -24.0):
+				_state = 3
+				_t = 0.0
 				sprite.play(&"fly")
 				_snd("tongue")
+		3:
+			# warning: flutter in place, then dive toward where the hero is
+			_t += delta
+			sprite.position.x = 1.0 if int(_t * 24.0) % 2 == 0 else -1.0
+			if _t >= WARN:
+				sprite.position.x = 0.0
+				_state = 1
+				_t = 0.0
+				var dx := p.global_position.x - global_position.x
+				_target_y = p.global_position.y - FLY_H
+				velocity = Vector2(signf(dx if dx != 0.0 else 1.0) * 45.0, 130.0) * _speed_mul
 		1:
-			# swoop down, easing out right at the hero's height
-			velocity.y = clampf((_target_y - global_position.y) * 3.0, 0.0, 190.0 * _speed_mul)
+			# swoop down, easing out at the flight height
+			velocity.y = clampf((_target_y - global_position.y) * 4.0, 0.0, 140.0 * _speed_mul)
 			if _target_y - global_position.y < 3.0:
 				_state = 2
-				velocity = Vector2(signf(velocity.x if velocity.x != 0.0 else 1.0) * 80.0 * _speed_mul, 0.0)
+				velocity = Vector2(signf(velocity.x if velocity.x != 0.0 else 1.0) * 70.0 * _speed_mul, 0.0)
 		2:
 			_t += delta
 			velocity.y = sin(_t * 6.0) * 30.0
@@ -68,7 +84,7 @@ func _physics_process(delta: float) -> void:
 				return
 	position += velocity * delta
 	sprite.flip_h = velocity.x < 0.0
-	if _state == 0:
+	if _state == 0 or _state == 3:
 		return
 	for b in hitbox.get_overlapping_bodies():
 		if b is Player:
@@ -82,8 +98,7 @@ func _touch_player(p: Player) -> void:
 		kill_flip(p.global_position.x)
 		Game.instance.award_chain(p, global_position)
 		return
-	var prev_feet := p.global_position.y - p.velocity.y * get_physics_process_delta_time()
-	if p.velocity.y > 0.0 and prev_feet <= global_position.y + 6.0:
+	if p.can_stomp(global_position.y + 2.0, 8.0):
 		p.bounce()
 		Game.instance.award_chain(p, global_position)
 		_snd("stomp")

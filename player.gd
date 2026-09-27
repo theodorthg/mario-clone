@@ -73,6 +73,9 @@ var coyote_t := 0.0
 var jump_buffer_t := 0.0
 var jump_held_phase := false
 var jump_min_t := 0.0
+var stomp_grace := 0.0          # just bounced off an enemy (see can_stomp)
+var _fall_t := 0.0              # was falling through the air a moment ago
+var _feet_hist := PackedFloat32Array([0.0, 0.0, 0.0])   # feet y, last frames
 var air_jumps := 0
 var _was_on_floor := true
 var stomp_chain := 0
@@ -178,6 +181,11 @@ func _physics_process(delta: float) -> void:
 	jump_buffer_t = maxf(jump_buffer_t - delta, 0.0)
 
 	jump_min_t = maxf(jump_min_t - delta, 0.0)
+	stomp_grace = maxf(stomp_grace - delta, 0.0)
+	_fall_t = maxf(_fall_t - delta, 0.0)
+	_feet_hist[2] = _feet_hist[1]
+	_feet_hist[1] = _feet_hist[0]
+	_feet_hist[0] = global_position.y
 
 	var on_floor := is_on_floor()
 	var ice := on_floor and _on_ice()
@@ -242,6 +250,8 @@ func _physics_process(delta: float) -> void:
 		velocity.y = minf(velocity.y + g * delta, MAX_FALL)
 
 	var vy_before := velocity.y
+	if not on_floor and vy_before > 0.0:
+		_fall_t = 0.12
 	move_and_slide()
 	_check_head_bump(vy_before)
 	if swimming and body_top() < SWIM_TOP:
@@ -314,8 +324,30 @@ func bounce(held_boost := true) -> void:
 		held = false
 	jump_held_phase = held
 	jump_min_t = 0.0
+	stomp_grace = 0.12
 	coyote_t = 0.0
 	air_jumps = 1 if _double_jump_enabled() else 0     # stomping refills it
+
+## Does touching an enemy whose hitbox top is `top` (height `h`) count as a
+## stomp? Every enemy asks this (v0.14, player feedback: "too picky" and
+## "two overlapping enemies cost a life"):
+## - falling (or landed a moment ago), and the feet were in the enemy's
+##   upper ~60 % during the last frames (was: upper 4-5 px, previous frame
+##   only). Enemies notice the touch one physics frame late (Area2D overlap
+##   lists update after the step), so a hero landing on an enemy's shoulder
+##   often already stands on the floor with vy = 0 when it is checked —
+##   that is what made stomping feel so picky;
+## - right after bouncing off one enemy (stomp_grace) a second enemy the hero
+##   touches is stomped too instead of hurting — overlapping walkers.
+func can_stomp(top: float, h: float) -> bool:
+	if stomp_grace > 0.0:
+		return global_position.y <= top + h * 0.75
+	if velocity.y <= 0.0 and _fall_t <= 0.0:
+		return false
+	var hi := global_position.y - maxf(velocity.y, 0.0) * get_physics_process_delta_time()
+	for y in _feet_hist:
+		hi = minf(hi, y)
+	return hi <= top + maxf(6.0, h * 0.6)
 
 func _ceiling_blocked() -> bool:
 	var params := PhysicsShapeQueryParameters2D.new()
@@ -479,6 +511,9 @@ func reset_state() -> void:
 	stomp_chain = 0
 	jump_buffer_t = 0.0
 	jump_min_t = 0.0
+	stomp_grace = 0.0
+	_fall_t = 0.0
+	_feet_hist.fill(global_position.y)
 	coyote_t = 0.0
 	air_jumps = 0
 	_was_on_floor = true

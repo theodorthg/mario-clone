@@ -112,6 +112,8 @@ func _physics_process(delta: float) -> void:
 			elif red and is_on_floor() and not _ground_ahead():
 				dir = -dir
 				velocity.x = dir * speed
+			_separate_walkers()
+			velocity.x = dir * speed
 			sprite.flip_h = dir < 0
 		State.SHELL:
 			velocity.x = move_toward(velocity.x, 0.0, 600.0 * delta)
@@ -167,6 +169,17 @@ func _on_area(a: Area2D) -> void:
 		dir = 1 if global_position.x > other.global_position.x else -1
 		_turn_cd = 0.2
 
+## Overlapping walkers walk apart (see Shroom._separate_walkers).
+func _separate_walkers() -> void:
+	for a in hitbox.get_overlapping_areas():
+		var o := a.get_parent()
+		if o == self or not (o is Shroom or (o is Turtle and o.state == State.WALK)) or o.dead:
+			continue
+		var dx: float = global_position.x - o.global_position.x
+		if absf(dx) < 12.0:
+			dir = 1 if dx > 0.0 or (dx == 0.0 and get_instance_id() > o.get_instance_id()) else -1
+			return
+
 func _shell_strike(other: Node) -> void:
 	if other == self or other == null or not other.has_method("kill_flip") or other.dead:
 		return
@@ -200,9 +213,7 @@ func _touch_player(p: Player) -> void:
 		if Game.instance:
 			Game.instance.award_chain(p, global_position)
 		return
-	var prev_feet := p.global_position.y - p.velocity.y * get_physics_process_delta_time()
-	var my_top := global_position.y - _hit_rect.size.y
-	var stomp := p.velocity.y > 0.0 and prev_feet <= my_top + 5.0
+	var stomp := p.can_stomp(global_position.y - _hit_rect.size.y, _hit_rect.size.y)
 	match state:
 		State.WALK:
 			if stomp:
