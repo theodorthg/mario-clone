@@ -813,6 +813,75 @@ func _run() -> void:
 			game._start_game(Game.first_level_of_world(5) + 1)
 			await _wait(Game.CARD_TIME + 0.4)
 			await shot("dusk")
+		"sea":
+			# world 6: swimming, surface cap, enemies, exit pipe to the beach, last boss
+			game.menus.hide_all()
+			game._start_game(Game.first_level_of_world(6))
+			await _wait(Game.CARD_TIME + 0.4)
+			var p := game.player
+			p.star_t = 60.0
+			print("SEA swimming=%s music=%s" % [p.swimming, game._snd_call("current_music", "")])
+			await shot("start")
+			var y0 := p.global_position.y
+			for i in 8:
+				await press("jump")
+				await _wait(0.18)
+			print("SWIM after 8 fast strokes: rose %.0f px, feet y=%.0f (surface cap %.0f + body)" % [
+				y0 - p.global_position.y, p.global_position.y, Player.SWIM_TOP])
+			await shot("surface")
+			var yt := p.global_position.y
+			await _wait(1.0)
+			print("SWIM sink 1 s: %.0f px (vy=%.0f)" % [p.global_position.y - yt, p.velocity.y])
+			var x0 := p.global_position.x
+			Input.action_press("move_right")
+			await _wait(1.0)
+			print("SWIM right 1 s: moved %.0f px vx=%.0f anim=%s on_floor=%s pos=%s" % [p.global_position.x - x0,
+				p.velocity.x, p.sprite.animation, p.is_on_floor(), p.global_position.round()])
+			Input.action_release("move_right")
+			await teleport(Vector2i(45, 8))
+			await _wait(0.6)
+			await shot("walls")
+			var kinds := {}
+			for n in game.level.get_children():
+				for cls in ["Fish", "Jellyfish", "Crab", "Urchin"]:
+					if n.get_script() and n.get_script().get_global_name() == cls:
+						kinds[cls] = int(kinds.get(cls, 0)) + 1
+			print("SEA enemies: ", kinds)
+			await teleport(Vector2i(126, 13))
+			await _wait(2.0)
+			await shot("jelly")
+			# exit pipe -> beach
+			await teleport(Vector2i(200, 16))
+			Input.action_press("move_right")
+			await _wait(2.5)
+			Input.action_release("move_right")
+			await _wait(1.5)
+			print("EXIT area=%s swimming=%s theme=%s" % [game.area, p.swimming, game.backdrop.theme])
+			await shot("beach")
+			game.menus.hide_all()
+			game._start_game(Game.first_level_of_world(6) + 1)
+			await _wait(Game.CARD_TIME + 0.4)
+			await shot("deep")
+			game.menus.hide_all()
+			game._start_game(Game.castle_of_world(6), true, true)
+			await _wait(Game.CARD_TIME + 0.3)
+			game.player.star_t = 30.0
+			Input.action_press("move_right")
+			await _wait(1.8)
+			Input.action_release("move_right")
+			await _wait(0.3)
+			var boss: Boss = game.get_tree().get_nodes_in_group("boss")[0]
+			var seen := {}
+			for i in 6:
+				boss._act = 99.0
+				boss._breathe(game.player)
+				await _wait(0.2)
+				for n in game.level.get_children():
+					if n is BossFlame:
+						seen[n.kind] = true
+				await _wait(0.9)
+			print("BOSS6 hp=%d attacks seen=%s" % [boss.max_hp, seen.keys()])
+			await shot("final_boss")
 		"selects":
 			# level select + world select must fit all worlds on the 270-px canvas
 			await _wait(0.5)

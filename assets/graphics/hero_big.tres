@@ -147,4 +147,16 @@ animations = [{
 "loop": false,
 "name": &"throw",
 "speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_climb")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_jump")
+}],
+"loop": true,
+"name": &"swim",
+"speed": 5.0
 }]

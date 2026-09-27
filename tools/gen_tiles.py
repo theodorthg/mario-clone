@@ -13,7 +13,9 @@ level.gd (see TILE_* constants there; keep the two in sync):
   row 3  cave (bonus room) ground, variant = neighbour mask
   row 4/5 sand / snow ground, row 6 extras (see main()), row 7/8 castle
   row 9  cloud ground (sky world), variant = neighbour mask
-  row 10 cloud bridge L/M/R (one-way), sky marble brick, cloud interior x2
+  row 10 cloud bridge L/M/R (one-way), sky marble brick, cloud interior x2,
+         coral brick (6), reef interior 7..9
+  row 11 reef ground (sea world, sand with a coral cap), variant = mask
 blocks.png  ?-block x4, used, brick, cave brick (single 16x16 cells)
 decor.png   free-standing decorations, packed with a JSON-ish index in
             decor_index.gd (name -> Rect2)
@@ -68,6 +70,15 @@ SNOW_TOP = {
     "L": "#ffffff", "g": "#f2f7ff", "G": "#d4e2f6", "H": "#aac0e0",
     "D": "#6a7ea8", "d": "#3c4868",
 }
+REEF = {
+    "a": "#e8c898", "b": "#d4b080", "c": "#b89464", "d": "#8a6a44",
+    "e": "#f8e4b8", "s": "#c8b0a0", "S": "#9a8474", "T": "#f0e0d0", "r": "#a88660",
+}
+CORAL_TOP = {
+    "L": "#ffc8dc", "g": "#ff86b0", "G": "#e85890", "H": "#b0386c",
+    "D": "#6e1c46", "d": "#8a6a44",
+}
+CORAL_BRICK_PAL = {"k": OUTLINE, "l": "#ffa8b8", "b": "#e0607a", "B": "#a83a52", "m": "#5a1628"}
 LAVA_PAL = {"f": "#fff6a0", "l": "#ffc83a", "w": "#ff7a1a", "m": "#e0401a", "d": "#a8200e"}
 ICE_PAL = {"k": OUTLINE, "w": "#ffffff", "l": "#d4f4ff", "i": "#a0e0fa", "I": "#6cc0ec", "D": "#3a8ac8"}
 ICE = [
@@ -741,6 +752,83 @@ def recolored(rows, **kw):
     return parse(rows, pal)
 
 
+SEAWEED = {"l": "#8ae07a", "g": "#4ab04a", "G": "#2a7a38"}
+
+
+def seaweed(h=26, seed=1):
+    """tall wavy kelp strands (swayed at runtime in level.gd)"""
+    w = 12
+    img = Image.new("RGBA", (w, h), TRANSPARENT)
+    px = img.load()
+    rng = random.Random(seed)
+    for sx, ph, hh in ((3, 0.0, h), (7, 1.7, h - 7), (9, 3.1, h - 12)):
+        for y in range(h - hh, h):
+            k = (h - y) / hh
+            x = sx + int(round(1.6 * k * __import__("math").sin(y * 0.45 + ph)))
+            for dx, c in ((0, "g"), (1, "G")):
+                if 0 <= x + dx < w:
+                    px[x + dx, y] = hex_rgba(SEAWEED[c])
+            if y % 5 == 0 and 0 <= x - 1 < w:
+                px[x - 1, y] = hex_rgba(SEAWEED["l"])
+    return outline(img, color=OUTLINE, selective=False)
+
+
+def coral(w=14, h=13):
+    """small branching coral (pink)"""
+    img = Image.new("RGBA", (w, h), TRANSPARENT)
+    px = img.load()
+    cols = [hex_rgba(c) for c in ("#ffc8dc", "#ff86b0", "#e85890")]
+    branches = [(w // 2, h - 1, 0), (w // 2, h - 5, -1), (w // 2, h - 4, 1), (w // 2 - 3, h - 8, -1), (w // 2 + 3, h - 7, 1)]
+    for x0, y0, d in branches:
+        x, y = x0, y0
+        for i in range(6):
+            if 0 <= x < w and 0 <= y < h:
+                px[x, y] = cols[1]
+                if 0 <= x + 1 < w:
+                    px[x + 1, y] = cols[2]
+            y -= 1
+            if i % 2 == 1:
+                x += d
+        if 0 <= x < w and 0 <= y + 1 < h:
+            px[x, y + 1] = cols[0]
+    for y in range(h - 4, h):
+        for x in range(w // 2 - 1, w // 2 + 2):
+            px[x, y] = cols[1 if x < w // 2 + 1 else 2]
+    return outline(img, color=OUTLINE, selective=False)
+
+
+STARFISH = ["...o...", "...o...", "ooooooo", ".ooyoo.", "..ooo..", ".oo.oo.", ".o...o."]
+
+
+def palm():
+    """beach palm: curved trunk, fronds, coconuts"""
+    w, h = 26, 34
+    img = Image.new("RGBA", (w, h), TRANSPARENT)
+    px = img.load()
+    trunk, trunk_d = hex_rgba("#c8925a"), hex_rgba("#8e5a2c")
+    for y in range(10, h):
+        x = 12 + int((h - y) * 0.12)
+        px[x, y] = trunk
+        px[x + 1, y] = trunk_d if y % 3 else trunk
+    leaf, leaf_d, leaf_l = hex_rgba("#43a82e"), hex_rgba("#2c7c24"), hex_rgba("#8ee070")
+    cx, cy = 14, 9
+    import math
+    for ang in (-2.6, -2.0, -1.2, -0.3, 0.4, 3.0):
+        for i in range(12):
+            t = i / 11
+            x = cx + int(round(math.cos(ang) * i * 1.1))
+            y = cy + int(round(math.sin(ang) * i * 0.7 + t * t * 6))
+            for dy in (0, 1):
+                if 0 <= x < w and 0 <= y + dy < h:
+                    px[x, y + dy] = leaf if dy == 0 else leaf_d
+            if i % 3 == 0 and 0 <= x < w and 0 <= y - 1 < h:
+                px[x, y - 1] = leaf_l
+    for x, y in ((13, 10), (15, 11)):
+        px[x, y] = hex_rgba("#6a4420")
+        px[x, y + 1] = hex_rgba("#6a4420")
+    return outline(img, color=OUTLINE, selective=False)
+
+
 def biome_decor():
     ol_ = lambda im: outline(im, color=OUTLINE, selective=False)  # noqa: E731
     small_bush = [r[:18] for r in BUSH_L[1:]]
@@ -770,6 +858,13 @@ def biome_decor():
         ("sky_flower", recolored(FLOWER_C, w="#8ad4ff", y="#ffe060", G="#58c060")),
         ("tuft_sky", recolored(TUFT, L="#ffffff", g="#e8f0ff", G="#b8cbef")),
         ("rock_sky", ol_(recolored(ROCK, s="#e4eaf8", T="#ffffff", S="#a8b6d6"))),
+        # sea (seaweed sways at runtime) + beach
+        ("seaweed", seaweed(26, 1)),
+        ("coral", coral()),
+        ("starfish", ol_(parse(STARFISH, {"o": "#f79a2a", "y": "#ffd83c"}))),
+        ("tuft_sea", seaweed(10, 4)),
+        ("rock_sea", ol_(recolored(ROCK, s="#7a8cae", T="#a4b4d4", S="#4e5e80"))),
+        ("palm", palm()),
     ]
 
 
@@ -942,7 +1037,7 @@ def water_body():
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    atlas = Image.new("RGBA", (16 * T, 11 * T), TRANSPARENT)
+    atlas = Image.new("RGBA", (16 * T, 12 * T), TRANSPARENT)
     for m in range(16):
         atlas.paste(edge_tile(m, DIRT, GRASS), (m * T, 0))
         atlas.paste(edge_tile(m, CAVE, CAVE_TOP), (m * T, 3 * T))
@@ -950,6 +1045,10 @@ def main():
         atlas.paste(edge_tile(m, SNOW, SNOW_TOP), (m * T, 5 * T))
         atlas.paste(castle_tile(m), (m * T, 7 * T))
         atlas.paste(cloud_tile(m), (m * T, 9 * T))
+        atlas.paste(edge_tile(m, REEF, CORAL_TOP), (m * T, 11 * T))
+    atlas.paste(parse(BRICK, CORAL_BRICK_PAL), (6 * T, 10 * T))
+    for i in range(1, 4):
+        atlas.paste(dirt_variant(i, REEF), ((6 + i) * T, 10 * T))
     # row 10: cloud bridge L/M/R (one-way), sky marble brick, cloud interior 1/2
     atlas.paste(cloud_bridge("L"), (0, 10 * T))
     atlas.paste(cloud_bridge("M"), (T, 10 * T))

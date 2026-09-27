@@ -35,6 +35,10 @@ Grid legend (one char per 16x16 cell, row 0 = top):
      part of surface())
   u  cloud imp (throws spiky balls; place it high)   x  spiky walker (no stomp)
   y  seagull (glides toward the hero)
+  e  slow wavy fish   E  fast darting fish   j  jellyfish (pulses at you)
+  z  crab (sea floor walker)   i  sea urchin (hazard, can't be defeated)
+  Underwater areas (theme sea / sea_deep): the hero swims; put water
+  surface tiles 'v' in row 2 (see add_surface()).
   decorations: * bush  + small bush  f flower  t grass tuft  r rock
                s sign  n fence
   Ground '#', bricks 'w' and decorations take the look of the BIOME of the
@@ -52,7 +56,8 @@ ROWS = 20
 GROUND = 17          # top row of the default ground
 SOLID = set("#cXwBP W?MYSCUh>IN")
 THEME_BIOME = {"cave": "cave", "cavern": "cave", "desert": "sand", "desert_dusk": "sand",
-               "snow": "snow", "snow_night": "snow", "fortress": "castle", "sky": "sky", "sky_dusk": "sky"}
+               "snow": "snow", "snow_night": "snow", "fortress": "castle", "sky": "sky", "sky_dusk": "sky",
+               "sea": "sea", "sea_deep": "sea", "beach": "beach"}
 
 
 class Level:
@@ -1352,10 +1357,201 @@ def level_5_2():
 
 
 # =========================================================================
+# underwater helpers + 6-1 "Coral Reef" / 6-2 "Deep Trench"
+# =========================================================================
+def add_surface(L, c0, c1, row=2):
+    """animated water surface along the top of an underwater area (the hero
+    can't rise above it, player.gd SWIM_TOP) — call after pits are dug"""
+    for c in range(c0, c1 + 1):
+        if L.get(c, row) == ".":
+            L.set(c, row, "v")
+
+
+def beach_exit(L, E0, E1):
+    """sunny beach behind the exit pipe: arrival pipe, flag pole, castle"""
+    L.ground(E0, E1)
+    arrive = L.pipe(E0 + 3, 2)
+    L.decor(E0 + 8, "*")
+    L.decor(E0 + 14, "f")
+    L.coins(E0 + 9, 12, 4)
+    finale(L, E0 + 12, E0 + 28, E0 + 32)
+    L.decor(E0 + 26, "*")
+    return arrive
+
+
+def level_6_1():
+    L = Level("6-1", "CORAL REEF", 260, time=400)
+    MAIN_END = 210
+    L.ground(0, MAIN_END - 1)
+    # seaweed garden, a first power-up
+    L.decor(2, "*")
+    L.decor(5, "+")
+    L.decor(9, "f")
+    L.decor(13, "*")
+    L.blocks(8, 12, "?M?")
+    L.set(16, 12, "e")
+    L.set(22, 15, "e")
+    # reef mound with coins, first urchin
+    L.fill(18, 25, 14, GROUND - 1, "#")
+    L.coins(18, 11, 8)
+    L.decor(24, "*")
+    L.set(27, GROUND - 1, "i")
+    # a pit to swim over, an urchin above it
+    L.pit(30, 34)
+    L.coin_arc(29, 9, 7)
+    L.set(32, 7, "i")
+    # coral walls: swim through the gaps
+    L.fill(38, 39, 3, 9, "w")
+    L.fill(44, 45, 11, GROUND - 1, "w")
+    L.fill(50, 51, 3, 8, "w")
+    L.set(47, 13, "j")
+    L.coins(40, 12, 3)
+    L.coins(46, 8, 3)
+    L.enemy(55, ch="z")
+    L.enemy(60, ch="z")
+    L.decor(57, "+")
+    # a school of fast fish
+    L.coins(64, 9, 10)
+    L.blocks(66, 13, "B?B")
+    L.set(70, 8, "E")
+    L.set(74, 13, "E")
+    L.set(79, 10, "E")
+    L.fill(84, 87, 15, GROUND - 1, "#")
+    L.set(88, GROUND - 1, "i")
+    L.checkpoints.append((92, GROUND - 1))
+    L.decor(94, "*")
+    # tunnel under a reef roof, urchins on floor and roof
+    L.fill(97, 120, 3, 10, "#")
+    L.set(103, GROUND - 1, "i")
+    L.set(110, 11, "i")
+    L.set(116, GROUND - 1, "i")
+    L.set(113, 14, "e")
+    L.coins(99, 13, 4)
+    L.coins(106, 14, 3)
+    # open water with jellyfish
+    L.decor(124, "*")
+    L.set(126, 10, "j")
+    L.set(134, 13, "j")
+    L.enemy(130, ch="z")
+    L.blocks(128, 9, "?S?")
+    L.decor(137, "+")
+    # reef pillar between two pits
+    L.pit(141, 144)
+    L.fill(145, 147, 12, ROWS - 1, "#")
+    L.pit(148, 151)
+    L.coin_arc(140, 9, 13)
+    L.set(146, 8, "i")
+    # last stretch: crabs, fish, a hidden 1-UP
+    L.enemy(158, ch="z")
+    L.enemy(163, ch="z")
+    L.set(160, 11, "e")
+    L.set(170, 8, "e")
+    L.set(175, 13, "E")
+    L.set(167, 9, "h")
+    L.fill(180, 184, 13, GROUND - 1, "#")
+    L.decor(182, "+")
+    L.set(188, 12, "j")
+    L.coins(190, 13, 6)
+    # exit: side pipe into the reef wall -> beach
+    L.fill(MAIN_END - 4, MAIN_END - 1, 3, GROUND - 1, "w")
+    exit_mouth = L.side_pipe(MAIN_END - 8, GROUND - 2)
+    add_surface(L, 0, MAIN_END - 1)
+    arrive = beach_exit(L, 220, 259)
+    L.areas = {"main": (0, MAIN_END - 1, "sea"), "exit": (220, 259, "beach")}
+    L.warps = [{"entry": exit_mouth, "kind": "right", "arrive": arrive, "arrive_kind": "up", "area": "exit"}]
+    return L
+
+
+def level_6_2():
+    L = Level("6-2", "DEEP TRENCH", 280, time=400)
+    MAIN_END = 230
+    L.ground(0, MAIN_END - 1)
+    L.decor(2, "*")
+    L.decor(6, "r")
+    L.blocks(9, 12, "?M?")
+    L.set(15, 11, "j")
+    # first trench with a pillar
+    L.pit(20, 31)
+    L.fill(24, 26, 15, ROWS - 1, "#")
+    L.set(25, 14, "i")
+    L.coin_arc(20, 9, 12)
+    L.set(28, 7, "E")
+    # coral maze
+    L.fill(36, 37, 3, 12, "w")
+    L.fill(42, 43, 8, GROUND - 1, "w")
+    L.fill(48, 49, 3, 11, "w")
+    L.fill(54, 55, 9, GROUND - 1, "w")
+    L.set(39, 15, "i")
+    L.set(45, 5, "i")
+    L.set(51, 14, "i")
+    L.coins(38, 14, 3)
+    L.coins(44, 6, 3)
+    L.coins(50, 12, 3)
+    L.set(58, 10, "j")
+    # crabs on the sea floor, a school of fish
+    L.enemy(62, ch="z")
+    L.enemy(66, ch="z")
+    L.enemy(70, ch="z")
+    L.set(68, 9, "e")
+    L.set(72, 12, "e")
+    L.set(76, 7, "e")
+    L.blocks(64, 12, "B?BCB")
+    L.checkpoints.append((84, GROUND - 1))
+    L.decor(86, "*")
+    # the deep trench: long pit with three pillars, jellyfish above
+    L.pit(90, 120)
+    for c0, top in ((95, 14), (103, 12), (111, 14)):
+        L.fill(c0, c0 + 2, top, ROWS - 1, "#")
+    L.set(104, 11, "i")
+    L.set(99, 9, "j")
+    L.set(107, 11, "j")
+    L.set(116, 8, "j")
+    L.coins(95, 11, 3)
+    L.coins(111, 11, 3)
+    L.set(118, 6, "E")
+    L.set(121, 12, "E")
+    # low tunnel with urchins on floor and roof
+    L.fill(126, 150, 3, 11, "#")
+    for c in (131, 139, 146):
+        L.set(c, GROUND - 1, "i")
+    L.set(135, 12, "i")
+    L.set(143, 12, "i")
+    L.coins(128, 14, 3)
+    L.coins(136, 14, 3)
+    L.coins(141, 15, 3)
+    # open deep water: crabs + jellyfish, hidden 1-UP
+    L.enemy(156, ch="z")
+    L.enemy(161, ch="z")
+    L.set(158, 10, "j")
+    L.set(166, 13, "j")
+    L.set(172, 9, "j")
+    L.blocks(162, 11, "?")
+    L.set(169, 7, "h")
+    L.fill(178, 182, 14, GROUND - 1, "#")
+    L.pit(184, 196)
+    L.fill(189, 191, 13, ROWS - 1, "#")
+    L.set(190, 12, "i")
+    L.coin_arc(183, 8, 14)
+    L.set(200, 10, "E")
+    L.set(204, 13, "E")
+    L.set(208, 8, "e")
+    L.enemy(212, ch="z")
+    L.decor(215, "+")
+    L.fill(MAIN_END - 4, MAIN_END - 1, 3, GROUND - 1, "w")
+    exit_mouth = L.side_pipe(MAIN_END - 8, GROUND - 2)
+    add_surface(L, 0, MAIN_END - 1)
+    arrive = beach_exit(L, 240, 279)
+    L.areas = {"main": (0, MAIN_END - 1, "sea_deep"), "exit": (240, 279, "beach")}
+    L.warps = [{"entry": exit_mouth, "kind": "right", "arrive": arrive, "arrive_kind": "up", "area": "exit"}]
+    return L
+
+
+# =========================================================================
 # castles — the last course of every world: fire bars, lava bubbles,
 # a power-up before the arena and the boss. Harder with every world.
 # =========================================================================
-CASTLE_NAMES = {1: "STONE KEEP", 2: "MAGMA FORT", 3: "SUN CITADEL", 4: "FROST BASTION", 5: "STORM CITADEL"}
+CASTLE_NAMES = {1: "STONE KEEP", 2: "MAGMA FORT", 3: "SUN CITADEL", 4: "FROST BASTION", 5: "STORM CITADEL",
+                6: "TIDE FORTRESS"}
 
 
 def castle_level(world, lid):
@@ -1472,6 +1668,11 @@ def render_preview(L, path):
     imp_im = Image.open(os.path.join(gfx, "enemy_imp.png")).convert("RGBA").crop((0, 0, 24, 28))
     spiky_im = Image.open(os.path.join(gfx, "enemy_spiky.png")).convert("RGBA").crop((0, 0, 18, 16))
     gull_im = Image.open(os.path.join(gfx, "enemy_gull.png")).convert("RGBA").crop((0, 0, 22, 12))
+    fish_im = Image.open(os.path.join(gfx, "enemy_fish.png")).convert("RGBA").crop((0, 0, 16, 10))
+    fishr_im = Image.open(os.path.join(gfx, "enemy_fish_red.png")).convert("RGBA").crop((0, 0, 16, 10))
+    jelly_im = Image.open(os.path.join(gfx, "enemy_jelly.png")).convert("RGBA").crop((0, 0, 16, 15))
+    crab_im = Image.open(os.path.join(gfx, "enemy_crab.png")).convert("RGBA").crop((0, 0, 14, 13))
+    urch_im = Image.open(os.path.join(gfx, "enemy_urchin.png")).convert("RGBA").crop((0, 0, 18, 18))
     import re
     idx = {}
     for line in open(os.path.join(ROOT, "decor_index.gd")):
@@ -1503,6 +1704,8 @@ def render_preview(L, path):
         "cave": {"*": "crystal_l", "+": "crystal_s", "f": "glowshroom", "t": "tuft_cave", "r": "rock_cave"},
         "castle": {"*": "banner", "+": "torch", "f": "skull", "t": "torch", "r": "rock_castle"},
         "sky": {"*": "sky_bush_l", "+": "sky_bush_s", "f": "sky_flower", "t": "tuft_sky", "r": "rock_sky"},
+        "sea": {"*": "seaweed", "+": "coral", "f": "starfish", "t": "tuft_sea", "r": "rock_sea"},
+        "beach": {"*": "palm", "+": "palm", "f": "starfish", "t": "tuft_sand", "r": "rock_sand"},
     }
     col_biome = ["grass"] * L.cols
     for c0, c1, theme in L.areas.values():
@@ -1524,7 +1727,8 @@ def render_preview(L, path):
                     m |= 4
                 if not solid_ground(c + 1, r, ch):
                     m |= 8
-                row = {"grass": 0, "cave": 3, "sand": 4, "snow": 5, "castle": 7, "sky": 9}[bio] if ch == "#" else 3
+                row = {"grass": 0, "cave": 3, "sand": 4, "snow": 5, "castle": 7, "sky": 9, "sea": 11,
+                       "beach": 4}[bio] if ch == "#" else 3
                 img.alpha_composite(tile(m, row), (x, y))
             elif ch == "I":
                 img.alpha_composite(tile(8, 6), (x, y))
@@ -1549,6 +1753,14 @@ def render_preview(L, path):
                 later.append((spiky_im, x - 1, y))
             elif ch == "y":
                 later.append((gull_im, x - 3, y + 4))
+            elif ch in "eE":
+                later.append((fishr_im if ch == "E" else fish_im, x, y + 6))
+            elif ch == "j":
+                later.append((jelly_im, x, y + 1))
+            elif ch == "z":
+                later.append((crab_im, x + 1, y + 3))
+            elif ch == "i":
+                later.append((urch_im, x - 1, y - 2))
             elif ch == "a":
                 later.append((bat_im, x - 1, y))
             elif ch == "q":
@@ -1565,6 +1777,10 @@ def render_preview(L, path):
                     img.alpha_composite(tile(14 if bio == "sand" else 15, 6), (x, y))
                 elif bio == "sky":
                     img.alpha_composite(tile(3, 10), (x, y))
+                elif bio == "sea":
+                    img.alpha_composite(tile(6, 10), (x, y))
+                elif bio == "beach":
+                    img.alpha_composite(tile(14, 6), (x, y))
                 else:
                     img.alpha_composite(blk(6), (x, y))
             elif ch == "=":
@@ -1644,3 +1860,6 @@ if __name__ == "__main__":
     level_5_1().emit()
     level_5_2().emit()
     castle_level(5, "5-3").emit()
+    level_6_1().emit()
+    level_6_2().emit()
+    castle_level(6, "6-3").emit()

@@ -34,6 +34,7 @@ const HELP_DESKTOP := [
 	{"file": "goal", "h": "Goal & Points"},
 	{"file": "worlds", "h": "Turtles & Worlds"},
 	{"file": "sky", "h": "Sky World"},
+	{"file": "sea", "h": "Sea World"},
 	{"file": "castles", "h": "Castles & Secrets"},
 ]
 const HELP_TOUCH := [
@@ -43,6 +44,7 @@ const HELP_TOUCH := [
 	{"file": "goal", "h": "Goal & Points"},
 	{"file": "worlds", "h": "Turtles & Worlds"},
 	{"file": "sky", "h": "Sky World"},
+	{"file": "sea", "h": "Sea World"},
 	{"file": "castles", "h": "Castles & Secrets"},
 ]
 const HELP_FALLBACK := {
@@ -51,8 +53,9 @@ const HELP_FALLBACK := {
 	"items": "Hit ? blocks from below.\nMushroom: grow big.  Fire flower: throw fireballs.\nStar: invincible for a while.  Green mushroom: extra life.\nBig heroes break bricks.",
 	"dragon": "An egg hides in one ? block.\nJump onto the dragon to ride it.\nRun button: tongue eats enemies.\nDown + jump: hop off.  A hit throws you off.",
 	"worlds": "Stomp a turtle, then kick its shell:\nit knocks out every enemy in its way.\nRed turtles turn at edges, winged ones need two stomps.\nIce is slippery. Lava and water: don't fall in!\nCave bats swoop, cactus stacks are spiky (use fire),\npenguins belly-slide.",
-	"castles": "Fire bars spin, lava bubbles leap: time your jumps.\nThe boss ends every world: stomp its head 3-4 times\n(5 fireballs = 1 hit). A fire flower waits before\nthe arena, a restart there starts with fire, a win = 1UP.\nLevel select: on the title press B Y X A, type LEVELS\nor tap the title 5 times. 'Boss' starts at the boss arena\n(no high score for unreached courses).",
+	"castles": "Fire bars spin, lava bubbles leap: time your jumps.\nThe boss ends every world: stomp its head 3-5 times\n(5 fireballs = 1 hit). A fire flower waits before\nthe arena, a restart there starts with fire, a win = 1UP.\nLevel select: on the title press B Y X A, type LEVELS\nor tap the title 5 times. 'Boss' starts at the boss arena\n(no high score for unreached courses).",
 	"sky": "Falling slabs shake, then drop: jump off in time.\nTipping planks tip toward your side: keep moving.\nJump up through the clouds.\nThe cloud imp throws spikies: stomp it from up high.\nSpikies can't be stomped: fire, shells or a star.\nGulls glide at you. The storm boss's lightning flashes first.",
+	"sea": "Underwater you swim: every jump press is one stroke up.\nThe side pipe at the end leads to the beach.\nFish can't be stomped while swimming: dodge or use fire.\nJellyfish pulse toward you, crabs can be stomped.\nSea urchins can't be beaten: swim around them.",
 	"goal": "Stomp enemies from above.\nCoins: points, 100 coins = extra life.\nPipes marked by coins lead to bonus rooms.\nGrab the flag pole as high as you can!",
 }
 

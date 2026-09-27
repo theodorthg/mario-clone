@@ -1,0 +1,26 @@
+[gd_resource type="SpriteFrames" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/graphics/enemy_urchin.png" id="1_tex"]
+
+[sub_resource type="AtlasTexture" id="at_u0"]
+atlas = ExtResource("1_tex")
+region = Rect2(0, 0, 18, 18)
+
+[sub_resource type="AtlasTexture" id="at_u1"]
+atlas = ExtResource("1_tex")
+region = Rect2(18, 0, 18, 18)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_u0")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_u1")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 2.0
+}]

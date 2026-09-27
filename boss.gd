@@ -106,7 +106,7 @@ func _physics_process(delta: float) -> void:
 			sprite.play(&"walk")
 		if _jumping:
 			_jumping = false
-			if world == 3:
+			if world == 3 or (world == 6 and randf() < 0.5):
 				_shock_waves()
 		_snd("bump")
 	global_position.x = clampf(global_position.x, arena_left + 36.0, arena_right - 28.0)
@@ -119,7 +119,9 @@ func _physics_process(delta: float) -> void:
 ## 1 one aimed flame · 2 a fan of three flames · 3 aimed flame, and every
 ## landing sends sand shock waves along the floor · 4 two bouncing ice balls
 ## · 5 aimed flame + three lightning bolts striking around the hero (they
-## flash at the top of the arena first — step aside)
+## flash at the top of the arena first — step aside) · 6 (last boss, 5 HP)
+## picks one of the fan / ice balls / bolts each time, and every other
+## landing sends shock waves
 func _breathe(p: Player) -> void:
 	_roar = 0.6
 	sprite.play(&"roar")
@@ -137,12 +139,27 @@ func _breathe(p: Player) -> void:
 			_shoot("ice", mouth, Vector2(facing * 140.0, -150.0))
 		5:
 			_shoot("flame", mouth, aim * 115.0)
-			var sky_y := global_position.y - 11.0 * Level.T
-			for dx in [-52.0, 0.0, 52.0]:
-				var x := clampf(p.global_position.x + dx, arena_left + 24.0, arena_right - 24.0)
-				_shoot("bolt", Vector2(x, sky_y), Vector2.ZERO)
+			_bolts(p)
+		6:
+			# the last boss knows every trick of the others
+			match randi() % 3:
+				0:
+					for a in [-0.32, 0.0, 0.32]:
+						_shoot("flame", mouth, aim.rotated(a) * 115.0)
+				1:
+					_shoot("ice", mouth, Vector2(facing * 95.0, -230.0))
+					_shoot("ice", mouth, Vector2(facing * 140.0, -150.0))
+				_:
+					_shoot("flame", mouth, aim * 120.0)
+					_bolts(p)
 		_:
 			_shoot("flame", mouth, aim * 115.0)
+
+func _bolts(p: Player) -> void:
+	var sky_y := global_position.y - 11.0 * Level.T
+	for dx in [-52.0, 0.0, 52.0]:
+		var x := clampf(p.global_position.x + dx, arena_left + 24.0, arena_right - 24.0)
+		_shoot("bolt", Vector2(x, sky_y), Vector2.ZERO)
 
 func _shoot(kind: String, at: Vector2, vel: Vector2) -> void:
 	var f := BossFlame.new()

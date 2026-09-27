@@ -1,0 +1,54 @@
+[gd_resource type="SpriteFrames" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/graphics/enemy_crab.png" id="1_tex"]
+
+[sub_resource type="AtlasTexture" id="at_walk1"]
+atlas = ExtResource("1_tex")
+region = Rect2(0, 0, 14, 13)
+
+[sub_resource type="AtlasTexture" id="at_walk2"]
+atlas = ExtResource("1_tex")
+region = Rect2(14, 0, 14, 13)
+
+[sub_resource type="AtlasTexture" id="at_squish"]
+atlas = ExtResource("1_tex")
+region = Rect2(28, 0, 14, 13)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_walk1")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_walk2")
+}],
+"loop": true,
+"name": &"walk",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_squish")
+}],
+"loop": false,
+"name": &"squish",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_walk1")
+}],
+"loop": false,
+"name": &"flipped",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_walk1")
+}],
+"loop": false,
+"name": &"fly",
+"speed": 1.0
+}]

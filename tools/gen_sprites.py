@@ -457,6 +457,7 @@ HERO_ANIMS_SMALL = {
     "front": (["front"], 1, False),
     "crouch": (["idle"], 1, False),
     "throw": (["walk1"], 1, False),
+    "swim": (["climb", "jump"], 5, True),
 }
 HERO_ANIMS_BIG = dict(HERO_ANIMS_SMALL)
 HERO_ANIMS_BIG.update({
@@ -1173,6 +1174,107 @@ def sky_enemies():
 
 
 # =========================================================================
+# SEA ENEMIES — fish (slow wavy / fast darting), jellyfish, crab, urchin
+# =========================================================================
+FISH_PAL = {"y": "#ffd84a", "Y": "#e09a18", "o": "#f76a2a", "w": "#ffffff", "e": "#1b1030",
+            "f": "#ffe890", "F": "#c86a10"}
+FISH_RED = {"#ffd84a": "#ff6a5a", "#e09a18": "#c02838", "#ffe890": "#ffb0a0", "#c86a10": "#801420"}
+FISH = {
+    "swim1": ["....yyyy......",
+              "..yyyyyyyy..F.",
+              ".ywewyyyyyy.FF",
+              "yywewyyyYYYFFF",
+              "yyyyyyyyYYYFFF",
+              ".oyyyYYYYYY.FF",
+              "..oYYYYYYY..F.",
+              "....YYYY......"],
+    "swim2": ["....yyyy......",
+              "..yyyyyyyy....",
+              ".ywewyyyyyy.FF",
+              "yywewyyyYYYFFF",
+              "yyyyyyyyYYYFFF",
+              ".oyyyYYYYYY.FF",
+              "..oYYYYYYY....",
+              "....YYYY......"],
+}
+JELLY_PAL = {"w": "#ffffff", "p": "#ffc0e0", "P": "#e088c0", "e": "#1b1030", "t": "#f4a8d8"}
+JELLY = {
+    "open": ["....wwwwww....",
+             "..wwppppppww..",
+             ".wppppppppppw.",
+             "wpppepppepppPw",
+             "wppppppppppPPw",
+             "wPPPPPPPPPPPPw",
+             ".t.t..t..t.t..",
+             ".t..t.t.t..t..",
+             "..t.t..t.t.t..",
+             "..t..t.t..t...",
+             "...t.t..t.t...",
+             "...t..t.t.....",
+             "....t.t..t...."],
+    "shut": ["..............",
+             "..............",
+             "....wwwwww....",
+             "...wppppppw...",
+             "..wppeppeppw..",
+             "..wpppppppPw..",
+             "..wPPPPPPPPw..",
+             "...tt.tt.tt...",
+             "...tt.tt.tt...",
+             "....t.tt.t....",
+             "....t.tt.t....",
+             "....t..t..t...",
+             "....t..t..t..."],
+}
+CRAB_PAL = {"r": "#e8402e", "R": "#ff8a6a", "d": "#a01c2c", "w": "#ffffff", "e": "#1b1030"}
+CRAB_BODY = ["..w......w..", "..e......e..", "..r......r..", ".rrrRRRRrrr.", "rrrRRRRRRrrr",
+             "rrrrrrrrrrrr", ".dddddddddd."]
+CRAB = {
+    "walk1": ["RR........RR", "rR........Rr"] + CRAB_BODY + [".r.r....r.r.", "r...r..r...r"],
+    "walk2": [".RR......RR.", "Rr........rR"] + CRAB_BODY + ["..r.r..r.r..", ".r...rr...r."],
+    "squish": ["rR........Rr", "rrrrRRRRrrrr", ".dddddddddd.", "r.r......r.r"],
+}
+URCHIN_PAL = {"k": "#3a1a5a", "p": "#7a3aa8", "P": "#a86ad8", "w": "#f0e0ff"}
+
+
+def urchin(f):
+    import math
+    W = 16
+    g = [["."] * W for _ in range(W)]
+    for y in range(W):
+        for x in range(W):
+            dx, dy = x - 7.5, y - 7.5
+            r = (dx * dx + dy * dy) ** 0.5
+            if r <= 4.6:
+                g[y][x] = "P" if dx + dy < -2 else "p"
+    for i in range(8):
+        a = i * math.pi / 4 + (math.pi / 8 if f else 0.0)
+        for rr in range(5, 8):
+            x = int(round(7.5 + math.cos(a) * rr))
+            y = int(round(7.5 + math.sin(a) * rr))
+            if 0 <= x < W and 0 <= y < W:
+                g[y][x] = "w" if rr == 7 else "k"
+    g[6][6] = "w"
+    return ["".join(r) for r in g]
+
+
+def sea_enemies():
+    fish = [(n, ol(parse(FISH[n], FISH_PAL, "fish." + n))) for n in ["swim1", "swim2"]]
+    anims = {"swim": (["swim1", "swim2"], 6, True), "flipped": (["swim1"], 1, False)}
+    save_set("enemy_fish", fish, 16, 10, anims)
+    save_set("enemy_fish_red", [(n, ol(recolor(parse(FISH[n], FISH_PAL, "fishr." + n), FISH_RED)))
+                                for n in ["swim1", "swim2"]], 16, 10, anims)
+    jelly = [(n, ol(parse(JELLY[n], JELLY_PAL, "jelly." + n))) for n in ["open", "shut"]]
+    save_set("enemy_jelly", jelly, 16, 15, {"drift": (["open"], 1, False), "pulse": (["shut"], 1, False),
+                                            "flipped": (["open"], 1, False)})
+    crab = [(n, ol(parse(CRAB[n], CRAB_PAL, "crab." + n))) for n in ["walk1", "walk2", "squish"]]
+    save_set("enemy_crab", crab, 14, 13, {"walk": (["walk1", "walk2"], 6, True), "squish": (["squish"], 1, False),
+                                          "flipped": (["walk1"], 1, False), "fly": (["walk1"], 1, False)})
+    urch = [("u%d" % f, ol(parse(urchin(f), URCHIN_PAL, "urchin"))) for f in (0, 1)]
+    save_set("enemy_urchin", urch, 18, 18, {"idle": (["u0", "u1"], 2, True)})
+
+
+# =========================================================================
 # BOSS — horned dragon-ogre king (own design), built from shapes + details
 # =========================================================================
 BOSS_PAL = {
@@ -1521,5 +1623,6 @@ if __name__ == "__main__":
     turtles()
     biome_enemies()
     sky_enemies()
+    sea_enemies()
     boss()
     items()

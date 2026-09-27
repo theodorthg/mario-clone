@@ -15,8 +15,8 @@ enum State { TITLE, INTRO, PLAYING, TRANSITION, DYING, CLEAR, GAMEOVER }
 
 const THEME_MUSIC := {"cave": "music_cave", "cavern": "music_cave", "desert": "music_desert",
 	"desert_dusk": "music_desert", "snow": "music_snow", "snow_night": "music_snow", "fortress": "music_castle",
-	"sky": "music_sky", "sky_dusk": "music_sky"}
-const WORLD_NAMES := ["Meadows", "Caverns", "Desert", "Snow", "Sky"]
+	"sky": "music_sky", "sky_dusk": "music_sky", "sea": "music_sea", "sea_deep": "music_sea"}
+const WORLD_NAMES := ["Meadows", "Caverns", "Desert", "Snow", "Sky", "Sea"]
 const LEVELS := [
 	preload("res://levels/level_1_1.gd"),
 	preload("res://levels/level_1_2.gd"),
@@ -34,6 +34,9 @@ const LEVELS := [
 	preload("res://levels/level_5_1.gd"),
 	preload("res://levels/level_5_2.gd"),
 	preload("res://levels/level_5_3.gd"),
+	preload("res://levels/level_6_1.gd"),
+	preload("res://levels/level_6_2.gd"),
+	preload("res://levels/level_6_3.gd"),
 ]
 const CHAIN := [100, 200, 400, 500, 800, 1000, 2000, 4000, 5000, 8000]
 const TIME_TICK := 0.4
@@ -61,6 +64,9 @@ var lives := 3
 var time_left := 0
 var power := 0
 var has_dino := false
+## the dragon can't swim: in an underwater course it waits "off stage" and
+## comes back in the next course (unless the hero loses a life)
+var _dino_parked := false
 var checkpoint_pos = null
 var area := "main"
 var _time_acc := 0.0
@@ -200,6 +206,7 @@ func _start_game(start := 0, cheat := false, at_boss := false) -> void:
 	level_index = clampi(start, 0, LEVELS.size() - 1)
 	power = Player.Power.BIG if cfg.start_big else Player.Power.SMALL
 	has_dino = false
+	_dino_parked = false
 	checkpoint_pos = null
 	var arena = LEVELS[level_index].get_script_constant_map().get("ARENA")
 	if at_boss and arena != null:
@@ -264,7 +271,9 @@ func _build_level(idx: int, with_player: bool) -> void:
 		level.add_child(player)
 		player.global_position = start
 		player.fireball_requested.connect(_spawn_fireball)
-		if has_dino:
+		var water: bool = level.areas.get(level.area_at(start.x), {"theme": ""}).theme in Level.WATER_THEMES
+		_dino_parked = has_dino and water
+		if has_dino and not water:
 			var d := Dino.new()
 			level.add_child(d)
 			d.global_position = start
@@ -290,6 +299,7 @@ func _enter_area(name: String, snap := false) -> void:
 	camera.limit_bottom = int(r.end.y)
 	backdrop.set_theme(a.theme)
 	if player:
+		player.swimming = a.theme in Level.WATER_THEMES
 		player.left_limit = r.position.x
 		player.right_limit = r.end.x
 	if snap and player:
@@ -502,6 +512,7 @@ func player_died(pit: bool) -> void:
 		player.riding = null
 		d.queue_free()
 	has_dino = false
+	_dino_parked = false
 	player.mode = Player.Mode.DEAD
 	player.collision_mask = 0
 	_set_world_active(false)
@@ -609,7 +620,8 @@ func flag_reached(pole: Flagpole, p: Player) -> void:
 	var base_y := pole.global_position.y
 	var h := base_y - p.global_position.y
 	add_score(Flagpole.points_for_height(h), Vector2(pole.global_position.x + 12, p.global_position.y - 20))
-	has_dino = p.riding != null
+	has_dino = p.riding != null or _dino_parked
+	_dino_parked = false
 	if p.riding:
 		var d := p.riding
 		p.riding = null
@@ -721,7 +733,8 @@ func boss_defeated(_boss: Boss) -> void:
 	hud.set_boss(-1, 0)
 	_snd_call("stop_music")
 	_snd_call("play", null, ["jingle_world"])
-	has_dino = player != null and player.riding != null
+	has_dino = (player != null and player.riding != null) or _dino_parked
+	_dino_parked = false
 	hud.show_banner("WORLD %d CLEAR!" % world_of(level_index), 3.0)
 	if player:
 		player.input_enabled = false

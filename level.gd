@@ -30,6 +30,10 @@ const CLOUD_BRIDGE_L := Vector2i(0, 10)
 const CLOUD_BRIDGE_M := Vector2i(1, 10)
 const CLOUD_BRIDGE_R := Vector2i(2, 10)
 const SKY_BRICK := Vector2i(3, 10)
+const CORAL_BRICK := Vector2i(6, 10)
+const ROW_REEF := 11
+## area themes that are underwater (the hero swims there, see player.gd)
+const WATER_THEMES := ["sea", "sea_deep"]
 const CASTLE_WALL := Vector2i(2, 8)
 const ICE := Vector2i(8, 6)
 const LAVA_TOP := Vector2i(9, 6)      # 4-frame tile animation (9..12)
@@ -37,10 +41,11 @@ const LAVA := Vector2i(13, 6)
 const SANDSTONE := Vector2i(14, 6)
 const ICE_BRICK := Vector2i(15, 6)
 const BIOME_ROW := {"grass": ROW_GRASS, "cave": ROW_CAVE, "sand": ROW_SAND, "snow": ROW_SNOW,
-	"castle": ROW_CASTLE, "sky": ROW_CLOUD}
+	"castle": ROW_CASTLE, "sky": ROW_CLOUD, "sea": ROW_REEF, "beach": ROW_SAND}
 ## area theme (AREAS in the level data) -> ground/decor biome of those columns
 const THEME_BIOME := {"cave": "cave", "cavern": "cave", "desert": "sand", "desert_dusk": "sand",
-	"snow": "snow", "snow_night": "snow", "fortress": "castle", "sky": "sky", "sky_dusk": "sky"}
+	"snow": "snow", "snow_night": "snow", "fortress": "castle", "sky": "sky", "sky_dusk": "sky",
+	"sea": "sea", "sea_deep": "sea", "beach": "beach"}
 const HARD := Vector2i(4, 1)
 const BRIDGE_L := Vector2i(5, 1)
 const BRIDGE_M := Vector2i(6, 1)
@@ -66,7 +71,10 @@ const DECOR_BIOME := {
 	"cave": {"*": "crystal_l", "+": "crystal_s", "f": "glowshroom", "t": "tuft_cave", "r": "rock_cave"},
 	"castle": {"*": "banner", "+": "torch", "f": "skull", "t": "torch", "r": "rock_castle"},
 	"sky": {"*": "sky_bush_l", "+": "sky_bush_s", "f": "sky_flower", "t": "tuft_sky", "r": "rock_sky"},
+	"sea": {"*": "seaweed", "+": "coral", "f": "starfish", "t": "tuft_sea", "r": "rock_sea"},
+	"beach": {"*": "palm", "+": "palm", "f": "starfish", "t": "tuft_sand", "r": "rock_sand"},
 }
+const SWAYING := ["seaweed", "tuft_sea"]
 const FLOWERS := ["flower_a", "flower_b", "flower_c"]
 
 var data: Script
@@ -208,7 +216,8 @@ func _build_tiles() -> void:
 					tiles.set_cell(Vector2i(c, r), 0, HARD)
 				"w":
 					tiles.set_cell(Vector2i(c, r), 0, {"sand": SANDSTONE, "snow": ICE_BRICK,
-						"castle": CASTLE_WALL, "sky": SKY_BRICK}.get(biome_at(c), CAVE_BRICK))
+						"castle": CASTLE_WALL, "sky": SKY_BRICK, "sea": CORAL_BRICK,
+						"beach": SANDSTONE}.get(biome_at(c), CAVE_BRICK))
 				"=":
 					# log bridge; in the sky a one-way cloud strip
 					var l := at(c - 1, r) == "="
@@ -251,6 +260,9 @@ func _ground_tile(c: int, r: int, ch: String, row: int) -> Vector2i:
 		return Vector2i(8 + (absi(c * 7 + r * 13) % 2), ROW_MISC)
 	if m == 0 and row == ROW_CASTLE:
 		return Vector2i(1 if absi(c * 31 + r * 17) % 7 == 0 else 0, ROW_CASTLE_EXTRA)
+	if m == 0 and row == ROW_REEF:
+		var hr := absi((c * 73856093) ^ (r * 19349663)) % 20
+		return Vector2i(0, ROW_REEF) if hr < 13 else Vector2i(7 + hr % 3, ROW_SKY_EXTRA)
 	if m == 0 and row == ROW_CLOUD:
 		var hc := absi((c * 73856093) ^ (r * 19349663)) % 11
 		return Vector2i(4, ROW_SKY_EXTRA) if hc == 0 else (Vector2i(5, ROW_SKY_EXTRA) if hc == 1 else Vector2i(0, ROW_CLOUD))
@@ -261,7 +273,7 @@ func _ground_tile(c: int, r: int, ch: String, row: int) -> Vector2i:
 	return Vector2i(m, row)
 
 func _pipe_free(ch: String) -> bool:
-	return ch in [".", "o", "g", "G", "k", "K", "J", "Z", "a", "p", "q", "~", "^", "D", "T", "u", "x", "y"] \
+	return ch in [".", "o", "g", "G", "k", "K", "J", "Z", "a", "p", "q", "~", "^", "D", "T", "u", "x", "y", "e", "E", "j", "z", "i"] \
 		or DECOR.has(ch)
 
 func _place_pipe(c: int, r: int) -> void:
@@ -378,6 +390,23 @@ func _build_entities() -> void:
 					var gull := Gull.new()
 					gull.position = cell_feet(c, r)
 					add_child(gull)
+				"e", "E":
+					var fish := Fish.new()
+					fish.fast = ch == "E"
+					fish.position = cell_feet(c, r)
+					add_child(fish)
+				"j":
+					var jelly := Jellyfish.new()
+					jelly.position = cell_feet(c, r)
+					add_child(jelly)
+				"z":
+					var crab := Crab.new()
+					crab.position = cell_feet(c, r)
+					add_child(crab)
+				"i":
+					var urchin := Urchin.new()
+					urchin.position = cell_feet(c, r)
+					add_child(urchin)
 				"a":
 					var bat := Bat.new()
 					bat.position = Vector2(c * T + T * 0.5, r * T)
@@ -420,6 +449,14 @@ func _add_decor(parent: Node, name: String, feet: Vector2) -> Sprite2D:
 	s.centered = false
 	s.position = Vector2(roundf(feet.x - at_tex.region.size.x * 0.5), feet.y - at_tex.region.size.y)
 	parent.add_child(s)
+	if name in SWAYING:
+		# seaweed sways in the current: pivot at its foot, slanted to and fro
+		s.position = feet.round()
+		s.offset = Vector2(-roundf(at_tex.region.size.x * 0.5), -at_tex.region.size.y)
+		var sw := s.create_tween().set_loops()
+		var t := 1.0 + randf() * 0.5
+		sw.tween_property(s, "skew", 0.16, t).set_trans(Tween.TRANS_SINE)
+		sw.tween_property(s, "skew", -0.16, t).set_trans(Tween.TRANS_SINE)
 	if name == "torch":
 		# flickering flame
 		var tw := s.create_tween().set_loops()

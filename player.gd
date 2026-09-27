@@ -9,6 +9,9 @@ extends CharacterBody2D
 ## Assists (v0.11, "old men must make it too"): firm ground braking (little
 ## sliding after landing, extra brake on touchdown without input), stronger
 ## air control, and one double jump (press jump again in mid-air; setting).
+## Underwater areas (Level.WATER_THEMES) switch to `swimming` (set by
+## game.gd): slow sinking, every jump press is a swim stroke, the water
+## surface (SWIM_TOP) caps how high the hero can rise.
 ##
 ## Scripted sequences (pipe, flag pole, death, power change) put the player
 ## into a non-NORMAL `mode`; game.gd drives those via the helper methods at
@@ -39,6 +42,15 @@ const GRAVITY := 1400.0
 const MAX_FALL := 340.0
 const COYOTE := 0.08
 const JUMP_BUFFER := 0.12
+const SWIM_GRAVITY := 300.0
+const SWIM_MAX_FALL := 90.0
+const SWIM_STROKE := 150.0
+const SWIM_MAX := 75.0
+const SWIM_RUN_MAX := 105.0
+const SWIM_ACCEL := 260.0
+const SWIM_DRAG := 150.0
+const SWIM_WALK := 55.0          # walking on the sea floor
+const SWIM_TOP := 44.0           # water surface: the head stays below it
 const STOMP_BOUNCE := 190.0
 const STOMP_BOUNCE_HELD := 290.0
 
@@ -66,6 +78,7 @@ var _was_on_floor := true
 var stomp_chain := 0
 var throw_t := 0.0
 var riding: Dino = null
+var swimming := false
 var auto_walk := 0.0            # scripted walking while input is disabled
 var left_limit := -INF
 var right_limit := INF
@@ -192,42 +205,48 @@ func _physics_process(delta: float) -> void:
 	if crouching:
 		dir = 0.0
 
-	# horizontal (ice blocks: much less grip on the ground)
-	var grip := 0.28 if ice else 1.0
-	var top := RUN_MAX if run else WALK_MAX
-	if dir != 0.0:
-		facing = 1 if dir > 0.0 else -1
-		var target := dir * top
-		if on_floor and velocity.x != 0.0 and signf(velocity.x) != signf(dir):
-			velocity.x = move_toward(velocity.x, 0.0, SKID_DECEL * grip * delta)
-		elif absf(velocity.x) > top and signf(velocity.x) == signf(dir):
-			velocity.x = move_toward(velocity.x, target, OVERSPEED_DECEL * delta)
-		else:
-			var acc := (RUN_ACCEL if run else ACCEL) * grip if on_floor else AIR_ACCEL
-			velocity.x = move_toward(velocity.x, target, acc * delta)
+	if swimming:
+		_swim(delta, dir, run, on_floor, jump_now)
 	else:
-		var brake := (DECEL_ICE if ice else DECEL) if on_floor else AIR_DRAG
-		velocity.x = move_toward(velocity.x, 0.0, brake * delta)
-
-	# jump (ground / coyote first, else the one double jump in mid-air)
-	if jump_buffer_t > 0.0 and coyote_t > 0.0:
-		if down and riding != null:
-			_dismount_jump()
+		# horizontal (ice blocks: much less grip on the ground)
+		var grip := 0.28 if ice else 1.0
+		var top := RUN_MAX if run else WALK_MAX
+		if dir != 0.0:
+			facing = 1 if dir > 0.0 else -1
+			var target := dir * top
+			if on_floor and velocity.x != 0.0 and signf(velocity.x) != signf(dir):
+				velocity.x = move_toward(velocity.x, 0.0, SKID_DECEL * grip * delta)
+			elif absf(velocity.x) > top and signf(velocity.x) == signf(dir):
+				velocity.x = move_toward(velocity.x, target, OVERSPEED_DECEL * delta)
+			else:
+				var acc := (RUN_ACCEL if run else ACCEL) * grip if on_floor else AIR_ACCEL
+				velocity.x = move_toward(velocity.x, target, acc * delta)
 		else:
-			_jump()
-	elif jump_now and not on_floor and air_jumps > 0:
-		_air_jump(dir)
+			var brake := (DECEL_ICE if ice else DECEL) if on_floor else AIR_DRAG
+			velocity.x = move_toward(velocity.x, 0.0, brake * delta)
 
-	# gravity (variable height, but never shorter than JUMP_MIN_HOLD)
-	var released := not Input.is_action_pressed("jump") or not input_enabled
-	if jump_held_phase and (velocity.y >= 0.0 or (released and jump_min_t <= 0.0)):
-		jump_held_phase = false
-	var g := GRAVITY_HOLD if jump_held_phase else GRAVITY
-	velocity.y = minf(velocity.y + g * delta, MAX_FALL)
+		# jump (ground / coyote first, else the one double jump in mid-air)
+		if jump_buffer_t > 0.0 and coyote_t > 0.0:
+			if down and riding != null:
+				_dismount_jump()
+			else:
+				_jump()
+		elif jump_now and not on_floor and air_jumps > 0:
+			_air_jump(dir)
+
+		# gravity (variable height, but never shorter than JUMP_MIN_HOLD)
+		var released := not Input.is_action_pressed("jump") or not input_enabled
+		if jump_held_phase and (velocity.y >= 0.0 or (released and jump_min_t <= 0.0)):
+			jump_held_phase = false
+		var g := GRAVITY_HOLD if jump_held_phase else GRAVITY
+		velocity.y = minf(velocity.y + g * delta, MAX_FALL)
 
 	var vy_before := velocity.y
 	move_and_slide()
 	_check_head_bump(vy_before)
+	if swimming and body_top() < SWIM_TOP:
+		global_position.y = SWIM_TOP + _rect.size.y
+		velocity.y = maxf(velocity.y, 0.0)
 
 	# keep inside the current area horizontally
 	if global_position.x < left_limit + 6.0:
@@ -241,6 +260,21 @@ func _physics_process(delta: float) -> void:
 
 	if global_position.y > Level.ROWS * Level.T + 24.0 and Game.instance:
 		Game.instance.player_died(true)
+
+## Underwater movement: slower, floaty; every jump press is a stroke up.
+func _swim(delta: float, dir: float, run: bool, on_floor: bool, stroke: bool) -> void:
+	var top := SWIM_WALK if on_floor else (SWIM_RUN_MAX if run else SWIM_MAX)
+	if dir != 0.0:
+		facing = 1 if dir > 0.0 else -1
+		velocity.x = move_toward(velocity.x, dir * top, SWIM_ACCEL * delta)
+	else:
+		velocity.x = move_toward(velocity.x, 0.0, (DECEL if on_floor else SWIM_DRAG) * delta)
+	if stroke:
+		jump_buffer_t = 0.0
+		velocity.y = -SWIM_STROKE
+		_snd("swim")
+	jump_held_phase = false
+	velocity.y = minf(velocity.y + SWIM_GRAVITY * delta, SWIM_MAX_FALL)
 
 func _jump() -> void:
 	jump_buffer_t = 0.0
@@ -275,6 +309,9 @@ func _double_jump_enabled() -> bool:
 func bounce(held_boost := true) -> void:
 	var held := Input.is_action_pressed("jump") and held_boost
 	velocity.y = -(STOMP_BOUNCE_HELD if held else STOMP_BOUNCE)
+	if swimming:
+		velocity.y = -SWIM_STROKE
+		held = false
 	jump_held_phase = held
 	jump_min_t = 0.0
 	coyote_t = 0.0
@@ -397,7 +434,7 @@ func _update_animation(on_floor: bool, dir: float, run: bool) -> void:
 	elif crouching:
 		anim = &"crouch"
 	elif not on_floor:
-		anim = &"jump"
+		anim = &"swim" if swimming else &"jump"
 	elif throw_t > 0.0:
 		anim = &"throw"
 	elif dir != 0.0 and velocity.x != 0.0 and signf(velocity.x) != signf(dir):

@@ -508,6 +508,93 @@ def sky_islands():
     return img
 
 
+def sea_rays():
+    """slanted shafts of light from the surface, fading with depth"""
+    h = 170
+    img = Image.new("RGBA", (BG_W, h), TRANSPARENT)
+    px = img.load()
+    for x0, w, a in ((40, 22, 60), (150, 12, 44), (250, 30, 52), (390, 16, 48), (470, 26, 58), (580, 10, 40)):
+        for y in range(h):
+            fade = 1.0 - y / h
+            xs = x0 + int(y * 0.35)
+            for x in range(xs, xs + w):
+                edge = min(x - xs, xs + w - 1 - x)
+                al = int(a * fade * min(1.0, (edge + 1) / 4.0))
+                if al > 0 and dither(x, y, 0.75):
+                    px[x % BG_W, y] = (220, 244, 255, al)
+    return img
+
+
+def kelp_forest():
+    """band of tall wavy kelp strands (dark teal, far away)"""
+    h = 150
+    img = Image.new("RGBA", (BG_W, h), TRANSPARENT)
+    px = img.load()
+    rng = random.Random(41)
+    cols = [hex_rgba(c) for c in ("#2a8a7a", "#1f6e66", "#185a58")]
+    for i in range(34):
+        x0 = rng.randrange(BG_W)
+        hh = rng.randint(60, 140)
+        ph = rng.uniform(0, 6.28)
+        c = cols[rng.randrange(3)]
+        for y in range(h - hh, h):
+            k = (h - y) / hh
+            x = x0 + int(round(3.0 * k * math.sin(y * 0.09 + ph)))
+            for dx in (0, 1, 2):
+                px[(x + dx) % BG_W, y] = c
+            if y % 9 == 0:
+                for dx in (3, 4):
+                    px[(x + dx) % BG_W, y] = c
+    return img
+
+
+def beach_sea():
+    """sea horizon band behind the beach: light line, waves, sparkles"""
+    h = 70
+    img = Image.new("RGBA", (BG_W, h), TRANSPARENT)
+    px = img.load()
+    top, mid, deep = hex_rgba("#8ad4f4"), hex_rgba("#3aa0e0"), hex_rgba("#2a7ac8")
+    rng = random.Random(9)
+    for y in range(h):
+        for x in range(BG_W):
+            t = y / h
+            col = top if y < 2 else (mid if not dither(x, y, max(0.0, t - 0.2)) else deep)
+            px[x, y] = col
+    for i in range(60):
+        x, y = rng.randrange(BG_W), rng.randrange(4, h - 4)
+        for dx in range(rng.randint(3, 8)):
+            px[(x + dx) % BG_W, y] = hex_rgba("#d8f2ff")
+    return img
+
+
+def palms_band():
+    """palm silhouettes on a strip of sand (beach exit areas)"""
+    h = 90
+    img = Image.new("RGBA", (BG_W, h), TRANSPARENT)
+    px = img.load()
+    sand, sand_d = hex_rgba("#f4dca0"), hex_rgba("#e0c07c")
+    trunk, leaf, leaf_d = hex_rgba("#7a5a3a"), hex_rgba("#3a8a4a"), hex_rgba("#2a6a3a")
+    for x in range(BG_W):
+        top = 70 + int(periodic(x, [(3, 3, 0.4), (2, 7, 1.3)]))
+        for y in range(top, h):
+            px[x, y] = sand if y - top < 3 else sand_d
+    for x0, hh, lean in ((60, 50, 0.25), (210, 62, -0.2), (300, 44, 0.3), (470, 58, -0.25), (560, 40, 0.2)):
+        tx = x0
+        for y in range(72, 72 - hh, -1):
+            tx = x0 + int((72 - y) * lean)
+            for dx in (0, 1, 2):
+                px[(tx + dx) % BG_W, y] = trunk
+        cx, cy = tx + 1, 72 - hh
+        for ang in (-2.8, -2.2, -1.5, -0.9, -0.3, 0.3):
+            for i in range(16):
+                x = cx + int(round(math.cos(ang) * i * 1.3))
+                y = cy + int(round(math.sin(ang) * i * 0.6 + (i / 15) ** 2 * 9))
+                for dy in (0, 1):
+                    if 0 <= y + dy < h:
+                        px[x % BG_W, y + dy] = leaf if dy == 0 else leaf_d
+    return img
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     layers = {
@@ -539,6 +626,15 @@ def main():
         "bg_sky_sea_far": cloud_sea(90, 30, (14, 26), ["#ffffff", "#eaf0fc", "#d4dcf4"], "#b8c6ea", 21),
         "bg_sky_islands": sky_islands(),
         "bg_sky_sea_near": cloud_sea(110, 34, (20, 36), ["#ffffff", "#f4f8ff", "#dde8fa"], "#a8bce6", 23),
+        # sea (underwater) + beach
+        "bg_sea_rays": sea_rays(),
+        "bg_sea_far": hills(120, ["#2e76b4", "#245f9c", "#1d5088", "#1a4478"],
+                            [(14, 2, 0.5), (8, 5, 1.9), (4, 13, 0.2)], 46, pattern=False, seed=12),
+        "bg_sea_kelp": kelp_forest(),
+        "bg_sea_near": hills(100, ["#4a7aa8", "#34608e", "#284e78", "#1e3c62"],
+                             [(12, 3, 1.4), (7, 7, 0.6), (3, 17, 2.2)], 44, seed=13),
+        "bg_beach_sea": beach_sea(),
+        "bg_palms": palms_band(),
     }
     for name, im in layers.items():
         im.save(os.path.join(OUT, name + ".png"))

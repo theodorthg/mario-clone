@@ -393,6 +393,43 @@ def page_sky():
     return img
 
 
+def page_sea():
+    img, d = new_page()
+    text(d, (8, 6), "SEA WORLD", f8, GOLD)
+    hero = trim(sheet_frame("hero_small", 20, 20, 7))
+    img.alpha_composite(hero, (12, 22))
+    for i, (bx, by) in enumerate(((31, 32), (34, 26), (32, 20))):
+        d.ellipse((bx, by, bx + 3 - (i == 2), by + 3 - (i == 2)), outline=(200, 235, 255, 255))
+    text(d, (46, 20), "Underwater you swim: every press of")
+    text(d, (46, 30), "jump is one stroke up. Tap it again", fill=DIM)
+    text(d, (46, 40), "and again - slowly you sink.", fill=DIM)
+    tl = Image.open(os.path.join(GFX, "tiles.png")).convert("RGBA")
+    for (tx, ty), (px_, py_) in (((4, 2), (12, 56)), ((5, 2), (12, 72)), ((6, 2), (28, 56)), ((7, 2), (28, 72))):
+        img.alpha_composite(tl.crop((tx * 16, ty * 16, tx * 16 + 16, ty * 16 + 16)), (px_, py_))
+    text(d, (50, 60), "The side pipe at the end leads")
+    text(d, (50, 70), "to the beach with the flag pole.", fill=DIM)
+    d.line((8, 90, 332, 90), fill=(60, 70, 110, 255))
+    fish = trim(sheet_frame("enemy_fish", 16, 10, 0))
+    fish_r = trim(sheet_frame("enemy_fish_red", 16, 10, 0))
+    jelly = trim(sheet_frame("enemy_jelly", 16, 15, 0))
+    crab = trim(sheet_frame("enemy_crab", 14, 13, 0))
+    urch = trim(sheet_frame("enemy_urchin", 18, 18, 0))
+    img.alpha_composite(fish, (8, 98))
+    img.alpha_composite(fish_r, (8, 110))
+    text(d, (30, 98), "Fish: can't be stomped")
+    text(d, (30, 108), "while swimming - dodge", fill=DIM)
+    text(d, (30, 118), "or use fire. Red = fast.", fill=DIM)
+    img.alpha_composite(jelly, (180, 96))
+    text(d, (200, 96), "Jellyfish pulse")
+    text(d, (200, 106), "toward you.", fill=DIM)
+    img.alpha_composite(crab, (180, 120))
+    text(d, (200, 122), "Crabs: stomp them.")
+    img.alpha_composite(urch, (8, 134))
+    text(d, (30, 138), "Sea urchins can't be beaten: swim around them!")
+    text(d, (8, 157), "The last boss knows every trick. Good luck!", fill=GOLD)
+    return img
+
+
 def page_castles():
     img, d = new_page()
     text(d, (8, 6), "CASTLES & SECRETS", f8, GOLD)
@@ -410,7 +447,7 @@ def page_castles():
     boss = trim(sheet_frame("boss_2", 32, 34, 0))
     img.alpha_composite(boss, (8, 88))
     text(d, (52, 90), "The boss waits at the end of every")
-    text(d, (52, 100), "world: stomp its head 3-4 times", fill=GOLD)
+    text(d, (52, 100), "world: stomp its head 3-5 times", fill=GOLD)
     text(d, (52, 110), "(or 5 fireballs = 1 hit). Fire flower", fill=GOLD)
     text(d, (52, 120), "before the arena, win = extra life!", fill=GOLD)
     d.line((8, 131, 332, 131), fill=DIM)
@@ -424,7 +461,7 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     pages = {"controls": page_controls, "touch": page_touch, "items": page_items,
              "dragon": page_dragon, "goal": page_goal, "worlds": page_worlds,
-             "sky": page_sky, "castles": page_castles}
+             "sky": page_sky, "sea": page_sea, "castles": page_castles}
     for n, fn in pages.items():
         fn().save(os.path.join(OUT, n + ".png"))
     print("  help pages:", ", ".join(pages))

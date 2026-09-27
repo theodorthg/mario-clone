@@ -214,6 +214,9 @@ def sfx():
     # double jump: two quick rising chirps (no noise -> rng order unchanged)
     S["jump2"] = cat(tone("pulse", 520, 0.06, 0.125, f_end=1040, s=0.7, r=0.01, vol=0.45),
                      tone("pulse", 780, 0.12, 0.125, f_end=1560, d=0.05, s=0.5, r=0.04, vol=0.45))
+    # swim stroke: soft bubbly rising blip (no noise)
+    n = seg(0.12)
+    S["swim"] = osc("tri", 380, n, f_end=820) * env(n, 0.004, 0.04, 0.5, 0.05) * 0.8
     for k, x in S.items():
         write_wav(os.path.join(SND, k + ".wav"), norm(x, 0.85))
     print("  %d sound effects -> assets/sounds/" % len(S))
@@ -470,6 +473,33 @@ def sky():
     return s.render(loop=True)
 
 
+def sea():
+    """'Coral Waltz' — dreamy Eb major waltz (3/4), 100 bpm, 16 bars:
+    vibrato lead with echo over an oom-pah-pah accompaniment."""
+    s = Song(100)
+    melody = bars(
+        "G5:6 F5:3 Eb5:3", "Bb5:9 G5:3", "Ab5:6 G5:3 F5:3", "Eb5:12",
+        "C6:6 Bb5:3 Ab5:3", "G5:6 Eb5:6", "F5:3 G5:3 Ab5:3 C6:3", "Bb5:12",
+        "Eb6:6 D6:3 C6:3", "Bb5:6 G5:6", "Ab5:6 F5:3 D5:3", "Eb5:6 G5:6",
+        "C6:6 Ab5:3 F5:3", "G5:6 Eb5:3 C5:3", "D5:6 F5:3 Ab5:3", "Eb5:12",
+    )
+    prog = ["Eb", "Eb", "Ab", "Eb", "Ab", "Eb", "Fm", "Bb", "Eb", "Gm", "Bb", "Eb", "Ab", "Cm", "Bb", "Eb"]
+    roots = {"Eb": ("Eb2", "Bb2"), "Ab": ("Ab1", "Eb2"), "Fm": ("F2", "C3"), "Bb": ("Bb1", "F2"),
+             "Gm": ("G2", "D3"), "Cm": ("C2", "G2")}
+    thirds = {"Eb": ("G4", "Bb4"), "Ab": ("Ab4", "C5"), "Fm": ("Ab4", "C5"), "Bb": ("F4", "Bb4"),
+              "Gm": ("G4", "Bb4"), "Cm": ("G4", "C5")}
+    bass = " ".join("%s:4 %s:4 %s:4" % (roots[c][0], roots[c][1], roots[c][1]) for c in prog)
+    pah_a = " ".join("r:4 %s:4 %s:4" % (thirds[c][0], thirds[c][0]) for c in prog)
+    pah_b = " ".join("r:4 %s:4 %s:4" % (thirds[c][1], thirds[c][1]) for c in prog)
+    s.track("pulse", melody, 0.3, duty=0.25, legato=0.92, vib=0.35, a=0.01, d=0.12, s=0.65, echo=0.35)
+    s.track("tri", melody, 0.12, legato=0.8, s=0.6, octave=-1)
+    s.track("pulse", pah_a, 0.08, duty=0.5, legato=0.5, d=0.04, s=0.4)
+    s.track("pulse", pah_b, 0.07, duty=0.25, legato=0.5, d=0.04, s=0.4)
+    s.track("tri", bass, 0.45, legato=0.7, s=0.9)
+    s.drums(("K...h...h..." * 16), 0.08)
+    return s.render(loop=True)
+
+
 def castle():
     """'Castle' — tense D minor ostinato, 140 bpm, 8 bars: driving triangle
     bass in 8ths, stabbing chords, a chromatic lead."""
@@ -539,6 +569,7 @@ def music():
         "music_snow": snow,
         "music_castle": castle,
         "music_sky": sky,
+        "music_sea": sea,
         "jingle_world": jingle_world,
         "jingle_clear": jingle_clear,
         "jingle_death": jingle_death,

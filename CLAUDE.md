@@ -162,7 +162,7 @@ Dach, Schildkröten-Reihe auf einem Sims (Kombo), Stufenpyramide mit Tunnel.
 4-2 (Thema `snow_night`: Sterne + Mond, blaue Tönung): lange Eisbahn,
 Eisziegel-Türme, See mit Eisschollen, Eisbrücke über Wasser.
 Reihenfolge in `game.gd::LEVELS`: 1-1 … 1-4, 2-1 … 2-3, 3-1 … 3-3,
-4-1 … 4-3, 5-1 … 5-3 (x-4/x-3 = Burg); nach der letzten Burg
+4-1 … 4-3, 5-1 … 5-3, 6-1 … 6-3 (x-4/x-3 = Burg); nach 6-3
 Siegerbildschirm.
 
 ### 1-1 „Green Hills“ (312 Spalten, davon 262 Hauptlevel)
@@ -342,6 +342,38 @@ Ducken und Absteigen auf Touch unmöglich.
   (`boss_flame.gd` Art `bolt`: 0,6 s blinkende Warnung oben, dann Einschlag).
 - Hilfeseite „Sky World“; Playtests `sky` (Platte, Planke, Kobold, Möwe,
   Blitze) und `selects` (Level-/Weltauswahl passen auf 270 px).
+
+## Welt 6 „Sea“ (v0.13) — letzte Welt
+
+- 6-1 „Coral Reef“ (Thema `sea`), 6-2 „Deep Trench“ (`sea_deep`, dunkler),
+  Burg 6-3 „Tide Fortress“ mit dem Endboss. Die Unterwasser-Bereiche enden
+  mit einer Seitenröhre in der Riffwand → Bereich `exit` Thema `beach`
+  (Sandstrand mit Palmen, Fahne + Burg; `make_levels.py::beach_exit`).
+- **Schwimmen** (`player.gd::_swim`, `swimming` setzt `game.gd::_enter_area`
+  für `Level.WATER_THEMES`): Schwerkraft 300, max. Sinken 90 px/s, jeder
+  Sprung-Druck = Schwimmzug (−150 px/s, Sound `swim`), 75 / 105 (Rennen)
+  px/s, am Grund 55; Kopf bleibt unter der Wasseroberfläche `SWIM_TOP`
+  (44 px). Animation `swim` (Frames climb/jump). Kein Doppelsprung nötig.
+  Oberfläche = `v`-Kacheln in Zeile 2 (`add_surface()` NACH dem Graben der
+  Gruben aufrufen — `pit()` löscht die ganze Spalte).
+- Der Drache kann nicht schwimmen: in einem Unterwasser-Kurs wartet er
+  (`game.gd::_dino_parked`) und ist im nächsten Kurs wieder da — außer der
+  Held verliert ein Leben.
+- Biom `sea`: `#` = Riff-Autotile (Atlas-Reihe 11, Sand mit Korallenkappe),
+  `w` = Korallenziegel (10/6), Innenvarianten (10/7–9); Deko Seetang
+  (wiegt sich: `Level.SWAYING`, Tween auf `skew`, Drehpunkt am Fuß),
+  Koralle, Seestern, Seegras, Fels. Biom `beach`: Sand-Autotile, `*` Palme.
+- Hintergrund `sea`/`sea_deep`: Lichtstrahlen, Riffhügel, Kelpwald, nahe
+  Felsen, Partikel `bubbles`, Welt-Tönung bläulich; `beach`: Meer mit
+  Glitzern + Palmen. Musik `music_sea` „Coral Waltz“ (Es-Dur-Walzer 100 bpm).
+- Gegner: `e` gelber Fisch (langsam, Wellen), `E` roter Fisch (schnell,
+  steuert auf die Tiefe des Helden) — beim Schwimmen nicht stampfbar;
+  `j` Qualle (`jellyfish.gd`: sinkt, stößt schräg zum Helden hoch);
+  `z` Krabbe (`crab.gd`, `extends Shroom`, stampfbar); `i` Seeigel
+  (`urchin.gd`, Hindernis, unbesiegbar, nicht in `enemies`).
+- Endboss Welt 6 (türkis, 5 HP): wählt jedes Mal Fächer / Eisbälle /
+  Blitze, bei jeder zweiten Landung Schockwellen.
+- Hilfeseite „Sea World“; Playtest `sea`.
 
 ## Biom-Gegner (v0.9)
 

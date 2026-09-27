@@ -7,14 +7,17 @@ Git-Log.
 
 ## Offen
 
-- [ ] Neue Welt Unterwasser (freigegeben).
-- [ ] Weitere Gegner (freigegeben) — Himmel erledigt (v0.12), für
-      Unterwasser noch offen (Fische, Qualle …).
 - [ ] Boss-Balancing nach Spieltests (HP, Tempo, Angriffsrate der neuen
       Varianten) — Nutzer schaut sich die Bosskämpfe gerade an.
+- [ ] Ideen für später: Unterwasser-Burg mit Wasserabschnitten, Strömungen,
+      weitere Welten (z. B. Vulkan, Geisterhaus), Welt-Karte.
 
 ## Erledigt
 
+- [x] v0.13.0 Welt 6 „Sea“ (letzte Welt): 6-1 Coral Reef, 6-2 Deep Trench,
+      Burg 6-3 Tide Fortress mit Endboss (alle Angriffe, 5 HP); Schwimmen,
+      Riff-/Strand-Biome, Fische, Quallen, Krabben, Seeigel, Musik „Coral
+      Waltz“, Hilfeseite „Sea World“; Drache wartet während Unterwasser-Kursen.
 - [x] v0.12.0 Welt 5 „Sky“: 5-1 Cloud Kingdom, 5-2 Sunset Skyway, Burg 5-3
       Storm Citadel; Wolkenboden/-brücken, fallende Platten (`D`),
       Kippplanken (`T`), Wolkenkobold + Stachi, Möwen, Blitz-Boss, Musik

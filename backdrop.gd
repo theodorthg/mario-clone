@@ -23,7 +23,7 @@ const LAYERS := [
 ## LAYERS entry (same order) — OR "layers": own list of [texture, y, fx, fy,
 ## auto, tint] for biomes with their own scenery; world: CanvasModulate tint
 ## for tiles + actors; fx: screen-space particles ("snow", "motes", "sand",
-## "embers", "wind").
+## "embers", "wind", "bubbles").
 const THEMES := {
 	"grass": {
 		"sky": [Color("3b6bd6"), Color("73acf0"), Color("d8eefa"), 0.55, 0.0, 0.0],
@@ -123,6 +123,38 @@ const THEMES := {
 		],
 		"world": Color(1.0, 0.9, 0.86),
 		"fx": "wind",
+	},
+	"sea": {
+		# underwater: light from the surface, reef hills, kelp, rising bubbles
+		"sky": [Color("5abaea"), Color("1c6cb4"), Color("0b2e62"), 0.45, 0.0, 0.0],
+		"layers": [
+			["res://assets/graphics/bg_sea_rays.png", 0.0, 0.1, 0.1, 3.0, Color(1, 1, 1, 0.9)],
+			["res://assets/graphics/bg_sea_far.png", 110.0, 0.18, 0.4, 0.0, Color.WHITE],
+			["res://assets/graphics/bg_sea_kelp.png", 128.0, 0.32, 0.6, 0.0, Color.WHITE],
+			["res://assets/graphics/bg_sea_near.png", 206.0, 0.5, 0.8, 0.0, Color.WHITE],
+		],
+		"world": Color(0.82, 0.93, 1.0),
+		"fx": "bubbles",
+	},
+	"sea_deep": {
+		"sky": [Color("2a6aa8"), Color("0e3470"), Color("040e2a"), 0.4, 0.0, 0.0],
+		"layers": [
+			["res://assets/graphics/bg_sea_rays.png", 0.0, 0.1, 0.1, 2.0, Color(0.7, 0.8, 1.0, 0.5)],
+			["res://assets/graphics/bg_sea_far.png", 110.0, 0.18, 0.4, 0.0, Color(0.55, 0.62, 0.85)],
+			["res://assets/graphics/bg_sea_kelp.png", 128.0, 0.32, 0.6, 0.0, Color(0.5, 0.64, 0.8)],
+			["res://assets/graphics/bg_sea_near.png", 206.0, 0.5, 0.8, 0.0, Color(0.5, 0.58, 0.8)],
+		],
+		"world": Color(0.66, 0.78, 0.98),
+		"fx": "bubbles",
+	},
+	"beach": {
+		"sky": [Color("3b6bd6"), Color("73acf0"), Color("d8eefa"), 0.55, 0.0, 0.0, 1.0, Vector2(0.2, 0.18)],
+		"layers": [
+			["res://assets/graphics/bg_clouds.png", 26.0, 0.12, 0.1, 5.0, Color.WHITE],
+			["res://assets/graphics/bg_beach_sea.png", 150.0, 0.2, 0.55, 0.0, Color.WHITE],
+			["res://assets/graphics/bg_palms.png", 158.0, 0.36, 0.7, 0.0, Color.WHITE],
+		],
+		"world": Color.WHITE,
 	},
 	"snow_night": {
 		"sky": [Color("050a20"), Color("16285a"), Color("3a4f8a"), 0.55, 1.0, 1.0],
@@ -289,6 +321,24 @@ func _set_fx(kind: String) -> void:
 				img.set_pixel(x, 0, Color(1, 1, 1, 0.25 + 0.1 * x))
 			p.texture = ImageTexture.create_from_image(img)
 			p.color = Color(1, 1, 1, 0.55)
+		"bubbles":
+			# small rising rings, wobbling a little
+			p.amount = 26
+			p.lifetime = 7.0
+			p.direction = Vector2(0.0, -1.0)
+			p.spread = 12.0
+			p.initial_velocity_min = 14.0
+			p.initial_velocity_max = 30.0
+			p.gravity = Vector2(0, -3)
+			var bi := Image.create_empty(4, 4, false, Image.FORMAT_RGBA8)
+			for pt in [Vector2i(1, 0), Vector2i(2, 0), Vector2i(0, 1), Vector2i(3, 1), Vector2i(0, 2),
+					Vector2i(3, 2), Vector2i(1, 3), Vector2i(2, 3)]:
+				bi.set_pixelv(pt, Color(1, 1, 1, 0.8))
+			bi.set_pixel(1, 1, Color(1, 1, 1, 0.9))
+			p.texture = ImageTexture.create_from_image(bi)
+			p.scale_amount_min = 0.6
+			p.scale_amount_max = 1.0
+			p.color = Color(0.85, 0.95, 1.0, 0.7)
 	p.preprocess = p.lifetime
 	_fx = p
 	_fx_size = Vector2.ZERO
