@@ -7,13 +7,14 @@ Git-Log.
 
 ## Offen
 
-- [ ] Boss-Balancing nach Spieltests (HP, Tempo, Angriffsrate der neuen
-      Varianten).
-- [ ] Ideen für später: Unterwasser-Burg mit Wasserabschnitten, Strömungen,
+- [ ] Ideen für später (nach 1.0): Unterwasser-Burg mit Wasserabschnitten, Strömungen,
       weitere Welten (z. B. Vulkan, Geisterhaus), Welt-Karte.
 
 ## Erledigt
 
+- [x] 2026-09-27 **v1.0.0 — finales Release** (Nutzer: „mach das finale
+      Release“): 6 Welten, 19 Kurse, 6 Bosse; Boss-Balancing nach v0.15
+      vom Nutzer abgenommen.
 - [x] v0.15.0 Boss fairer (Nutzer 2026-09-27): jeder Angriff angekündigt
       (ausholen/ducken), Treffer = 1 s betäubt ohne Angriffe, fliegende
       Geschosse verpuffen, danach Rückzug; kein Feuer auf einen Helden über

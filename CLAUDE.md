@@ -14,6 +14,9 @@ davon ist aus Nintendo-Spielen übernommen (Figuren nur „im Stil von“).
   Animationen, Hintergrund nicht freigestellt, Farben inkonsistent.
 - Ab v0.2.0: kompletter Neuaufbau mit **prozedural/handgezeichneter
   Pixel-Art aus Python-Generatoren** (siehe „Grafik“).
+- **v1.0.0 (2026-09-27): finales Release** — 6 Welten (Wiese, Höhle,
+  Wüste, Schnee, Himmel, Meer), 19 Kurse inkl. 6 Burgen mit Boss.
+  Weitere Ideen stehen in `TODO.md` unter „Offen“.
 
 ## Design-Entscheidungen
 
