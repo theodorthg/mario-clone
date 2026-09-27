@@ -52,11 +52,11 @@ const HELP_FALLBACK := {
 	"touch": "Left / right buttons: move\nA: jump   X: run, fireball, tongue\nHold X while moving to run.\nII: pause   Speaker: mute",
 	"items": "Hit ? blocks from below.\nMushroom: grow big.  Fire flower: throw fireballs.\nStar: invincible for a while.  Green mushroom: extra life.\nBig heroes break bricks.",
 	"dragon": "An egg hides in one ? block.\nJump onto the dragon to ride it.\nRun button: tongue eats enemies.\nDown + jump: hop off.  A hit throws you off.",
-	"worlds": "Stomp a turtle, then kick its shell:\nit knocks out every enemy in its way.\nRed turtles turn at edges, winged ones need two stomps.\nIce is slippery. Lava and water: don't fall in!\nCave bats swoop, cactus stacks are spiky (use fire),\npenguins belly-slide.",
-	"castles": "Fire bars spin, lava bubbles leap: time your jumps.\nThe boss ends every world: stomp its head 3-5 times\n(5 fireballs = 1 hit). A fire flower waits before\nthe arena, a restart there starts with fire, a win = 1UP.\nLevel select: on the title press B Y X A, type LEVELS\nor tap the title 5 times. 'Boss' starts at the boss arena\n(no high score for unreached courses).",
+	"worlds": "Stomp a turtle, then kick its shell:\nit knocks out every enemy in its way.\nRed turtles turn at edges, winged ones need two stomps.\nIce is slippery. Lava and water: don't fall in!\nCave bats swoop (small: walk under them, big: duck),\ncactus stacks are spiky (use fire),\npenguins belly-slide.",
+	"castles": "Fire bars spin, lava bubbles leap: time your jumps.\nThe boss ends every world: stomp its head 3-5 times\n(5 fireballs = 1 hit). A fire flower waits before\nthe arena; no fire left? each hit drops one. A win = 1UP.\nLevel select: on the title press B Y X A, type LEVELS\nor tap the title 5 times. 'Boss' starts at the boss arena\n(no high score for unreached courses).",
 	"sky": "Falling slabs shake, then drop: jump off in time.\nTipping planks tip toward your side: keep moving.\nJump up through the clouds.\nThe cloud imp throws spikies: stomp it from up high.\nSpikies can't be stomped: fire, shells or a star.\nGulls glide at you. The storm boss's lightning flashes first.",
 	"sea": "Underwater you swim: every jump press is one stroke up.\nThe side pipe at the end leads to the beach.\nFish can't be stomped while swimming: dodge or use fire.\nJellyfish pulse toward you, crabs can be stomped.\nSea urchins can't be beaten: swim around them.",
-	"goal": "Stomp enemies from above.\nCoins: points, 100 coins = extra life.\nPipes marked by coins lead to bonus rooms.\nGrab the flag pole as high as you can!",
+	"goal": "Stomp enemies from above.\nCoins: points, 100 coins = extra life.\nPipes marked by coins lead to bonus rooms.\nGrab the flag pole as high as you can!\nExtra lives for points: Settings > 1-UP points.",
 }
 
 var screen: int = Screen.NONE
@@ -549,28 +549,38 @@ func _build_highscores() -> void:
 func _build_settings() -> void:
 	_panel.custom_minimum_size = Vector2(300, 0)
 	_vbox.add_child(_heading("SETTINGS"))
+	# the rows scroll (8 no longer fit the 270-px canvas); the buttons stay
+	# below, always reachable; follow_focus scrolls along with the D-pad
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, 150)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = true
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", GAP)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
 	var lives_row := _row("Lives")
 	_stepper(lives_row, func(): return _cfg.lives,
 		func(d): _set_cfg("lives", clampi(_cfg.lives + d, GameSettings.LIVES_MIN, GameSettings.LIVES_MAX)),
 		func(v): return str(v))
-	_vbox.add_child(lives_row)
+	list.add_child(lives_row)
 	var diff_row := _row("Difficulty")
 	_stepper(diff_row, func(): return _cfg.difficulty,
 		func(d): _set_cfg("difficulty", posmod(_cfg.difficulty + d, GameSettings.DIFF_NAMES.size())),
 		func(v): return GameSettings.DIFF_NAMES[v])
-	_vbox.add_child(diff_row)
+	list.add_child(diff_row)
 	var time_row := _row("Timer")
 	_stepper(time_row, func(): return _cfg.time_limit,
 		func(d): _set_cfg("time_limit", posmod(_cfg.time_limit + d, GameSettings.TIME_NAMES.size())),
 		func(v): return GameSettings.TIME_NAMES[v])
-	_vbox.add_child(time_row)
+	list.add_child(time_row)
 	var coin_row := _row("Coin points")
 	_stepper(coin_row, func(): return GameSettings.COIN_POINTS.find(int(_cfg.coin_points)),
 		func(d):
 			var i := posmod(GameSettings.COIN_POINTS.find(int(_cfg.coin_points)) + d, GameSettings.COIN_POINTS.size())
 			_set_cfg("coin_points", GameSettings.COIN_POINTS[i]),
 		func(v): return str(GameSettings.COIN_POINTS[maxi(v, 0)]))
-	_vbox.add_child(coin_row)
+	list.add_child(coin_row)
 	var life_row := _row("1-UP coins")
 	_stepper(life_row, func(): return GameSettings.COINS_PER_LIFE.find(int(_cfg.coins_per_life)),
 		func(d):
@@ -579,17 +589,27 @@ func _build_settings() -> void:
 		func(v):
 			var n: int = GameSettings.COINS_PER_LIFE[maxi(v, 0)]
 			return "Off" if n == 0 else str(n))
-	_vbox.add_child(life_row)
+	list.add_child(life_row)
+	var pts_row := _row("1-UP points")
+	_stepper(pts_row, func(): return GameSettings.LIFE_POINTS.find(int(_cfg.life_points)),
+		func(d):
+			var i := posmod(GameSettings.LIFE_POINTS.find(int(_cfg.life_points)) + d, GameSettings.LIFE_POINTS.size())
+			_set_cfg("life_points", GameSettings.LIFE_POINTS[i]),
+		func(v):
+			var n: int = GameSettings.LIFE_POINTS[maxi(v, 0)]
+			return "Off" if n == 0 else str(n))
+	list.add_child(pts_row)
 	var big_row := _row("Start big")
 	_stepper(big_row, func(): return _cfg.start_big,
 		func(_d): _set_cfg("start_big", not bool(_cfg.start_big)),
 		func(v): return "Yes" if v else "No")
-	_vbox.add_child(big_row)
+	list.add_child(big_row)
 	var dj_row := _row("Double jump")
 	_stepper(dj_row, func(): return _cfg.double_jump,
 		func(_d): _set_cfg("double_jump", not bool(_cfg.double_jump)),
 		func(v): return "Yes" if v else "No")
-	_vbox.add_child(dj_row)
+	list.add_child(dj_row)
+	_vbox.add_child(scroll)
 	_vbox.add_child(_hbox([
 		_button("Sound", func(): _show_screen(Screen.SOUND)),
 		_button("Controls", func(): _show_screen(Screen.CONTROLS)),

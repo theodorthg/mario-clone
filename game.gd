@@ -404,10 +404,19 @@ func _tick_time(delta: float) -> void:
 
 # ================================================================ scoring --
 func add_score(n: int, pos = null) -> void:
+	var before := score
 	score += n
 	hud.set_score(score)
 	if pos != null and n > 0:
 		_popup(str(n), pos)
+	# Settings "1-UP points": an extra life every N points (v0.15, player
+	# wish — gives weaker players a chance). Stateless: counts the
+	# thresholds this addition crossed, so changing the setting mid-run works.
+	var step := int(cfg.get("life_points", 0))
+	if step > 0 and n > 0 and state != State.TITLE:
+		for i in floori(score / float(step)) - floori(before / float(step)):
+			var at: Vector2 = pos if pos != null else (player.global_position + Vector2(0, -34) if player else Vector2.ZERO)
+			one_up(at + Vector2(0, -12.0 * i))
 
 func _popup(text: String, pos: Vector2) -> void:
 	var p := ScorePopup.new()

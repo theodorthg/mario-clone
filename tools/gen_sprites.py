@@ -1297,7 +1297,10 @@ BOSS_WORLD_SWAP = {
 BW, BH = 30, 32
 
 
-def _boss_canvas(legs=0, mouth=False, crouch=0):
+def _boss_canvas(legs=0, mouth=False, crouch=0, head=(0, 0), arm=0, hurt=False):
+    """legs: stride (+/-), crouch: body lowered by n px, head: (dx, dy)
+    offset of head/jaw/horns/crown (rear back / lunge), arm: raise the
+    claw by n px, hurt: eyes squeezed shut"""
     g = [["."] * BW for _ in range(BH)]
 
     def put(x, y, ch):
@@ -1344,51 +1347,65 @@ def _boss_canvas(legs=0, mouth=False, crouch=0):
             put(sx - 1 + k, sy + oy, "h")
         put(sx, sy - 1 + oy, "h")
         put(sx, sy - 2 + oy, "H")
-    # head
-    ell(21, 9 + oy, 7, 6, "b")
+    # head (offset hx/hy: rear back, lunge forward)
+    hx, hy = head
+    hy += oy
+    # neck: keeps a moved head attached to the body
+    for y in range(12 + oy, 16 + oy):
+        for x in range(15, 21):
+            if g[y][x] == ".":
+                put(x, y, "b")
+    ell(21 + hx, 9 + hy, 7, 6, "b")
     # jaw + teeth
-    jaw_y = 12 + oy
+    jaw_y = 12 + hy
     if mouth:
         for y in range(jaw_y, jaw_y + 4):
-            for x in range(20, 29):
+            for x in range(20 + hx, 29 + hx):
                 put(x, y, "m")
-        for x in range(21, 29, 2):
+        for x in range(21 + hx, 29 + hx, 2):
             put(x, jaw_y, "t")
             put(x, jaw_y + 3, "t")
-        for x in range(19, 29):
+        for x in range(19 + hx, 29 + hx):
             put(x, jaw_y + 4, "b")
             put(x, jaw_y + 5, "B")
     else:
-        for x in range(21, 29):
+        for x in range(21 + hx, 29 + hx):
             put(x, jaw_y, "m")
-        for x in range(22, 29, 2):
+        for x in range(22 + hx, 29 + hx, 2):
             put(x, jaw_y - 1, "t")
             put(x, jaw_y + 1, "t")
-        for x in range(19, 28):
+        for x in range(19 + hx, 28 + hx):
             put(x, jaw_y + 2, "b")
             put(x, jaw_y + 3, "B")
     # snout nostril
-    put(27, 8 + oy, "B")
-    # eye (angry brow)
-    for x, y, ch in ((22, 7, "e"), (23, 7, "e"), (22, 8, "e"), (23, 8, "p"), (21, 6, "B"), (22, 6, "B"), (23, 5, "B")):
-        put(x, y + oy, ch)
+    put(27 + hx, 8 + hy, "B")
+    if hurt:
+        # eye squeezed shut, brow pulled down
+        for x, y, ch in ((21, 7, "m"), (22, 8, "m"), (23, 7, "m"), (21, 6, "B"), (22, 6, "B"), (23, 6, "B")):
+            put(x + hx, y + hy, ch)
+    else:
+        # eye (angry brow)
+        for x, y, ch in ((22, 7, "e"), (23, 7, "e"), (22, 8, "e"), (23, 8, "p"), (21, 6, "B"), (22, 6, "B"), (23, 5, "B")):
+            put(x + hx, y + hy, ch)
     # horns
     for i, (x, y) in enumerate(((16, 4), (15, 3), (14, 2), (14, 1), (13, 0))):
-        put(x, y + oy, "h" if i < 4 else "H")
-        put(x + 1, y + oy, "H")
+        put(x + hx, y + hy, "h" if i < 4 else "H")
+        put(x + 1 + hx, y + hy, "H")
     for i, (x, y) in enumerate(((25, 4), (26, 3), (27, 2), (27, 1), (28, 0))):
-        put(x, y + oy, "h")
-        put(x - 1, y + oy, "H")
+        put(x + hx, y + hy, "h")
+        put(x - 1 + hx, y + hy, "H")
     # crown
     for x in range(18, 24):
-        put(x, 3 + oy, "y")
-        put(x, 2 + oy, "Y" if x % 2 else "y")
+        put(x + hx, 3 + hy, "y")
+        put(x + hx, 2 + hy, "Y" if x % 2 else "y")
     for x in (18, 20, 22):
-        put(x, 1 + oy, "y")
-    # arm with claws
-    ell(21, 18 + oy, 3, 2.5, "b")
+        put(x + hx, 1 + hy, "y")
+    # arm with claws (raised by `arm` px)
+    ell(21, 18 + oy - arm, 3, 2.5, "b")
     for x in (23, 24, 25):
-        put(x, 19 + oy, "h")
+        put(x, 19 + oy - arm, "h")
+    if arm:
+        put(25, 18 + oy - arm, "h")
     return ["".join(r) for r in g]
 
 
@@ -1420,17 +1437,29 @@ BUBBLE_PAL = {"w": "#fffbe0", "f": "#ffd84a", "y": "#ff8a1a", "r": "#c82a14", "e
 
 
 def boss():
-    frames_def = [("walk1", dict(legs=1)), ("walk2", dict(legs=-1)), ("roar", dict(mouth=True)),
-                  ("jump", dict(legs=-2, crouch=0))]
+    # v0.15: more motion phases (player feedback: "a bit stiff")
+    frames_def = [
+        ("idle1", dict()), ("idle2", dict(crouch=1, head=(0, 1))),
+        ("walk1", dict(legs=1, crouch=1)), ("walk2", dict(head=(1, 0))), ("walk3", dict(legs=-1, crouch=1)),
+        ("windup", dict(crouch=1, head=(-2, -1), arm=3)),
+        ("roar", dict(mouth=True, head=(1, 1))),
+        ("crouch", dict(crouch=3, head=(0, 1), arm=-1)),
+        ("jump", dict(legs=-2, arm=2)),
+        ("hurt", dict(crouch=2, head=(-2, 1), mouth=True, hurt=True)),
+    ]
     for w, swap in BOSS_WORLD_SWAP.items():
         frames = []
         for n, kw in frames_def:
             im = parse(_boss_canvas(**kw), BOSS_PAL, "boss." + n)
             frames.append((n, ol(recolor(im, swap) if swap else im)))
         save_set("boss_%d" % w, frames, BW + 2, BH + 2, {
-            "walk": (["walk1", "walk2"], 5, True),
+            "idle": (["idle1", "idle2"], 3, True),
+            "walk": (["walk1", "walk2", "walk3", "walk2"], 8, True),
+            "windup": (["windup"], 1, False),
             "roar": (["roar"], 1, False),
+            "crouch": (["crouch"], 1, False),
             "jump": (["jump"], 1, False),
+            "hurt": (["hurt"], 1, False),
         })
     fl = ol(parse(FLAME, FLAME_PAL, "flame"))
     fl2 = ol(parse([r[::-1][::-1] for r in FLAME[1:] + FLAME[:1]], FLAME_PAL, "flame2"))

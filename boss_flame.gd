@@ -41,6 +41,13 @@ func _ready() -> void:
 			_sprite.scale = Vector2(1.2, 0.8)
 	add_child(_sprite)
 
+## The boss was hit: every projectile still flying vanishes in a puff.
+func fizzle() -> void:
+	var sp := Sparkle.new()
+	sp.position = position
+	get_parent().add_child(sp)
+	queue_free()
+
 func _physics_process(delta: float) -> void:
 	_t += delta
 	if kind == "bolt":

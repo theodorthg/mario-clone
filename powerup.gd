@@ -61,6 +61,18 @@ func emerge() -> void:
 			if b is Player:
 				_collect(b))
 
+## Tossed out of a hit boss: arcs to `target` (a floor spot), then stays
+## put like every flower. Collectable during the flight too.
+func toss_to(target: Vector2) -> void:
+	var start := position
+	var tw := create_tween()
+	tw.tween_method(func(t: float):
+		position = start.lerp(target, t) + Vector2(0.0, -70.0 * sin(PI * t)), 0.0, 1.0, 0.8)
+	tw.tween_callback(func():
+		for b in area.get_overlapping_bodies():
+			if b is Player:
+				_collect(b))
+
 func hop(d: float) -> void:
 	velocity.y = -220.0
 	if d != 0.0 and kind != Kind.FLOWER:

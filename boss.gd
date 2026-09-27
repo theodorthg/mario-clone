@@ -8,9 +8,25 @@ extends CharacterBody2D
 ## flames aimed at the hero; faster with every hit.
 ## Damage: stomp (hero bounces off) = 1, star touch = 1, 5 fireballs = 1.
 ## Immune to shells, blocks and the dragon's tongue (no kill_flip()).
+##
+## Fair play (v0.15, player feedback: "it still shoots while stunned, the
+## fire hits me right when I'm above it"):
+## - every attack is telegraphed: WINDUP (rears back, claw raised) before a
+##   breath, CROUCH before a jump;
+## - a hit STUNs it (dizzy stars, no attacks, no walking) and every
+##   projectile still flying fizzles; afterwards it first walks off to the
+##   far side and waits a moment before the next attack;
+## - no breath while the hero is (nearly) above it — it backs off instead;
+##   flames are never aimed steeper than ~22° upward;
+## - no fire power left? A hit makes it drop a fire flower (ammo).
+## Animation: idle breathing, 4-phase walk, squash & stretch on jump/landing.
 
 const GRAVITY := 1100.0
 const INVULN := 1.2
+const STUN := 1.0
+const WINDUP := 0.4
+const CROUCH := 0.2
+const SCALE := Vector2(2, 2)
 
 var world := 1
 var max_hp := 3
@@ -24,11 +40,16 @@ var sprite: AnimatedSprite2D
 var hitbox: Area2D
 var _act := 0.0
 var _inv := 0.0
+var _stun := 0.0
+var _windup := 0.0
+var _crouch := 0.0
 var _fire_hits := 0
 var _target_x := 0.0
 var _roar := 0.0
 var _hit_rect: RectangleShape2D
 var _jumping := false        # own jump in progress (world 3: shock waves on landing)
+var _stars: Node2D
+var _squash: Tween
 
 func _ready() -> void:
 	collision_layer = 4
@@ -39,8 +60,8 @@ func _ready() -> void:
 	sprite = AnimatedSprite2D.new()
 	sprite.sprite_frames = load("res://assets/graphics/boss_%d.tres" % clampi(world, 1, 6))
 	sprite.offset = Vector2(0, -17)
-	sprite.scale = Vector2(2, 2)      # 32x34 art drawn at 2x: a 4-tile giant
-	sprite.play(&"walk")
+	sprite.scale = SCALE              # 32x34 art drawn at 2x: a 4-tile giant
+	sprite.play(&"idle")
 	sprite.flip_h = true
 	add_child(sprite)
 	var sh := CollisionShape2D.new()
@@ -59,6 +80,10 @@ func _ready() -> void:
 	hs.position = Vector2(0, -28)
 	hitbox.add_child(hs)
 	add_child(hitbox)
+	_stars = StunStars.new()
+	_stars.position = Vector2(0, -78)
+	_stars.visible = false
+	add_child(_stars)
 	_target_x = position.x
 	_act = 1.5
 
@@ -76,44 +101,98 @@ func _physics_process(delta: float) -> void:
 		else:
 			return
 	_inv = maxf(_inv - delta, 0.0)
-	sprite.visible = _inv <= 0.0 or int(_inv * 16.0) % 2 == 0
-	facing = 1 if p.global_position.x > global_position.x else -1
-	sprite.flip_h = facing < 0
+	sprite.visible = _inv <= 0.0 or _stun > 0.0 or int(_inv * 16.0) % 2 == 0
 	velocity.y = minf(velocity.y + GRAVITY * delta, 400.0)
 	var rage := 1.0 + 0.25 * (max_hp - hp)
-	if _roar > 0.0:
+	var dx := p.global_position.x - global_position.x
+	if _stun > 0.0:
+		# dizzy: no attacks, slides to a stop
+		_stun -= delta
+		velocity.x = move_toward(velocity.x, 0.0, 300.0 * delta)
+		if _stun <= 0.0:
+			_stars.visible = false
+			_act = maxf(_act, 1.0)
+			_retreat(p)
+	elif _windup > 0.0:
+		velocity.x = 0.0
+		_windup -= delta
+		if _windup <= 0.0:
+			if _hero_above(p):
+				_retreat(p)             # hero jumped over it meanwhile: no fire
+			else:
+				_breathe(p)
+	elif _crouch > 0.0:
+		velocity.x = 0.0
+		_crouch -= delta
+		if _crouch <= 0.0 and is_on_floor():
+			velocity.y = -360.0
+			_jumping = true
+			sprite.play(&"jump")
+			_stretch(Vector2(0.85, 1.2))
+	elif _roar > 0.0:
 		_roar -= delta
 		velocity.x = 0.0
-		if _roar <= 0.0:
-			sprite.play(&"walk")
 	else:
+		facing = 1 if dx > 0.0 else -1
 		if absf(_target_x - global_position.x) < 4.0:
 			_target_x = randf_range(arena_left + 80.0, arena_right - 64.0)
 		velocity.x = signf(_target_x - global_position.x) * 38.0 * rage
 		_act -= delta * rage
 		if _act <= 0.0 and is_on_floor():
 			_act = randf_range(1.6, 2.6)
-			if randf() < 0.55:
-				_breathe(p)
+			if _hero_above(p):
+				_retreat(p)
+				_act = 0.8
+			elif randf() < 0.55:
+				_windup = WINDUP
+				sprite.play(&"windup")
 			else:
-				velocity.y = -360.0
-				_jumping = true
-				sprite.play(&"jump")
+				_crouch = CROUCH
+				sprite.play(&"crouch")
+				_stretch(Vector2(1.12, 0.88))
+	sprite.flip_h = facing < 0
 	var was_air := not is_on_floor()
 	move_and_slide()
 	if was_air and is_on_floor():
-		if sprite.animation == &"jump":
-			sprite.play(&"walk")
 		if _jumping:
 			_jumping = false
 			if world == 3 or (world == 6 and randf() < 0.5):
 				_shock_waves()
+		_stretch(Vector2(1.18, 0.82))
 		_snd("bump")
+	_animate()
 	global_position.x = clampf(global_position.x, arena_left + 36.0, arena_right - 28.0)
 	for b in hitbox.get_overlapping_bodies():
 		if b is Player:
 			_touch_player(b)
 			break
+
+## Idle / walk / jump from the movement — the special states set their
+## own frame when they start (windup, roar, crouch, hurt).
+func _animate() -> void:
+	if _stun > 0.0 or _windup > 0.0 or _crouch > 0.0 or _roar > 0.0:
+		return
+	var anim := &"jump" if not is_on_floor() else (&"walk" if absf(velocity.x) > 1.0 else &"idle")
+	if sprite.animation != anim:
+		sprite.play(anim)
+	sprite.speed_scale = clampf(absf(velocity.x) / 38.0, 0.8, 2.0) if anim == &"walk" else 1.0
+
+## Squash & stretch: snap to `k` (x, y factors), ease back to normal.
+func _stretch(k: Vector2) -> void:
+	if _squash:
+		_squash.kill()
+	sprite.scale = SCALE * k
+	_squash = create_tween()
+	_squash.tween_property(sprite, "scale", SCALE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _hero_above(p: Player) -> bool:
+	return absf(p.global_position.x - global_position.x) < 60.0 and p.global_position.y < global_position.y - 40.0
+
+## Back off: walk away from the hero (never through them); cornered at a
+## wall it just stays put for a moment.
+func _retreat(p: Player) -> void:
+	var away := -1.0 if p.global_position.x > global_position.x else 1.0
+	_target_x = clampf(global_position.x + away * 160.0, arena_left + 80.0, arena_right - 64.0)
 
 ## Attack by world (each castle's boss fights a little differently):
 ## 1 one aimed flame · 2 a fan of three flames · 3 aimed flame, and every
@@ -124,10 +203,17 @@ func _physics_process(delta: float) -> void:
 ## landing sends shock waves
 func _breathe(p: Player) -> void:
 	_roar = 0.6
+	facing = 1 if p.global_position.x > global_position.x else -1
+	sprite.flip_h = facing < 0
 	sprite.play(&"roar")
+	_stretch(Vector2(1.08, 0.94))
 	_snd("dino")
 	var mouth := global_position + Vector2(facing * 28.0, -40.0)
 	var aim := (p.global_position + Vector2(0, -10) - mouth).normalized()
+	if absf(aim.x) < 0.01:
+		aim.x = float(facing)
+	# never steeply upward: at most ~22° above the horizon
+	aim.y = maxf(aim.y, -0.37)
 	aim.x = signf(aim.x) * maxf(absf(aim.x), 0.8)
 	aim = aim.normalized()
 	match world:
@@ -179,11 +265,10 @@ func _touch_player(p: Player) -> void:
 	if p.star_t > 0.0:
 		take_hit()
 		return
-	var prev_feet := p.global_position.y - p.velocity.y * get_physics_process_delta_time()
 	var dt := get_physics_process_delta_time()
 	var top := global_position.y - _hit_rect.size.y
 	# allowance for the boss rising into a falling hero during its jump
-	if p.velocity.y > 0.0 and prev_feet <= top + 8.0 + maxf(-velocity.y, 0.0) * dt:
+	if p.can_stomp(top, _hit_rect.size.y, 10.0 + maxf(-velocity.y, 0.0) * dt):
 		p.bounce()
 		p.velocity.y = -340.0
 		take_hit()
@@ -212,8 +297,37 @@ func take_hit() -> void:
 	if game:
 		game.boss_hp_changed(hp, max_hp)
 		game.add_score(1000, global_position + Vector2(0, -30))
+	# every projectile still in the air fizzles out
+	for n in get_parent().get_children():
+		if n is BossFlame:
+			n.fizzle()
 	if hp <= 0:
 		_die()
+		return
+	_stun = STUN
+	_windup = 0.0
+	_crouch = 0.0
+	_roar = 0.0
+	sprite.play(&"hurt")
+	_stars.visible = true
+	_stretch(Vector2(1.2, 0.8))
+	if game and game.player and game.player.power != Player.Power.FIRE:
+		_drop_flower(game.player)
+
+## Ammo: without fire power a hit makes the boss drop a fire flower, tossed
+## to the side of the arena away from it (one at a time).
+func _drop_flower(p: Player) -> void:
+	for it in get_tree().get_nodes_in_group("items"):
+		if it is PowerUp and it.kind == PowerUp.Kind.FLOWER:
+			return
+	var f := PowerUp.new()
+	f.kind = PowerUp.Kind.FLOWER
+	f.position = position + Vector2(0, -40)
+	get_parent().add_child(f)
+	var mid := (arena_left + arena_right) * 0.5
+	var tx := arena_left + 56.0 if global_position.x > mid else arena_right - 72.0
+	f.toss_to(Vector2(tx, position.y))
+	_snd("sprout")
 
 func _die() -> void:
 	dead = true
@@ -221,7 +335,8 @@ func _die() -> void:
 	collision_mask = 0
 	hitbox.set_deferred("monitoring", false)
 	sprite.visible = true
-	sprite.play(&"roar")
+	_stars.visible = false
+	sprite.play(&"hurt")
 	sprite.flip_v = true
 	var tw := create_tween()
 	tw.tween_property(self, "position:y", position.y - 40.0, 0.35).set_ease(Tween.EASE_OUT)

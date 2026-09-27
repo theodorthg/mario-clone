@@ -8,12 +8,24 @@ Git-Log.
 ## Offen
 
 - [ ] Boss-Balancing nach Spieltests (HP, Tempo, Angriffsrate der neuen
-      Varianten) — Nutzer schaut sich die Bosskämpfe gerade an.
+      Varianten).
 - [ ] Ideen für später: Unterwasser-Burg mit Wasserabschnitten, Strömungen,
       weitere Welten (z. B. Vulkan, Geisterhaus), Welt-Karte.
 
 ## Erledigt
 
+- [x] v0.15.0 Boss fairer (Nutzer 2026-09-27): jeder Angriff angekündigt
+      (ausholen/ducken), Treffer = 1 s betäubt ohne Angriffe, fliegende
+      Geschosse verpuffen, danach Rückzug; kein Feuer auf einen Helden über
+      ihm, Flammen max. ~22° nach oben; ohne Feuerkraft wirft er bei jedem
+      Treffer eine Feuerblume.
+- [x] v0.15.0 Settings „1-UP points“: Extraleben alle 2500/5000/10000/20000
+      Punkte (Standard aus); Settings-Liste scrollt.
+- [x] v0.15.0 Burgen unverwechselbar: 14 Abschnittsarten, jede Burg mit
+      eigener Reihenfolge und eigenem Anfang (?-Blöcke bleiben vorn).
+- [x] v0.15.0 Bosse flüssiger: Atmen, 4-Phasen-Laufzyklus, Ausholen,
+      Brüllen, Ducken, Treffer-Gesicht mit Sternen, Squash & Stretch.
+- [x] v0.15.0 Hilfe: Fledermäuse — „duck or walk under them“.
 - [x] v0.14.0 Levelauswahl „startet den alten Kurs“: die Auswahl selbst
       funktionierte (Pad/Tipp getestet, 6-3 beim Nutzer ok) — die Burgen
       sahen gleich aus (3-3 = 4-3 byte-gleich). Jetzt eigener Aufbau +

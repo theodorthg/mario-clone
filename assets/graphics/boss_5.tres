@@ -2,24 +2,60 @@
 
 [ext_resource type="Texture2D" path="res://assets/graphics/boss_5.png" id="1_tex"]
 
-[sub_resource type="AtlasTexture" id="at_walk1"]
+[sub_resource type="AtlasTexture" id="at_idle1"]
 atlas = ExtResource("1_tex")
 region = Rect2(0, 0, 32, 34)
 
-[sub_resource type="AtlasTexture" id="at_walk2"]
+[sub_resource type="AtlasTexture" id="at_idle2"]
 atlas = ExtResource("1_tex")
 region = Rect2(32, 0, 32, 34)
 
-[sub_resource type="AtlasTexture" id="at_roar"]
+[sub_resource type="AtlasTexture" id="at_walk1"]
 atlas = ExtResource("1_tex")
 region = Rect2(64, 0, 32, 34)
 
-[sub_resource type="AtlasTexture" id="at_jump"]
+[sub_resource type="AtlasTexture" id="at_walk2"]
 atlas = ExtResource("1_tex")
 region = Rect2(96, 0, 32, 34)
 
+[sub_resource type="AtlasTexture" id="at_walk3"]
+atlas = ExtResource("1_tex")
+region = Rect2(128, 0, 32, 34)
+
+[sub_resource type="AtlasTexture" id="at_windup"]
+atlas = ExtResource("1_tex")
+region = Rect2(160, 0, 32, 34)
+
+[sub_resource type="AtlasTexture" id="at_roar"]
+atlas = ExtResource("1_tex")
+region = Rect2(192, 0, 32, 34)
+
+[sub_resource type="AtlasTexture" id="at_crouch"]
+atlas = ExtResource("1_tex")
+region = Rect2(224, 0, 32, 34)
+
+[sub_resource type="AtlasTexture" id="at_jump"]
+atlas = ExtResource("1_tex")
+region = Rect2(256, 0, 32, 34)
+
+[sub_resource type="AtlasTexture" id="at_hurt"]
+atlas = ExtResource("1_tex")
+region = Rect2(288, 0, 32, 34)
+
 [resource]
 animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_idle1")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_idle2")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 3.0
+}, {
 "frames": [{
 "duration": 1.0,
 "texture": SubResource("at_walk1")
@@ -27,10 +63,26 @@ animations = [{
 {
 "duration": 1.0,
 "texture": SubResource("at_walk2")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_walk3")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_walk2")
 }],
 "loop": true,
 "name": &"walk",
-"speed": 5.0
+"speed": 8.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_windup")
+}],
+"loop": false,
+"name": &"windup",
+"speed": 1.0
 }, {
 "frames": [{
 "duration": 1.0,
@@ -42,9 +94,25 @@ animations = [{
 }, {
 "frames": [{
 "duration": 1.0,
+"texture": SubResource("at_crouch")
+}],
+"loop": false,
+"name": &"crouch",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
 "texture": SubResource("at_jump")
 }],
 "loop": false,
 "name": &"jump",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_hurt")
+}],
+"loop": false,
+"name": &"hurt",
 "speed": 1.0
 }]

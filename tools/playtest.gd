@@ -482,7 +482,8 @@ func _run() -> void:
 			await shot("lava_lake")
 			game.change_power(Player.Power.FIRE, false)
 			await _wait(1.0)
-			await teleport(Vector2i(125, 16))
+			var ar: Vector2i = Game.LEVELS[game.level_index].ARENA     # castles vary in length
+			await teleport(Vector2i(ar.x + 5, 16))
 			await _wait(1.0)
 			var boss: Boss = game.get_tree().get_nodes_in_group("boss")[0]
 			print("BOSS active=%s hp=%d cam_left=%d" % [boss.active, boss.hp, game.camera.limit_left])
@@ -620,6 +621,120 @@ func _run() -> void:
 				await teleport(Vector2i(10, 16))      # entrance hall, looking at section A
 				await _wait(0.3)
 				await shot("castle_%d" % w)
+		"bossfair":
+			# v0.15: telegraphed attacks, stun without attacks, projectiles fizzle,
+			# no breath at a hero above, flower drop when out of fire power
+			game.menus.hide_all()
+			game._start_game(Game.castle_of_world(2), true, true)
+			await _wait(Game.CARD_TIME + 0.3)
+			var p := game.player
+			Input.action_press("move_right")
+			await _wait(1.6)
+			Input.action_release("move_right")
+			await _wait(0.2)
+			var boss: Boss = game.get_tree().get_nodes_in_group("boss")[0]
+			game.change_power(Player.Power.BIG, false)
+			await _wait(1.0)
+			p.global_position = Vector2(boss.global_position.x - 110.0, boss.global_position.y)
+			p.velocity = Vector2.ZERO
+			boss._act = 0.0
+			await _wait(0.2)
+			print("FAIR windup: anim=%s windup=%.2f crouch=%.2f (telegraph before the attack)" % [
+				boss.sprite.animation, boss._windup, boss._crouch])
+			await shot("windup")
+			boss._act = 99.0
+			boss._windup = 0.0
+			boss._crouch = 0.0
+			boss._breathe(p)
+			await _wait(0.15)
+			var flames := func() -> int:
+				var n := 0
+				for c in game.level.get_children():
+					if c is BossFlame:
+						n += 1
+				return n
+			print("FAIR before stomp: projectiles=%d" % flames.call())
+			p.invuln_t = 0.0
+			p.global_position = boss.global_position + Vector2(0, -80)
+			p.velocity = Vector2(0, 150)
+			await _wait(0.35)
+			var flower := 0
+			for it in game.get_tree().get_nodes_in_group("items"):
+				if it is PowerUp and it.kind == PowerUp.Kind.FLOWER:
+					flower += 1
+			print("FAIR after stomp: hp=%d/%d stun=%.2f stars=%s anim=%s projectiles=%d flower=%d" % [boss.hp, boss.max_hp,
+				boss._stun, boss._stars.visible, boss.sprite.animation, flames.call(), flower])
+			await shot("stunned")
+			boss._act = 0.0                         # would attack now if it could
+			var spawned := 0
+			for i in 50:
+				await physics_frame
+				spawned = maxi(spawned, flames.call())
+			print("FAIR during stun: projectiles spawned=%d, after stun act=%.2f target=%.0f (hero x %.0f)" % [
+				spawned, boss._act, boss._target_x, p.global_position.x])
+			# hero hovering above the boss: the breath is called off
+			await _wait(1.5)
+			boss._act = 99.0
+			boss._windup = 0.05
+			boss.sprite.play(&"windup")
+			p.global_position = boss.global_position + Vector2(10, -90)
+			p.velocity = Vector2(0, -200)
+			await _wait(0.15)
+			print("FAIR hero above: projectiles=%d (expected 0)" % flames.call())
+			await _wait(2.0)
+			for it in game.get_tree().get_nodes_in_group("items"):
+				if it is PowerUp and it.kind == PowerUp.Kind.FLOWER:
+					print("FAIR flower rests at %s (arena %.0f..%.0f)" % [it.global_position.round(), boss.arena_left, boss.arena_right])
+		"bossanim":
+			# frame strip of the boss moving (idle / walk / windup / jump / stun)
+			game.menus.hide_all()
+			game._start_game(Game.castle_of_world(4), true, true)
+			await _wait(Game.CARD_TIME + 0.3)
+			game.player.star_t = 60.0
+			Input.action_press("move_right")
+			await _wait(1.4)
+			Input.action_release("move_right")
+			var boss: Boss = game.get_tree().get_nodes_in_group("boss")[0]
+			game.player.global_position.x = boss.arena_left + 60.0
+			for i in 16:
+				await _wait(0.18)
+				var img := root.get_viewport().get_texture().get_image()
+				var xf := root.get_viewport().get_final_transform() * root.get_viewport().get_canvas_transform()
+				var c := xf * boss.global_position
+				var sc := xf.get_scale().x
+				img = img.get_region(Rect2i(int(c.x - 45 * sc), int(c.y - 85 * sc), int(90 * sc), int(95 * sc)))
+				img.save_png("%s/bossanim_%02d_%s.png" % [outdir, i, boss.sprite.animation])
+				if i == 8:
+					boss.take_hit()
+			print("BOSSANIM done")
+		"lifepoints":
+			# v0.15: Settings "1-UP points" — an extra life every N points
+			await start_play()
+			game.cfg["life_points"] = 2500
+			var l0 := game.lives
+			game.add_score(2000, game.player.global_position)
+			var l1 := game.lives
+			game.add_score(1000, game.player.global_position)      # crosses 2500
+			var l2 := game.lives
+			game.add_score(5200, game.player.global_position)      # 8200: crosses 5000 + 7500
+			print("LIFEPTS lives %d -> %d (2000) -> %d (3000) -> %d (8200, expect +2)" % [l0, l1, l2, game.lives])
+			game.cfg["life_points"] = 0
+			var l3 := game.lives
+			game.add_score(5000, null)
+			print("LIFEPTS off: lives %d -> %d" % [l3, game.lives])
+			game._to_title()
+			await _wait(0.5)
+			game.menus._return_screen = Menus.Screen.START
+			game.menus._show_screen(Menus.Screen.SETTINGS)
+			await _frames(3)
+			await shot("settings_top")
+			# D-pad down to the last row: the list must scroll along
+			for i in 7:
+				await _pad(12)
+			await _frames(3)
+			var f := game.get_viewport().gui_get_focus_owner()
+			print("LIFEPTS focus after 7x down: %s in row '%s'" % [f.text if f is Button else f, (f.get_parent().get_child(0) as Label).text if f and f.get_parent().get_child(0) is Label else "?"])
+			await shot("settings_bottom")
 		"cheatpick":
 			# the real way: open the level select with the pad code, move the
 			# focus to a course, confirm with the pad or a tap. (A synthetic
@@ -737,18 +852,19 @@ func _run() -> void:
 			# normal run: pass the boss checkpoint small, bump the flower block
 			game._start_game(Game.castle_of_world(1))
 			await _wait(Game.CARD_TIME + 0.4)
-			await teleport(Vector2i(110, 16))
+			var ar: Vector2i = Game.LEVELS[game.level_index].ARENA
+			await teleport(Vector2i(ar.x - 10, 16))
 			await hold("move_right", 0.5)
 			await _wait(0.8)
 			print("FIX after boss checkpoint: power=%d cp=%s" % [game.player.power, game.checkpoint_pos])
-			await teleport(Vector2i(116, 16))
+			await teleport(Vector2i(ar.x - 4, 16))
 			await hold("jump", 0.25)
 			await _wait(1.5)
 			await shot("flower_block")
 			var items := game.get_tree().get_nodes_in_group("items")
 			print("FIX items from N block: %s" % [items.map(func(i): return i.kind)])
 			# beat the boss -> extra life
-			await teleport(Vector2i(125, 16))
+			await teleport(Vector2i(ar.x + 5, 16))
 			await _wait(1.0)
 			var boss: Boss = game.get_tree().get_nodes_in_group("boss")[0]
 			var lives0 := game.lives

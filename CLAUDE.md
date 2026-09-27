@@ -225,7 +225,10 @@ Musik +20 % Tempo).
 
 Leben (1–9), Schwierigkeit (Gegnertempo ×0,8/1,0/1,25; Easy +100 Zeit),
 Timer (Off/Level/Short = 75 %), Münzpunkte (0/100/200/500), 1-UP-Münzen
-(Off/50/100/200), „Start big“. Sound-Unterseite: Regler pro Sound (30 Stück,
+(Off/50/100/200), 1-UP-Punkte (v0.15: Off/2500/5000/10000/20000 —
+`game.gd::add_score` zählt überschrittene Schwellen, zustandslos), „Start
+big“, „Double jump“. Die Zeilen scrollen (`ScrollContainer`,
+`follow_focus`), die Knöpfe darunter bleiben sichtbar. Sound-Unterseite: Regler pro Sound (30 Stück,
 scrollbar), Mute. Persistenz `user://settings.cfg` wie global vorgegeben.
 
 ## Grafik (tools/, Python + Pillow)
@@ -281,7 +284,10 @@ Nintendo-Themen. Loops werden mit umgeklapptem Nachhall gerendert (nahtlos);
   (Sprunghöhen, Nachrutschen, Säulen in 1-4), mutebtn (Mute-Anzeige im
   Sound-Menü), fixes (Stampfen am Rand, Läufer-Überlappung, Doppel-
   Stampfer, Fledermaus-Warnung/-Flughöhe, Burg-Stimmungen), cheatpick
-  (Levelauswahl per Pad-Code + Pad/Tipp). Synthetische Mausklicks zählen in
+  (Levelauswahl per Pad-Code + Pad/Tipp), bossfair (Ankündigung, Stun,
+  Verpuffen, kein Feuer nach oben, Blumen-Abwurf), bossanim (Bildstreifen
+  der Boss-Animation), lifepoints (Extraleben nach Punkten, Scrollen der
+  Settings). Synthetische Mausklicks zählen in
   Godot nur, solange der ECHTE Zeiger über dem Testfenster ist — daher nur
   Pad und Touch automatisch prüfen.
   `godot --path . --script res://tools/playtest.gd -- <szenario> <ordner>`
@@ -412,17 +418,21 @@ Feuerball ruft zuerst `fire_hit()` auf, falls vorhanden (Boss, Kaktus).
 
 ## Burgen + Boss (v0.8)
 
-**Jede Burg eigen (v0.14, Nutzer: 2-3/3-3/4-3 zum Verwechseln — 3-3 und
-4-3 waren sogar byte-gleich, die Levelauswahl schien darum „den alten
-Kurs“ zu starten)**: `make_levels.py::CASTLE_PLAN` wählt pro Welt vier
-Abschnitte (A 12-24: Säulen/Stufen, B 26-47: Feuerstab-Gang/Ziegelbrücke/
-Lifte, C 50-65: niedriger Gang/fallende Platten/Kippplanken, D 68-91:
-Lavasee/Blasen-Säulen/Hublifte) plus je ein Welt-Merkmal im Abschnitt E
-(2 Schildkröte, 3 Kaktus, 4 Eisboden + Pinguin, 5 Stachi, 6 Krabben) und
-eine eigene Stimmung (`backdrop.gd`): `fortress` (1), `fortress_magma`
-(rot), `fortress_sun` (Bernstein, Sand-Partikel), `fortress_ice` (blau,
-Schnee), `fortress_storm` (violett, Wind), `fortress_tide` (türkis, Blasen).
-Alle Themen → Biom `castle`, Musik `music_castle`.
+**Jede Burg eigen** (v0.14: 3-3 und 4-3 waren byte-gleich, die
+Levelauswahl schien darum „den alten Kurs“ zu starten; v0.15: „noch zu
+ähnlich, immer Säulen zuerst“): `make_levels.py` hat positionsunabhängige
+Abschnitte `_sec_*(L, c, world)` mit Breite in `SECTION_WIDTH` —
+Säulen, Stufen, Feuerstab-Gang, Ziegelbrücke, Lifte, niedriger Gang,
+fallende Platten, Kippplanken, Lavasee, Blasen-Säulen, Hublifte, Gegner-
+Halle (Welt-Gegner; Welt 4 mit Eisboden), Treppenturm, Feuerstab-Zähne.
+`CASTLE_PLAN` legt je Welt Reihenfolge (jede Burg beginnt anders) und
+Stimmung fest; 3 Bodenspalten Abstand, Mittel-Flagge vor dem mittleren
+Abschnitt, danach der feste Schluss (?M?-Blöcke, Boss-Checkpoint, Arena).
+Die Burglänge variiert (179–204 Spalten; Arena = `ARENA` im Level, Tests
+lesen sie daraus). Stimmungen (`backdrop.gd`): `fortress` (1),
+`fortress_magma` (rot), `fortress_sun` (Bernstein, Sand-Partikel),
+`fortress_ice` (blau, Schnee), `fortress_storm` (violett, Wind),
+`fortress_tide` (türkis, Blasen). Alle → Biom `castle`, `music_castle`.
 
 Letzter Kurs jeder Welt: 1-4, 2-3, 3-3, 4-3 (`make_levels.py::castle_level`,
 mit der Welt steigende Schwierigkeit). Thema `fortress` (Biom `castle`:
@@ -443,6 +453,20 @@ Partikel, Musik `music_castle`). Deko: `*` Banner, `+`/`t` Fackel
   Kein `kill_flip()` → immun gegen Panzer, Blöcke, Zunge. Sieg:
   `boss_defeated()` → „WORLD n CLEAR!“, `jingle_world`, +5000, **1UP**
   (v0.9.4), Zeitbonus, nächste Welt.
+- **Fairness + Animation (v0.15, Nutzer: „schießt noch, während er
+  betäubt ist; Feuer trifft, wenn ich über ihm bin; nach dem ersten Treffer
+  keine Munition mehr; wirkt steif“)**: jeder Angriff angekündigt (WINDUP
+  0,4 s ausholen / CROUCH 0,2 s ducken); Treffer = STUN 1 s (Sterne
+  `stun_stars.gd`, keine Angriffe, kein Laufen), alle fliegenden Geschosse
+  verpuffen (`BossFlame.fizzle()`), danach weicht er vom Helden weg
+  (`_retreat`, nie durch ihn hindurch) und wartet ≥ 1 s; kein Feuer, wenn
+  der Held (fast) über ihm ist, Flammen höchstens ~22° nach oben; hat der
+  Held keine Feuerkraft, wirft der Boss bei jedem Treffer eine Feuerblume
+  in die ferne Arenahälfte (`PowerUp.toss_to`). Frames je Boss: idle1/2
+  (atmen), walk1-3 (4-Phasen-Zyklus mit Auf und Ab), windup, roar, crouch,
+  jump, hurt (`_boss_canvas`: `head`-Versatz, `arm`, `hurt`); Squash &
+  Stretch beim Absprung, Landen, Treffer. Stampf-Test über
+  `Player.can_stomp(top, h, depth)` mit fester Tiefe 10 px (+ Aufstieg).
 - Vor jeder Arena (v0.9.4, Nutzerwunsch — sonst frustrierend): eigener
   Checkpoint (Arena−7) + `N`-Block (immer Feuerblume, Block-Inhalt
   `flower`). Wer vor der Arena (re)spawnt — Tod nach dem Boss-Checkpoint

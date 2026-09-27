@@ -339,15 +339,17 @@ func bounce(held_boost := true) -> void:
 ##   that is what made stomping feel so picky;
 ## - right after bouncing off one enemy (stomp_grace) a second enemy the hero
 ##   touches is stomped too instead of hurting — overlapping walkers.
-func can_stomp(top: float, h: float) -> bool:
+## `depth` (optional) overrides how deep into the hitbox still counts (the
+## boss uses a fixed depth — 60 % of a 56-px giant would be far too much).
+func can_stomp(top: float, h: float, depth := -1.0) -> bool:
 	if stomp_grace > 0.0:
-		return global_position.y <= top + h * 0.75
+		return global_position.y <= top + (h * 0.75 if depth < 0.0 else depth)
 	if velocity.y <= 0.0 and _fall_t <= 0.0:
 		return false
 	var hi := global_position.y - maxf(velocity.y, 0.0) * get_physics_process_delta_time()
 	for y in _feet_hist:
 		hi = minf(hi, y)
-	return hi <= top + maxf(6.0, h * 0.6)
+	return hi <= top + (maxf(6.0, h * 0.6) if depth < 0.0 else depth)
 
 func _ceiling_blocked() -> bool:
 	var params := PhysicsShapeQueryParameters2D.new()

@@ -12,6 +12,7 @@ const DEF := {
 	"time_limit": 1,        # index into TIME_NAMES
 	"coin_points": 200,     # points per coin
 	"coins_per_life": 100,  # 0 = off
+	"life_points": 0,       # extra life every N points, 0 = off (v0.15)
 	"start_big": false,     # start every life as big hero (easier)
 	"double_jump": true,    # press jump again in mid-air (assist, v0.11)
 	"touch_buttons": 0,     # index into TOUCH_NAMES: on-screen move/jump/run buttons
@@ -23,6 +24,7 @@ const DIFF_NAMES := ["Easy", "Normal", "Hard"]
 const TIME_NAMES := ["Off", "Level", "Short"]
 const COIN_POINTS := [0, 100, 200, 500]
 const COINS_PER_LIFE := [0, 50, 100, 200]
+const LIFE_POINTS := [0, 2500, 5000, 10000, 20000]
 ## Auto = shown on touch devices unless a gamepad / D-pad is connected
 ## (e.g. Anbernic RG552: touchscreen AND D-pad -> hidden). Pause + mute at
 ## the top are never affected.
