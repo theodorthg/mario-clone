@@ -122,6 +122,14 @@ func hero_position() -> Vector2:
 func is_busy() -> bool:
 	return not _legs.is_empty() or _reveal_seg >= 0
 
+## Where the hero stands once the current reveal / walk is done (autosave).
+func destination() -> int:
+	if _reveal_seg >= 0:
+		return _after_reveal
+	if not _legs.is_empty():
+		return _legs[_legs.size() - 1].to
+	return at
+
 # ------------------------------------------------------------------ input --
 func _unhandled_input(event: InputEvent) -> void:
 	if not active or not visible or Game.instance == null or Game.instance.state != Game.State.MAP:

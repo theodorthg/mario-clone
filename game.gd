@@ -6,6 +6,8 @@ extends Node2D
 ## over. A run: Play -> map -> course -> (clear) -> map -> ... Score, lives
 ## and power carry across the map; the level select cheat / "Boss" starts a
 ## course directly and joins the same flow afterwards.
+## v1.2: the run is saved all along (save_run -> SaveGame + its high score
+## entry); the title offers "Continue", quitting asks first.
 ## Entities talk to it through Game.instance (add_score, add_coin,
 ## award_chain, collect_powerup, change_power, player_died, enter_warp,
 ## flag_reached, set_checkpoint, is_near_view, enemy_speed_mul).
@@ -91,6 +93,15 @@ var world_map: WorldMap
 ## furthest course this run may enter from the map (saved progress, or
 ## further when the level select started a course beyond it)
 var _run_reach := 0
+## furthest course entered in this run (for its high score entry)
+var _run_best := 0
+## the run's saved game / high score entry (SaveGame.new_id) and the name
+## the player gave it ("" = not asked yet, the entry reads "YOU")
+var run_id := 0
+var run_name := ""
+## started from the level select: never written to the saved game, so
+## trying a course there can't replace the player's real run
+var practice := false
 var splash: Splash
 
 func _ready() -> void:
@@ -110,13 +121,14 @@ func _ready() -> void:
 		snd.mute_changed.connect(hud.set_muted)     # also when muted in the Sound menu
 	menus.play_pressed.connect(func(i: int):
 		if i < 0:
-			start_map_run()           # "Play": the world map
+			start_map_run()           # "Play" / "New Game": the world map
 		else:
 			_start_game(i, menus.take_cheat(), menus.take_boss()))
+	menus.continue_pressed.connect(continue_run)
 	menus.resume_pressed.connect(_resume)
 	menus.restart_pressed.connect(func():
 		# "Play Again": a fresh run, back on the map where the last one ended
-		_new_run(cheated)
+		_new_run(cheated, practice)
 		_run_reach = maxi(_run_reach, level_index)
 		_show_map(level_index))
 	menus.quit_to_menu_pressed.connect(_to_title)
@@ -148,6 +160,13 @@ func _exit_tree() -> void:
 	if instance == self:
 		instance = null
 
+## Window closed, Android back / app sent to the background (it may be
+## killed there without further notice): save the run first.
+func _notification(what: int) -> void:
+	if what in [NOTIFICATION_WM_CLOSE_REQUEST, NOTIFICATION_WM_GO_BACK_REQUEST,
+			NOTIFICATION_APPLICATION_PAUSED]:
+		save_run()
+
 # ================================================================= display --
 func _apply_display_mode() -> void:
 	# Landscape side-scroller: keep the 270px design height, let extra width
@@ -176,6 +195,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # =================================================================== flow --
 func _to_title() -> void:
+	save_run()
 	state = State.TITLE
 	get_tree().paused = false
 	_paused = false
@@ -218,7 +238,7 @@ static func first_level_of_world(w: int) -> int:
 ## at_boss (level select "Boss"): spawn right in front of the castle's boss
 ## arena — dying there respawns at the same spot (it acts as the checkpoint).
 func _start_game(start := 0, cheat := false, at_boss := false) -> void:
-	_new_run(cheat)
+	_new_run(cheat, true)
 	level_index = clampi(start, 0, LEVELS.size() - 1)
 	_run_reach = maxi(_run_reach, level_index)
 	var arena = LEVELS[level_index].get_script_constant_map().get("ARENA")
@@ -227,8 +247,13 @@ func _start_game(start := 0, cheat := false, at_boss := false) -> void:
 	_begin_level()
 
 ## Reset everything a run carries (score, coins, lives, power, dragon).
-func _new_run(cheat := false) -> void:
+## from_select: a level select run (not saved, see `practice`).
+func _new_run(cheat := false, from_select := false) -> void:
 	cheated = cheat
+	practice = cheat or from_select
+	run_id = SaveGame.new_id()
+	run_name = ""
+	_run_best = 0
 	cfg = GameSettings.load_all()
 	score = 0
 	coins = 0
@@ -246,6 +271,74 @@ func _new_run(cheat := false) -> void:
 func start_map_run() -> void:
 	_new_run(false)
 	_show_map(_run_reach)
+
+## Title "Continue": the saved run, back on the map where it was left.
+func continue_run() -> void:
+	var s := SaveGame.load_run()
+	if s.is_empty():
+		start_map_run()
+		return
+	_new_run(false)
+	run_id = int(s.id)
+	run_name = str(s.name)
+	score = int(s.score)
+	coins = int(s.coins)
+	lives = clampi(int(s.lives), 1, 99)
+	power = clampi(int(s.power), Player.Power.SMALL, Player.Power.FIRE)
+	has_dino = bool(s.dino)
+	_run_best = maxi(level_of_id(str(s.best)), 0)
+	var at := maxi(level_of_id(str(s.at)), 0)
+	_run_reach = maxi(_run_reach, at)
+	_show_map(at)
+
+## Index of the course with this ID ("2-3"), -1 if unknown.
+static func level_of_id(id: String) -> int:
+	for i in LEVELS.size():
+		if LEVELS[i].ID == id:
+			return i
+	return -1
+
+## Autosave: the run to SaveGame (not for level select runs) and its score to
+## its high score entry. Called on every map step, course start, before the
+## quit dialog / main menu and when the app closes. Returns what the quit
+## dialog shows.
+func save_run() -> Dictionary:
+	if run_id == 0 or state in [State.TITLE, State.GAMEOVER]:
+		return {}
+	_sync_hof()
+	# mid-course: what the hero has right now (the course restarts from the map)
+	var in_course := state in [State.INTRO, State.PLAYING, State.TRANSITION]
+	var cur_power: int = player.power if player and state != State.DYING else power
+	var cur_dino: bool = (player.riding != null or _dino_parked) if player and in_course else has_dino
+	var at := level_index
+	if state == State.MAP and world_map:
+		at = world_map.destination()
+	if not practice and state != State.DYING:
+		SaveGame.store({"id": run_id, "name": run_name, "score": score, "coins": coins,
+			"lives": lives, "power": cur_power, "dino": cur_dino, "at": LEVELS[at].ID,
+			"best": LEVELS[maxi(_run_best, at)].ID})
+	return {"saved": not practice, "cheated": cheated, "in_course": state != State.MAP,
+		"score": score, "lives": lives, "coins": coins, "world": LEVELS[at].ID,
+		"rank": HallOfFame.run_rank(run_id), "name": run_name}
+
+## Keep the run's high score entry up to date (created once it qualifies).
+func _sync_hof() -> int:
+	if cheated or run_id == 0 or score <= 0:
+		return -1
+	return HallOfFame.record_run(run_id, run_name if run_name != "" else "YOU", score,
+		LEVELS[maxi(_run_best, level_index)].ID)
+
+## Quit dialog "Save & Exit".
+func quit_game() -> void:
+	save_run()
+	get_tree().quit()
+
+## The player named the run (quit dialog / game over): renames its entry.
+func set_run_name(who: String) -> int:
+	run_name = who.strip_edges().to_upper()
+	var rank := _sync_hof()
+	save_run()
+	return rank
 
 ## Switch to the world map, hero on course `at_idx`. With `reveal_to` the
 ## road to that (newly unlocked) course draws itself and the hero walks on.
@@ -274,12 +367,14 @@ func _show_map(at_idx: int, reveal_to := -1) -> void:
 		world_map.course_chosen.connect(_enter_course)
 		world_map.node_changed.connect(func(i: int):
 			level_index = i
-			_update_hud())
+			_update_hud()
+			save_run())
 	world_map.setup(reveal_to - 1 if reveal_to >= 0 else _run_reach, at_idx, power)
 	if reveal_to >= 0:
 		world_map.reveal(reveal_to)
 	level_index = world_map.at
 	_update_hud()
+	save_run()
 	hud.set_time(-1)
 	camera.limit_left = 0
 	camera.limit_right = WorldMapData.SIZE.x
@@ -308,11 +403,13 @@ func _begin_level() -> void:
 	if not cheated:
 		GameSettings.set_reached_world(world_of(level_index))
 		GameSettings.set_reached_level_id(data.ID, level_index, reached_level_index())
+	_run_best = maxi(_run_best, level_index)
 	hud.show_card(data.ID, data.NAME, lives)
 	hud.set_boss(-1, 0)
 	_update_hud()
 	_set_world_active(false)
 	_build_level(level_index, true)
+	save_run()
 	time_left = GameSettings.level_time(cfg, data.TIME)
 	_time_acc = 0.0
 	_hurry = false
@@ -647,6 +744,11 @@ func _game_over(victory: bool) -> void:
 	if not victory:
 		_snd_call("play", null, ["jingle_gameover"])
 	var data: Script = LEVELS[level_index]
+	# the run is over: its score is in the high scores (named on the next
+	# screen), the saved game goes — the title offers "Play" again
+	_sync_hof()
+	if int(SaveGame.load_run().get("id", 0)) == run_id:
+		SaveGame.clear()
 	if victory:
 		level_index = 0      # "Play Again" after the last course starts over at 1-1
 	hud.show_text_card("GAME OVER" if not victory else "THANK YOU!", "" if not victory else "You cleared every course")

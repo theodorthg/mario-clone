@@ -17,6 +17,8 @@ davon ist aus Nintendo-Spielen übernommen (Figuren nur „im Stil von“).
 - **v1.0.0 (2026-09-27): finales Release** — 6 Welten (Wiese, Höhle,
   Wüste, Schnee, Himmel, Meer), 19 Kurse inkl. 6 Burgen mit Boss.
   Weitere Ideen stehen in `TODO.md` unter „Offen“.
+- v1.1.0 Weltkarte, v1.2.0 Spielstand/Continue + Quit-Dialog mit
+  Highscore-Eintrag.
 
 ## Design-Entscheidungen
 
@@ -292,7 +294,12 @@ Nintendo-Themen. Loops werden mit umgeklapptem Nachhall gerendert (nahtlos);
   (Levelauswahl per Pad-Code + Pad/Tipp), bossfair (Ankündigung, Stun,
   Verpuffen, kein Feuer nach oben, Blumen-Abwurf), bossanim (Bildstreifen
   der Boss-Animation), lifepoints (Extraleben nach Punkten, Scrollen der
-  Settings). Synthetische Mausklicks zählen in
+  Settings), save (v1.2: Autosave, Quit-Dialog mit Name, Continue, Game
+  Over löscht, New-Game-Rückfrage, Levelauswahl lässt den Spielstand in
+  Ruhe). **Jedes Szenario sichert `savegame.cfg`, `hall_of_fame.cfg` und
+  `settings.cfg` vorher und stellt sie danach wieder her** (Autosave/Game
+  Over schreiben sonst in die echten Dateien des Entwicklungsrechners).
+  Synthetische Mausklicks zählen in
   Godot nur, solange der ECHTE Zeiger über dem Testfenster ist — daher nur
   Pad und Touch automatisch prüfen.
   `godot --path . --script res://tools/playtest.gd -- <szenario> <ordner>`
@@ -561,6 +568,48 @@ skaliert (NEAREST). Adaptive-Vordergrund bleibt im sichtbaren Kreis (~61 %).
 - Playtest `map` (Laufen, gesperrter Kurs, Pause, Betreten, Ziel → Weg
   aufdecken + speichern, Antippen) — setzt `[progress]` kurz auf 1-3 und
   stellt ihn danach wieder her.
+
+## Spielstand + Highscore beim Aufhören (v1.2)
+
+Nutzer (2026-09-27): „bei Exit konnte ich mich nicht in die Highscores
+eintragen, und Leben/Punkte waren weg — so eine Karte soll doch
+Zwischendurch-Aufhören erlauben. Auf keinen Fall darf Fortschritt verloren
+gehen.“ Lösung:
+- **Autosave** `save_game.gd` (`SaveGame`, `user://savegame.cfg` Abschnitt
+  `[run]`: id, name, score, coins, lives, power, dino, at, best — Kurse als
+  ID-String). `game.gd::save_run()` schreibt bei jedem Kartenschritt
+  (`node_changed`), beim Erscheinen der Karte, bei jedem Kursstart (auch
+  nach einem Tod), vor dem Quit-Dialog, in `_to_title()` und bei
+  `NOTIFICATION_WM_CLOSE_REQUEST` / `WM_GO_BACK_REQUEST` /
+  `APPLICATION_PAUSED` (Android kann eine App im Hintergrund still
+  beenden). Mitten im Kurs: aktueller Stand (Kraft = `player.power`,
+  Drache = `riding`), der Kurs beginnt beim Fortsetzen neu von der Karte.
+  Während DYING wird nicht geschrieben (der Stand vom Kursstart gilt).
+  Karte: `WorldMap.destination()` = Ziel eines laufenden Wegs/Aufdeckens.
+- **Titel**: mit Spielstand „Continue  1-2“ (+ Punkte/Leben-Zeile) und
+  „New Game“ → Rückfrage „NEW GAME?“ (Standardfokus „Back“). Ohne
+  Spielstand wie bisher „Play“. Game Over / Sieg löscht den Spielstand
+  (nur wenn es derselbe Lauf ist).
+- **Pause „Main Menu“/„Exit“** → Dialog `Screen.QUIT` („BACK TO MENU?“ /
+  „QUIT GAME?“): zeigt Punkte, Welt, Leben, Münzen, was gespeichert ist,
+  und — wenn die Punkte in der Bestenliste stehen — „HIGH SCORE #n! Enter
+  your name“ (LineEdit, vorbelegt mit dem Namen des Laufs). Knöpfe „Save &
+  Menu“/„Save & Exit“ + „Back“. `Game.quit_game()` speichert vor `quit()`
+  (`SceneTree.quit()` löst KEIN `WM_CLOSE_REQUEST` aus).
+- **Ein Highscore-Eintrag pro Lauf**: `HallOfFame.record_run(run_id, name,
+  score, world)` legt den Eintrag an (sobald er qualifiziert) bzw.
+  aktualisiert ihn (Schlüssel `run`); läuft bei jedem Autosave mit (Name
+  „YOU“, bis der Spieler einen eingibt: `Game.set_run_name()`). Dadurch
+  kein doppelter Eintrag nach „Continue“ und kein verlorener Highscore bei
+  App-Abbruch oder „New Game“. Game Over zeigt das Namensfeld, wenn der
+  Lauf in der Liste steht, vorbelegt; „High Scores“ hebt den laufenden
+  (Pause) bzw. gespeicherten (Titel) Lauf hervor.
+- **Levelauswahl-Läufe** (`practice`, auch „Boss“ und nicht-gecheatete)
+  schreiben den Spielstand NIE — sonst würde Ausprobieren den echten Lauf
+  ersetzen. Ihr Highscore zählt weiter (gecheatete: keiner); der Quit-Dialog
+  sagt das. „Play Again“ behält `practice`.
+- Hilfeseite „World Map“: „Saved all along: quit any time, Continue on
+  title“. Playtest `save`.
 
 ## Touch-Tasten-Schalter (v0.5)
 

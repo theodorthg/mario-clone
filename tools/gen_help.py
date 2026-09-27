@@ -465,8 +465,10 @@ def page_map():
     tx = 216
     for i, (s, col) in enumerate((("Walk: D-pad or", WHITE), ("arrow keys", WHITE), ("A / Space:", GOLD),
                                   ("play the course", GOLD), ("", WHITE), ("Touch: tap a", WHITE),
-                                  ("course to walk", WHITE), ("there, tap again", WHITE), ("to play it", WHITE))):
-        text(d, (tx, 22 + i * 10), s, fill=col)
+                                  ("course to walk", WHITE), ("there, tap again", WHITE), ("to play it", WHITE),
+                                  ("", WHITE), ("Saved all along:", GOLD), ("quit any time,", GOLD),
+                                  ("Continue on title", GOLD))):
+        text(d, (tx, 22 + i * 9), s, fill=col)
     ny = 146
     img.alpha_composite(nodes.crop((nw, 0, 2 * nw, nh)), (8, ny))
     text(d, (30, ny + 2), "cleared", fill=DIM)

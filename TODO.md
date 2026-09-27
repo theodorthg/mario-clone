@@ -12,6 +12,12 @@ Git-Log.
 
 ## Erledigt
 
+- [x] v1.2.0 Kein Fortschritt geht beim Aufhören verloren (Nutzer
+      2026-09-27: „bei Exit kein Highscore-Eintrag, Leben nicht
+      gespeichert“): Autosave des Laufs (Punkte, Leben, Münzen, Kraft,
+      Drache, Kartenplatz), „Continue“/„New Game“ auf dem Titel, Rückfrage
+      vor Main Menu/Exit mit Namenseingabe für die Bestenliste, ein
+      mitwachsender Highscore-Eintrag pro Lauf.
 - [x] v1.1.0 Weltkarte (Nutzerwunsch 2026-09-27): alle 6 Welten auf einer
       Karte, Held läuft über die Wege, geschaffte/offene/gesperrte Kurse,
       nach jedem Kurs zurück zur Karte mit aufgedecktem Weg, Musik

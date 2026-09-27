@@ -89,10 +89,52 @@ func teleport(cell: Vector2i) -> void:
 	game._update_camera(0.0, true)
 	await _frames(3)
 
+## The player's saved run / high scores / settings on this machine: kept
+## aside while a scenario runs (autosave and game overs write them).
+const USER_FILES := ["user://savegame.cfg", "user://hall_of_fame.cfg", "user://settings.cfg"]
+var _user_backup := {}
+
+func _backup_user_files() -> void:
+	for f in USER_FILES:
+		_user_backup[f] = FileAccess.get_file_as_bytes(f) if FileAccess.file_exists(f) else null
+
+func _restore_user_files() -> void:
+	for f in USER_FILES:
+		if _user_backup.get(f) == null:
+			if FileAccess.file_exists(f):
+				DirAccess.remove_absolute(ProjectSettings.globalize_path(f))
+		else:
+			var fa := FileAccess.open(f, FileAccess.WRITE)
+			fa.store_buffer(_user_backup[f])
+			fa.close()
+
+func _button_texts() -> Array:
+	var out := []
+	for b in game.menus.find_children("*", "Button", true, false):
+		if b.visible:
+			out.append(b.text)
+	return out
+
+func _press_button(text: String) -> void:
+	for b in game.menus.find_children("*", "Button", true, false):
+		if b.visible and b.text == text:
+			b.pressed.emit()
+			await _frames(3)
+			return
+	print("BUTTON NOT FOUND: ", text, " in ", _button_texts())
+
+func _hints() -> String:
+	var out := []
+	for l in game.menus.find_children("*", "Label", true, false):
+		if l.visible and l.get_parent() == game.menus._vbox:
+			out.append(l.text.replace("\n", " / "))
+	return " | ".join(out)
+
 func _run() -> void:
 	# the game's _ready (which creates the splash) runs only once the tree
 	# is live — skip the splash from here, not from _init()
 	await process_frame
+	_backup_user_files()
 	if scenario != "splash":
 		game.skip_splash()
 	match scenario:
@@ -1303,5 +1345,113 @@ func _run() -> void:
 			game._toggle_pause()
 			await _wait(0.3)
 			state("resumed")
+		"save":
+			# v1.2 autosave: quit dialog + name, Continue, game over, New Game,
+			# level select runs leave the saved game alone
+			SaveGame.clear()
+			var c := ConfigFile.new()
+			c.load(GameSettings.CFG_PATH)
+			c.set_value("progress", "level", "1-3")
+			c.set_value("progress", "world", 1)
+			c.save(GameSettings.CFG_PATH)
+			await _wait(0.6)
+			game._to_title()
+			await _frames(3)
+			print("SAVE title without save: ", _button_texts())
+			game.menus.hide_all()
+			game.menus.play_pressed.emit(-1)
+			await _wait(0.8)
+			game.score = 912340          # beats every entry on this machine
+			game.lives = 5
+			game.coins = 7
+			game.power = Player.Power.FIRE
+			await _act("move_left")
+			await _wait(1.4)
+			var s := SaveGame.load_run()
+			print("SAVE after map step: at=%s score=%d lives=%d coins=%d power=%d id_ok=%s" % [s.at, s.score,
+				s.lives, s.coins, s.power, int(s.id) == game.run_id])
+			var run := game.run_id
+			await _act("pause")
+			await _wait(0.3)
+			await _press_button("Main Menu")
+			print("SAVE quit dialog: screen=%d (QUIT=%d) buttons=%s" % [game.menus.screen, Menus.Screen.QUIT, _button_texts()])
+			print("SAVE quit text: ", _hints())
+			await shot("quit_menu")
+			game.menus._name_edit.text = "tester"
+			await _press_button("Save & Menu")
+			await _wait(0.4)
+			var list := HallOfFame.load_list()
+			var r := HallOfFame.run_rank(run)
+			print("SAVE hof: rank=%d name=%s score=%s entries_of_run=%d" % [r, list[r].name, list[r].score,
+				list.filter(func(e): return int(e.get("run", 0)) == run).size()])
+			print("SAVE title with save: state=%d buttons=%s" % [game.state, _button_texts()])
+			await shot("title_continue")
+			await _press_button("Continue  1-2")
+			await _wait(0.8)
+			print("SAVE continued: state=%d at=%d score=%d lives=%d coins=%d power=%d same_run=%s name=%s" % [
+				game.state, game.world_map.at, game.score, game.lives, game.coins, game.power,
+				game.run_id == run, game.run_name])
+			await _act("jump")
+			await _wait(Game.CARD_TIME + 0.4)
+			print("SAVE in course: state=%d course=%s power=%d" % [game.state, Game.LEVELS[game.level_index].ID,
+				game.player.power])
+			game.add_score(1000)
+			await _act("pause")
+			await _wait(0.3)
+			await _press_button("Exit")
+			print("SAVE exit dialog: buttons=%s name_field=%s" % [_button_texts(),
+				game.menus._name_edit.text if game.menus._name_edit else "-"])
+			print("SAVE exit text: ", _hints())
+			await shot("quit_exit")
+			await _press_button("Back")
+			print("SAVE back: screen=%d (PAUSE=%d)" % [game.menus.screen, Menus.Screen.PAUSE])
+			list = HallOfFame.load_list()
+			r = HallOfFame.run_rank(run)
+			print("SAVE hof in course: score=%s name=%s; saved score=%d" % [list[r].score, list[r].name,
+				SaveGame.load_run().score])
+			game.menus.hide_all()
+			game._resume()
+			await _wait(0.3)
+			game.lives = 1
+			game.player_died(false)
+			await _wait(6.0)
+			print("SAVE game over: screen=%d save_exists=%s name_field=%s" % [game.menus.screen,
+				SaveGame.exists(), game.menus._name_edit.text if game.menus._name_edit else "-"])
+			await shot("gameover")
+			await _press_button("Menu")
+			await _wait(0.3)
+			print("SAVE title after game over: ", _button_texts())
+			# a new game over a saved run asks first
+			game.menus.hide_all()
+			game.menus.play_pressed.emit(-1)
+			await _wait(0.8)
+			game.score = 5000
+			game.save_run()
+			var old_id := int(SaveGame.load_run().id)
+			game._to_title()
+			await _frames(3)
+			await _press_button("New Game")
+			await _frames(3)
+			var fo := game.get_viewport().gui_get_focus_owner()
+			print("SAVE new game dialog: screen=%d (NEWGAME=%d) focus=%s text=%s" % [game.menus.screen,
+				Menus.Screen.NEWGAME, fo.text if fo is Button else "?", _hints()])
+			await shot("newgame")
+			await _press_button("New Game")
+			await _wait(0.8)
+			print("SAVE new run: state=%d score=%d save_replaced=%s" % [game.state, game.score,
+				int(SaveGame.load_run().id) != old_id])
+			# the level select never touches the saved game
+			var keep := int(SaveGame.load_run().id)
+			game._start_game(0)
+			await _wait(Game.CARD_TIME + 0.4)
+			game.add_score(300)
+			await _act("pause")
+			await _wait(0.3)
+			await _press_button("Main Menu")
+			print("SAVE practice dialog: ", _hints(), " buttons=", _button_texts())
+			await _press_button("Main Menu")
+			await _wait(0.3)
+			print("SAVE practice kept save: %s" % (int(SaveGame.load_run().id) == keep))
 	await _wait(0.3)
+	_restore_user_files()
 	quit()

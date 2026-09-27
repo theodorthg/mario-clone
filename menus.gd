@@ -10,12 +10,14 @@ extends Control
 ## qualifying score as "YOU") — re-scaled for the 480x270 landscape canvas.
 
 signal play_pressed(level_index: int)
+signal continue_pressed
 signal resume_pressed
 signal restart_pressed
 signal quit_to_menu_pressed
 signal settings_changed(cfg: Dictionary)
 
-enum Screen { NONE, START, SETTINGS, SOUND, PAUSE, GAMEOVER, HELP, HIGHSCORES, VICTORY, CONTROLS, LEVELS }
+enum Screen { NONE, START, SETTINGS, SOUND, PAUSE, GAMEOVER, HELP, HIGHSCORES, VICTORY, CONTROLS, LEVELS,
+	QUIT, NEWGAME }
 
 const PANEL_W := 250.0
 const BTN_H := 22.0
@@ -58,7 +60,7 @@ const HELP_FALLBACK := {
 	"castles": "Fire bars spin, lava bubbles leap: time your jumps.\nThe boss ends every world: stomp its head 3-5 times\n(5 fireballs = 1 hit). A fire flower waits before\nthe arena; no fire left? each hit drops one. A win = 1UP.\nLevel select: on the title press B Y X A, type LEVELS\nor tap the title 5 times. 'Boss' starts at the boss arena\n(no high score for unreached courses).",
 	"sky": "Falling slabs shake, then drop: jump off in time.\nTipping planks tip toward your side: keep moving.\nJump up through the clouds.\nThe cloud imp throws spikies: stomp it from up high.\nSpikies can't be stomped: fire, shells or a star.\nGulls glide at you. The storm boss's lightning flashes first.",
 	"sea": "Underwater you swim: every jump press is one stroke up.\nThe side pipe at the end leads to the beach.\nFish can't be stomped while swimming: dodge or use fire.\nJellyfish pulse toward you, crabs can be stomped.\nSea urchins can't be beaten: swim around them.",
-	"map": "Play opens the world map. Walk with left / right,\nA or Space plays the course you stand on.\nTouch: tap a course to walk there, tap it again to play.\nA check = cleared, a lock = not reached yet.\nAfter a course the road to the next one opens.",
+	"map": "Play opens the world map. Walk with left / right,\nA or Space plays the course you stand on.\nTouch: tap a course to walk there, tap it again to play.\nA check = cleared, a lock = not reached yet.\nAfter a course the road to the next one opens.\nYour run is saved all along: quit any time,\nthen Continue on the title screen.",
 	"goal": "Stomp enemies from above.\nCoins: points, 100 coins = extra life.\nPipes marked by coins lead to bonus rooms.\nGrab the flag pole as high as you can!\nExtra lives for points: Settings > 1-UP points.",
 }
 
@@ -71,6 +73,11 @@ var _panel: PanelContainer
 var _vbox: VBoxContainer
 var _help_back_btn: Button
 var _name_edit: LineEdit
+## focused instead of the first control when a screen opens (e.g. "Back"
+## on the New Game confirmation)
+var _default_focus: Control
+## quit dialog: the confirm button (focus target after typing the name)
+var _quit_btn: Button
 var _glass: ColorRect
 
 func _ready() -> void:
@@ -116,6 +123,8 @@ func _show_screen(s: int) -> void:
 func _rebuild() -> void:
 	_name_edit = null
 	_help_back_btn = null
+	_default_focus = null
+	_quit_btn = null
 	# remove_child() BEFORE queue_free() — see centipede CLAUDE.md / global #18:
 	# otherwise the deferred focus scan below still finds the old controls.
 	for c in _vbox.get_children():
@@ -143,10 +152,20 @@ func _rebuild() -> void:
 			_build_controls()
 		Screen.LEVELS:
 			_build_levels()
+		Screen.QUIT:
+			_build_quit()
+		Screen.NEWGAME:
+			_build_newgame()
 	_panel.reset_size()
 	_recenter_panel.call_deferred()
+	# again once wrapped hint labels know their real width (before that they
+	# report a too tall minimum -> empty band at the bottom of the panel)
+	if not get_tree().process_frame.is_connected(_recenter_panel):
+		get_tree().process_frame.connect(_recenter_panel, CONNECT_ONE_SHOT)
 	if screen == Screen.HELP and _help_back_btn:
 		_help_back_btn.grab_focus.call_deferred()
+	elif _default_focus:
+		_default_focus.grab_focus.call_deferred()
 	else:
 		_focus_first.call_deferred()
 	if screen != Screen.SOUND:
@@ -191,7 +210,6 @@ func show_gameover(score: int, world: String, victory := false) -> void:
 	set_meta("go_score", score)
 	set_meta("go_world", world)
 	set_meta("go_committed", false)
-	set_meta("go_highlight", -1)
 	_show_screen(Screen.VICTORY if victory else Screen.GAMEOVER)
 
 func show_highscores(from: int) -> void:
@@ -294,9 +312,19 @@ func _build_start() -> void:
 	sub.add_theme_color_override("font_color", UiStyle.ACCENT)
 	_vbox.add_child(sub)
 	_vbox.add_child(_spacer(2))
-	_vbox.add_child(_button("Play", func():
-		hide_all()
-		play_pressed.emit(-1)))           # -1: the world map (v1.1)
+	var save := SaveGame.load_run()
+	if save.is_empty():
+		_vbox.add_child(_button("Play", func():
+			hide_all()
+			play_pressed.emit(-1)))           # -1: the world map (v1.1)
+	else:
+		# v1.2: the saved run first; a new game asks before replacing it
+		_vbox.add_child(_button("Continue  " + str(save.at), func():
+			hide_all()
+			continue_pressed.emit()))
+		_vbox.add_child(_hint("%06d points  -  %d %s" % [int(save.score), int(save.lives),
+			"life" if int(save.lives) == 1 else "lives"]))
+		_vbox.add_child(_button("New Game", func(): _show_screen(Screen.NEWGAME)))
 	_vbox.add_child(_button("Settings", func():
 		_return_screen = Screen.START
 		_show_screen(Screen.SETTINGS)))
@@ -322,11 +350,105 @@ func _build_pause() -> void:
 		_return_screen = Screen.PAUSE
 		_help_page = 0
 		_show_screen(Screen.HELP)))
-	_vbox.add_child(_button("Main Menu", func():
-		hide_all()
-		quit_to_menu_pressed.emit()))
+	# both ask first and show what is kept (v1.2, player: "quitting lost my
+	# score and lives")
+	_vbox.add_child(_button("Main Menu", func(): show_quit(false)))
 	if not OS.has_feature("web"):
-		_vbox.add_child(_button("Exit", func(): get_tree().quit()))
+		_vbox.add_child(_button("Exit", func(): show_quit(true)))
+
+# ------------------------------------------------------------ quit / save --
+## Pause "Main Menu" / "Exit": saves the run first, then shows what is kept
+## and — if the score made the high scores — asks for a name.
+func show_quit(exit_app: bool) -> void:
+	set_meta("quit_exit", exit_app)
+	set_meta("quit_info", Game.instance.save_run() if Game.instance else {})
+	_show_screen(Screen.QUIT)
+
+func _build_quit() -> void:
+	_panel.custom_minimum_size = Vector2(320, 0)
+	var exit_app: bool = get_meta("quit_exit", false)
+	var info: Dictionary = get_meta("quit_info", {})
+	_vbox.add_child(_heading("QUIT GAME?" if exit_app else "BACK TO MENU?"))
+	if info.is_empty():
+		_vbox.add_child(_hint("Nothing to save."))
+	else:
+		_vbox.add_child(_hint("SCORE %06d  -  WORLD %s" % [int(info.score), info.world], 16))
+		_vbox.add_child(_hint("%d %s  -  %d coins" % [int(info.lives),
+			"life" if int(info.lives) == 1 else "lives", int(info.coins)]))
+		var lines := ""
+		if info.saved:
+			lines = "Your run is saved: score, lives, coins, power and dragon.\n" \
+				+ "Continue it any time from the title screen."
+			if info.in_course:
+				lines += "\nThis course then starts over (from the map)."
+		elif info.cheated:
+			lines = "Level select run: it is not saved and gets no high score.\nYour saved game stays as it is."
+		else:
+			lines = "Level select run: it is not saved (your saved game stays\nas it is), but its score counts for the high scores."
+		var h := _hint(lines)
+		h.add_theme_color_override("font_color", UiStyle.ACCENT)
+		_vbox.add_child(h)
+		if int(info.rank) >= 0 and not info.cheated:
+			_vbox.add_child(_hint("HIGH SCORE #%d!  Enter your name:" % (int(info.rank) + 1)))
+			_name_edit = _make_name_edit(str(info.name))
+			_name_edit.text_submitted.connect(func(_t: String): _quit_name_done())
+			var entry := HBoxContainer.new()
+			entry.alignment = BoxContainer.ALIGNMENT_CENTER
+			entry.add_child(_name_edit)
+			_vbox.add_child(entry)
+	var saved: bool = not info.is_empty() and info.saved
+	var confirm := ("Save & Exit" if saved else "Exit") if exit_app else ("Save & Menu" if saved else "Main Menu")
+	_quit_btn = _button(confirm, func():
+		if _name_edit and _name_edit.text.strip_edges() != "" and Game.instance:
+			Game.instance.set_run_name(_name_edit.text)
+		hide_all()
+		if exit_app:
+			if Game.instance:
+				Game.instance.quit_game()
+			else:
+				get_tree().quit()
+		else:
+			quit_to_menu_pressed.emit())
+	_vbox.add_child(_hbox([_quit_btn, _button("Back", func(): _show_screen(Screen.PAUSE), true)]))
+
+## Name typed in the quit dialog (Enter / A): keep it, go on to the button.
+func _quit_name_done() -> void:
+	if _name_edit and _name_edit.text.strip_edges() != "" and Game.instance:
+		Game.instance.set_run_name(_name_edit.text)
+	if _quit_btn:
+		_quit_btn.grab_focus()
+
+## Title "New Game" while a run is saved: confirm replacing it.
+func _build_newgame() -> void:
+	_panel.custom_minimum_size = Vector2(320, 0)
+	var save := SaveGame.load_run()
+	_vbox.add_child(_heading("NEW GAME?"))
+	_vbox.add_child(_hint("Your saved run will be replaced:"))
+	if not save.is_empty():
+		_vbox.add_child(_hint("SCORE %06d  -  WORLD %s" % [int(save.score), save.at], 16))
+		var rank := HallOfFame.run_rank(int(save.id))
+		if rank >= 0:
+			var h := _hint("Its high score (#%d) stays in the list." % (rank + 1))
+			h.add_theme_color_override("font_color", UiStyle.ACCENT)
+			_vbox.add_child(h)
+	var back := _button("Back", func(): _show_screen(Screen.START), true)
+	_vbox.add_child(_hbox([
+		_button("New Game", func():
+			hide_all()
+			play_pressed.emit(-1)),
+		back,
+	]))
+	_default_focus = back
+
+func _make_name_edit(text := "") -> LineEdit:
+	var e := LineEdit.new()
+	e.placeholder_text = "Your name"
+	e.text = text if text != "YOU" else ""
+	e.max_length = 8
+	e.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	e.custom_minimum_size = Vector2(120, BTN_H)
+	e.add_theme_font_size_override("font_size", FONT)
+	return e
 
 # --------------------------------------------------------------- gameover --
 func _build_gameover(victory: bool) -> void:
@@ -336,6 +458,8 @@ func _build_gameover(victory: bool) -> void:
 	var score: int = get_meta("go_score", 0)
 	var world: String = get_meta("go_world", "1-1")
 	var committed: bool = get_meta("go_committed", false)
+	# game.gd already entered the run's score (as "YOU" or its given name)
+	var rank := HallOfFame.run_rank(Game.instance.run_id) if Game.instance else -1
 	_vbox.add_child(_heading("YOU WIN!" if victory else "GAME OVER"))
 	var score_l := _hint("SCORE %06d  -  WORLD %s" % [score, world], 16)
 	_vbox.add_child(score_l)
@@ -343,13 +467,8 @@ func _build_gameover(victory: bool) -> void:
 		var h := _hint("Level select was used - no high score entry.")
 		h.add_theme_color_override("font_color", UiStyle.ACCENT)
 		_vbox.add_child(h)
-	elif HallOfFame.qualifies(score) and not committed:
-		_name_edit = LineEdit.new()
-		_name_edit.placeholder_text = "Your name"
-		_name_edit.max_length = 8
-		_name_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_name_edit.custom_minimum_size = Vector2(120, BTN_H)
-		_name_edit.add_theme_font_size_override("font_size", FONT)
+	elif rank >= 0 and not committed:
+		_name_edit = _make_name_edit(Game.instance.run_name)
 		_name_edit.text_submitted.connect(func(_t: String): _commit_score())
 		var entry := HBoxContainer.new()
 		entry.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -359,7 +478,7 @@ func _build_gameover(victory: bool) -> void:
 		_vbox.add_child(entry)
 	var grid := _hof_grid()
 	_vbox.add_child(grid)
-	_render_hof(grid, HallOfFame.load_list(), get_meta("go_highlight", -1))
+	_render_hof(grid, HallOfFame.load_list(), rank)
 	var btns := [
 		_button("Play Again", func():
 			_maybe_auto_commit()
@@ -376,20 +495,12 @@ func _build_gameover(victory: bool) -> void:
 			get_tree().quit()))
 	_vbox.add_child(_hbox(btns))
 
+## Names the run's high score entry (empty = keeps "YOU" / the earlier name).
 func _commit_score() -> void:
 	var who := (_name_edit.text if _name_edit else "").strip_edges()
-	if who == "":
-		who = "YOU"
-	who = who.to_upper()
-	var score: int = get_meta("go_score", 0)
-	var list := HallOfFame.insert(who, score, get_meta("go_world", "1-1"))
+	if who != "" and Game.instance:
+		Game.instance.set_run_name(who)
 	set_meta("go_committed", true)
-	var idx := -1
-	for i in list.size():
-		if list[i].name == who and int(list[i].score) == score:
-			idx = i
-			break
-	set_meta("go_highlight", idx)
 	_rebuild()
 
 func _maybe_auto_commit() -> void:
@@ -524,7 +635,11 @@ func _build_highscores() -> void:
 	_vbox.add_child(_heading("HIGH SCORES"))
 	var grid := _hof_grid()
 	_vbox.add_child(grid)
-	_render_hof(grid, HallOfFame.load_list(), -1)
+	# highlight the running (pause) or saved (title) run's entry
+	var run := int(SaveGame.load_run().get("id", 0))
+	if _return_screen == Screen.PAUSE and Game.instance:
+		run = Game.instance.run_id
+	_render_hof(grid, HallOfFame.load_list(), HallOfFame.run_rank(run))
 	_vbox.add_child(_spacer(2))
 	_vbox.add_child(_button("Back", func(): _show_screen(_return_screen), true))
 
@@ -812,7 +927,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _name_edit != null and is_instance_valid(_name_edit) and _name_edit.has_focus() \
 			and event.is_action_pressed("ui_accept"):
-		_commit_score()
+		if screen == Screen.QUIT:
+			_quit_name_done()
+		else:
+			_commit_score()
 		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("ui_cancel"):
