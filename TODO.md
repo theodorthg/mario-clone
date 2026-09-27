@@ -7,15 +7,24 @@ Git-Log.
 
 ## Offen
 
+- [ ] Neue Welt Wolken/Himmel (Nutzer 2026-09-27: freigegeben).
+- [ ] Neue Welt Unterwasser (freigegeben).
+- [ ] Weitere Gegner (freigegeben).
+- [ ] Fallende/kippende Plattformen (freigegeben).
 - [ ] Boss-Balancing nach Spieltests (HP, Tempo, Angriffsrate der neuen
-      Varianten) — wartet auf Nutzer-Feedback.
-- [ ] Optional: weißer Hintergrund des Android-12-System-Splash (nur per
-      Gradle-Build änderbar).
-- [ ] Ideen: weitere Welten (z. B. Wolken/Himmel, Unterwasser), weitere
-      Gegner, Plattform-Varianten (fallende/kippende Plattformen).
+      Varianten) — Nutzer schaut sich die Bosskämpfe gerade an.
 
 ## Erledigt
 
+- [x] v0.11.0 Sprung-Gefühl (Nutzer 2026-09-27: schmale Plattformen in 1-4
+      zu schwer): weniger Nachrutschen (Bodenbremse ×2, Landebremse),
+      Mindest-Sprunghöhe ~3 Tiles auch bei kurzem Tippen, Doppelsprung
+      (abschaltbar), Säulen in 1-4 3 breit statt 2.
+- [x] v0.11.0 Mute-Knopf im Sound-Menü wechselte die Anzeige nicht
+      (Lambda hatte die noch leere Button-Variable eingefangen); Anzeige
+      folgt jetzt `Snd.mute_changed` — auch HUD-Lautsprecher, M, Select.
+- [x] 2026-09-27 Weißer Android-12-System-Splash: Nutzer entscheidet
+      „Weg 1“ (reines Weiß, kein Gradle-Build) — so bleibt es.
 - [x] 2026-09-27 Android-System-Startbildschirm (vor dem Splash) einheitlich
       reines Weiß: `splash_screen/icon` = transparentes
       `assets/icon/android_splash_blank.png`, `branding_image` leer (Nutzer-

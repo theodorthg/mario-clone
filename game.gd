@@ -85,6 +85,9 @@ func _ready() -> void:
 	hud.pause_pressed.connect(_toggle_pause)
 	hud.mute_pressed.connect(_toggle_mute)
 	hud.set_muted(_snd_call("is_muted", false))
+	var snd := get_node_or_null("/root/Snd")
+	if snd:
+		snd.mute_changed.connect(hud.set_muted)     # also when muted in the Sound menu
 	menus.play_pressed.connect(func(i: int): _start_game(i, menus.take_cheat(), menus.take_boss()))
 	menus.resume_pressed.connect(_resume)
 	menus.restart_pressed.connect(func(): _start_game(first_level_of_world(world_of(level_index)), cheated))

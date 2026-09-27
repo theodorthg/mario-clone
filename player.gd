@@ -4,7 +4,11 @@ extends CharacterBody2D
 ## The hero. Origin = feet (bottom center). Physics tuned in px/s at 16px
 ## tiles (see CLAUDE.md "Physik"): walking jump clears 4 tiles, running jump
 ## ~5.5 tiles; gravity is light while the jump button is held on the way up
-## (variable jump height) and heavy otherwise.
+## (variable jump height) and heavy otherwise — but always light for the
+## first JUMP_MIN_HOLD s, so even a quick tap clears ~3 tiles.
+## Assists (v0.11, "old men must make it too"): firm ground braking (little
+## sliding after landing, extra brake on touchdown without input), stronger
+## air control, and one double jump (press jump again in mid-air; setting).
 ##
 ## Scripted sequences (pipe, flag pole, death, power change) put the player
 ## into a non-NORMAL `mode`; game.gd drives those via the helper methods at
@@ -19,10 +23,16 @@ const WALK_MAX := 90.0
 const RUN_MAX := 155.0
 const ACCEL := 320.0
 const RUN_ACCEL := 380.0
-const DECEL := 280.0
-const SKID_DECEL := 620.0
-const AIR_ACCEL := 280.0
+const DECEL := 560.0
+const DECEL_ICE := 80.0         # ice keeps its old slide
+const OVERSPEED_DECEL := 140.0  # above the current top speed (run released)
+const SKID_DECEL := 900.0
+const AIR_ACCEL := 340.0
+const AIR_DRAG := 130.0         # stick released in the air
+const LAND_BRAKE := 0.5         # keep this much speed on touchdown w/o input
 const JUMP_V := 270.0
+const JUMP_MIN_HOLD := 0.15
+const AIR_JUMP_V := 235.0
 const JUMP_RUN_BONUS := 50.0
 const GRAVITY_HOLD := 560.0
 const GRAVITY := 1400.0
@@ -50,6 +60,9 @@ var star_t := 0.0
 var coyote_t := 0.0
 var jump_buffer_t := 0.0
 var jump_held_phase := false
+var jump_min_t := 0.0
+var air_jumps := 0
+var _was_on_floor := true
 var stomp_chain := 0
 var throw_t := 0.0
 var riding: Dino = null
@@ -137,6 +150,7 @@ func _physics_process(delta: float) -> void:
 	var dir := 0.0
 	var run := false
 	var down := false
+	var jump_now := false
 	if not input_enabled:
 		dir = auto_walk
 	else:
@@ -145,17 +159,27 @@ func _physics_process(delta: float) -> void:
 		down = Input.is_action_pressed("move_down")
 		if Input.is_action_just_pressed("jump"):
 			jump_buffer_t = JUMP_BUFFER
+			jump_now = true
 		if Input.is_action_just_pressed("run"):
 			_action_pressed()
 	jump_buffer_t = maxf(jump_buffer_t - delta, 0.0)
 
+	jump_min_t = maxf(jump_min_t - delta, 0.0)
+
 	var on_floor := is_on_floor()
+	var ice := on_floor and _on_ice()
 	if on_floor:
 		coyote_t = COYOTE
+		air_jumps = 1 if _double_jump_enabled() else 0
 		if velocity.y >= 0.0:
 			stomp_chain = 0
+		# touchdown without holding a direction: brake hard so narrow
+		# platforms are easy to land on (not on ice — that stays slippery)
+		if not _was_on_floor and dir == 0.0 and not ice:
+			velocity.x *= LAND_BRAKE
 	else:
 		coyote_t = maxf(coyote_t - delta, 0.0)
+	_was_on_floor = on_floor
 
 	# crouch (big only, on the ground, not while riding)
 	var want_crouch: bool = down and on_floor and power != Power.SMALL and riding == null
@@ -169,7 +193,7 @@ func _physics_process(delta: float) -> void:
 		dir = 0.0
 
 	# horizontal (ice blocks: much less grip on the ground)
-	var grip := 0.28 if on_floor and _on_ice() else 1.0
+	var grip := 0.28 if ice else 1.0
 	var top := RUN_MAX if run else WALK_MAX
 	if dir != 0.0:
 		facing = 1 if dir > 0.0 else -1
@@ -177,22 +201,26 @@ func _physics_process(delta: float) -> void:
 		if on_floor and velocity.x != 0.0 and signf(velocity.x) != signf(dir):
 			velocity.x = move_toward(velocity.x, 0.0, SKID_DECEL * grip * delta)
 		elif absf(velocity.x) > top and signf(velocity.x) == signf(dir):
-			velocity.x = move_toward(velocity.x, target, DECEL * 0.5 * delta)
+			velocity.x = move_toward(velocity.x, target, OVERSPEED_DECEL * delta)
 		else:
 			var acc := (RUN_ACCEL if run else ACCEL) * grip if on_floor else AIR_ACCEL
 			velocity.x = move_toward(velocity.x, target, acc * delta)
 	else:
-		velocity.x = move_toward(velocity.x, 0.0, (DECEL * grip if on_floor else DECEL * 0.35) * delta)
+		var brake := (DECEL_ICE if ice else DECEL) if on_floor else AIR_DRAG
+		velocity.x = move_toward(velocity.x, 0.0, brake * delta)
 
-	# jump
+	# jump (ground / coyote first, else the one double jump in mid-air)
 	if jump_buffer_t > 0.0 and coyote_t > 0.0:
 		if down and riding != null:
 			_dismount_jump()
 		else:
 			_jump()
+	elif jump_now and not on_floor and air_jumps > 0:
+		_air_jump(dir)
 
-	# gravity (variable height)
-	if jump_held_phase and (velocity.y >= 0.0 or not Input.is_action_pressed("jump") or not input_enabled):
+	# gravity (variable height, but never shorter than JUMP_MIN_HOLD)
+	var released := not Input.is_action_pressed("jump") or not input_enabled
+	if jump_held_phase and (velocity.y >= 0.0 or (released and jump_min_t <= 0.0)):
 		jump_held_phase = false
 	var g := GRAVITY_HOLD if jump_held_phase else GRAVITY
 	velocity.y = minf(velocity.y + g * delta, MAX_FALL)
@@ -220,13 +248,37 @@ func _jump() -> void:
 	var bonus := JUMP_RUN_BONUS * clampf(absf(velocity.x) / RUN_MAX, 0.0, 1.0)
 	velocity.y = -(JUMP_V + bonus)
 	jump_held_phase = true
+	jump_min_t = JUMP_MIN_HOLD
 	_snd("jump_big" if power != Power.SMALL or riding else "jump")
+
+## Double jump: a fresh (slightly lower) jump in mid-air. Holding a
+## direction against the current drift turns it around right away.
+func _air_jump(dir: float) -> void:
+	air_jumps -= 1
+	jump_buffer_t = 0.0
+	velocity.y = -AIR_JUMP_V
+	if dir != 0.0 and signf(velocity.x) != signf(dir):
+		velocity.x = dir * minf(absf(velocity.x), WALK_MAX * 0.5)
+	jump_held_phase = true
+	jump_min_t = JUMP_MIN_HOLD
+	_snd("jump2")
+	var parent := get_parent()
+	if parent:
+		var puff := JumpPuff.new()
+		puff.position = global_position
+		parent.add_child(puff)
+
+func _double_jump_enabled() -> bool:
+	var game := Game.instance
+	return game == null or bool(game.cfg.get("double_jump", true))
 
 func bounce(held_boost := true) -> void:
 	var held := Input.is_action_pressed("jump") and held_boost
 	velocity.y = -(STOMP_BOUNCE_HELD if held else STOMP_BOUNCE)
 	jump_held_phase = held
+	jump_min_t = 0.0
 	coyote_t = 0.0
+	air_jumps = 1 if _double_jump_enabled() else 0     # stomping refills it
 
 func _ceiling_blocked() -> bool:
 	var params := PhysicsShapeQueryParameters2D.new()
@@ -283,6 +335,7 @@ func _dismount_jump() -> void:
 	_detach_dino(false)
 	velocity.y = -JUMP_V
 	jump_held_phase = true
+	jump_min_t = JUMP_MIN_HOLD
 	jump_buffer_t = 0.0
 	coyote_t = 0.0
 	d.dismounted(facing, false)
@@ -388,7 +441,10 @@ func reset_state() -> void:
 	star_t = 0.0
 	stomp_chain = 0
 	jump_buffer_t = 0.0
+	jump_min_t = 0.0
 	coyote_t = 0.0
+	air_jumps = 0
+	_was_on_floor = true
 	facing = 1
 	collision_mask = 1
 	z_index = 0

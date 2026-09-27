@@ -10,6 +10,8 @@ extends Node
 ## Access from class_name scripts via get_node_or_null("/root/Snd") — the bare
 ## "Snd" identifier does not resolve under `godot --script` (_selftest).
 
+signal mute_changed(muted: bool)
+
 const CFG_PATH := "user://settings.cfg"
 const CALIB_VERSION := 1
 
@@ -28,6 +30,7 @@ const SOUNDS := {
 	"jingle_gameover": ["Jingle: Game over", 60, -3.0],
 	"jump": ["Jump", 55, -6.0],
 	"jump_big": ["Jump (big)", 55, -6.0],
+	"jump2": ["Double jump", 55, -6.0],
 	"stomp": ["Stomp", 60, -3.0],
 	"kick": ["Enemy knocked out", 60, -4.0],
 	"bump": ["Block bump", 60, -4.0],
@@ -54,7 +57,7 @@ const ORDER := [
 	"music_overworld", "music_cave", "music_desert", "music_snow", "music_castle", "music_star", "music_title",
 	"jingle_world",
 	"jingle_clear", "jingle_death", "jingle_gameover",
-	"jump", "jump_big", "stomp", "kick", "bump", "break", "coin", "sprout",
+	"jump", "jump_big", "jump2", "stomp", "kick", "bump", "break", "coin", "sprout",
 	"powerup", "powerdown", "oneup", "fireball", "pipe", "flagpole", "tick",
 	"skid", "hatch", "dino", "tongue", "gulp", "checkpoint", "hurry", "pause",
 ]
@@ -149,6 +152,7 @@ func set_muted(m: bool) -> void:
 	_muted = m
 	AudioServer.set_bus_mute(AudioServer.get_bus_index("Master"), m)
 	_save()
+	mute_changed.emit(m)
 
 func get_volume(key: String) -> int:
 	return int(_vol.get(key, SOUNDS[key][1]))

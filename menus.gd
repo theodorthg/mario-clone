@@ -579,6 +579,11 @@ func _build_settings() -> void:
 		func(_d): _set_cfg("start_big", not bool(_cfg.start_big)),
 		func(v): return "Yes" if v else "No")
 	_vbox.add_child(big_row)
+	var dj_row := _row("Double jump")
+	_stepper(dj_row, func(): return _cfg.double_jump,
+		func(_d): _set_cfg("double_jump", not bool(_cfg.double_jump)),
+		func(v): return "Yes" if v else "No")
+	_vbox.add_child(dj_row)
 	_vbox.add_child(_hbox([
 		_button("Sound", func(): _show_screen(Screen.SOUND)),
 		_button("Controls", func(): _show_screen(Screen.CONTROLS)),
@@ -702,11 +707,14 @@ func _build_sound() -> void:
 		list.add_child(_hint("Sound manager unavailable."))
 	else:
 		var mute_row := _row("Mute all", 170)
-		var mute_btn: Button
-		mute_btn = _button("Muted" if snd.is_muted() else "On", func():
-			var m: bool = snd.toggle_mute()
-			mute_btn.text = "Muted" if m else "On")
+		# the label follows Snd.mute_changed (button here, HUD speaker, M key,
+		# Select). NB: a lambda passed while `mute_btn` is still unassigned
+		# would capture null — that was the "label doesn't switch" bug.
+		var mute_btn := _button("Muted" if snd.is_muted() else "On", func(): snd.toggle_mute())
 		mute_btn.custom_minimum_size = Vector2(90, BTN_H)
+		var show_mute := func(m: bool): mute_btn.text = "Muted" if m else "On"
+		snd.mute_changed.connect(show_mute)
+		mute_btn.tree_exiting.connect(func(): snd.mute_changed.disconnect(show_mute))
 		mute_row.add_child(mute_btn)
 		list.add_child(mute_row)
 		for key in snd.ORDER:

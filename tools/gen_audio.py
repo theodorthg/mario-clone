@@ -211,6 +211,9 @@ def sfx():
     S["hurry"] = cat(*hurry)
     S["pause"] = cat(tone("pulse", freq("E6"), 0.06, 0.5, s=0.8, r=0.01, vol=0.35), silence(0.03),
                      tone("pulse", freq("C6"), 0.06, 0.5, s=0.8, r=0.01, vol=0.35))
+    # double jump: two quick rising chirps (no noise -> rng order unchanged)
+    S["jump2"] = cat(tone("pulse", 520, 0.06, 0.125, f_end=1040, s=0.7, r=0.01, vol=0.45),
+                     tone("pulse", 780, 0.12, 0.125, f_end=1560, d=0.05, s=0.5, r=0.04, vol=0.45))
     for k, x in S.items():
         write_wav(os.path.join(SND, k + ".wav"), norm(x, 0.85))
     print("  %d sound effects -> assets/sounds/" % len(S))

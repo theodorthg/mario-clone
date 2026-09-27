@@ -721,6 +721,99 @@ func _run() -> void:
 						kinds[n.kind] = int(kinds.get(n.kind, 0)) + 1
 				print("VARIANT world=%d projectiles=%s" % [w, kinds])
 				await shot("boss_w%d" % w)
+		"mutebtn":
+			# the Sound menu's mute label must follow every toggle (v0.11 fix)
+			await _wait(0.5)
+			var snd := root.get_node("/root/Snd")
+			var was: bool = snd.is_muted()
+			game.menus._show_screen(Menus.Screen.SOUND)
+			await _frames(2)
+			var btn: Button = null
+			for n in game.menus.find_children("*", "Button", true, false):
+				if n.text in ["On", "Muted"]:
+					btn = n
+			for i in 2:
+				btn.pressed.emit()
+				await _frames(1)
+				print("MUTE click %d: label=%s muted=%s hud=%s" % [i + 1, btn.text, snd.is_muted(), game.hud._muted if "_muted" in game.hud else "?"])
+			game._toggle_mute()             # M key / Select while the menu is open
+			await _frames(1)
+			print("MUTE via key: label=%s muted=%s" % [btn.text, snd.is_muted()])
+			game.menus._show_screen(Menus.Screen.SETTINGS)
+			await _frames(2)
+			game._toggle_mute()             # button freed: no error expected
+			await _frames(1)
+			snd.set_muted(was)
+			print("MUTE done, restored=%s" % was)
+		"jumpfeel":
+			# v0.11 assists: tap / hold / double jump heights, landing slide
+			await start_play()
+			game.player.star_t = 60.0
+			var p := game.player
+			# [label, first hold, second press at (or -1), second hold]
+			for spec in [["tap", 0.03, -1.0, 0.0], ["hold", 0.6, -1.0, 0.0],
+					["double tap", 0.03, 0.25, 0.03], ["double hold", 0.3, 0.4, 0.6]]:
+				await teleport(Vector2i(8, 16))
+				await _wait(0.3)
+				var y0 := p.global_position.y
+				var top := y0
+				Input.action_press("jump")
+				var t := 0.0
+				var second := false
+				while t < 2.0:
+					await physics_frame
+					t += 1.0 / 60.0
+					if t >= spec[1] and not second:
+						Input.action_release("jump")
+					if spec[2] > 0.0 and not second and t >= spec[2]:
+						second = true
+						Input.action_press("jump")
+					if second and t >= spec[2] + spec[3]:
+						Input.action_release("jump")
+					top = minf(top, p.global_position.y)
+				print("JUMP %-12s height=%.1f px = %.2f tiles" % [spec[0], y0 - top, (y0 - top) / 16.0])
+			# landing slide: keep the direction held through the jump, let go
+			# on touchdown (what a player does on a narrow platform)
+			for sp in [["walk", false], ["run", true]]:
+				await teleport(Vector2i(2, 16))
+				if sp[1]:
+					Input.action_press("run")
+				Input.action_press("move_right")
+				await _wait(0.9)
+				Input.action_press("jump")
+				await _wait(0.3)
+				Input.action_release("jump")
+				while not p.is_on_floor():
+					await physics_frame
+				Input.action_release("move_right")
+				Input.action_release("run")
+				var xl := p.global_position.x
+				var vl := p.velocity.x
+				await _wait(0.8)
+				print("SLIDE %s: speed on touchdown %.0f px/s, slid %.1f px" % [sp[0], vl, p.global_position.x - xl])
+			# 1-4 pillars: walk right, jump at the ledge / pillar edge (hold 0.3 s),
+			# let go of the direction on touchdown
+			game.menus.hide_all()
+			game._start_game(3)
+			await _wait(Game.CARD_TIME + 0.3)
+			p = game.player
+			p.star_t = 60.0
+			await teleport(Vector2i(8, 16))
+			for edge in [188.0, 268.0]:
+				Input.action_press("move_right")
+				while p.global_position.x < edge:
+					await physics_frame
+				Input.action_press("jump")
+				await _wait(0.3)
+				Input.action_release("jump")
+				await _wait(0.1)
+				while not p.is_on_floor() and game.state == Game.State.PLAYING:
+					await physics_frame
+				Input.action_release("move_right")
+				await _wait(0.6)
+				print("PILLAR from x>%.0f: x=%.0f y=%.0f (pillar top y=224; pillars x 224..272 / 304..352) state=%d" % [
+					edge, p.global_position.x, p.global_position.y, game.state])
+			await shot("pillars")
 		"pause":
 			await start_play()
 			game._toggle_pause()

@@ -76,6 +76,18 @@ Sprungtaste gehalten und aufwärts, sonst 1400; Coyote 0,08 s, Sprungpuffer
 0,12 s. Ergebnis: Stand-Sprung ≈ 4,1 Tiles, Renn-Sprung ≈ 5,7 Tiles hoch;
 Weite ≈ 4,4 (gehend) / ≈ 7,8 Tiles (rennend) — Level-Design danach richten
 (z. B. 4er-Röhren sind aus dem Stand knapp machbar).
+**Sprung-Hilfen (v0.11, Nutzerwunsch „auch alte Männer sollen es
+schaffen“)**: die leichte Schwerkraft gilt mindestens `JUMP_MIN_HOLD` =
+0,15 s, auch wenn die Taste sofort losgelassen wird (kurzes Antippen ≈
+2,9 Tiles statt 1,6). Bodenbremse 560 (vorher 280), Gegenlenken 900,
+Aufsetzen ohne Richtungstaste halbiert das Tempo (`LAND_BRAKE`) → nach
+der Landung rutscht der Held nur noch 1–5 px nach (Eis bleibt glatt:
+`DECEL_ICE` 80). Luftsteuerung 340, Luftbremse ohne Richtung 130.
+**Doppelsprung**: in der Luft einmal erneut springen (235 px/s, gleiche
+Halte-Logik; Stampfen füllt ihn wieder auf) — Wölkchen `jump_puff.gd`,
+Sound `jump2`; abschaltbar in Settings „Double jump“ (Standard an).
+Gemessen (`playtest jumpfeel`): Tipp 2,9 / gehalten 3,9 / doppelt getippt
+5,2 / doppelt gehalten 6,3 Tiles.
 Ursprung JEDER Figur = Füße (unten Mitte); Sprite-Offset = −Zellhöhe/2.
 Kopfstoß wählt den Block, dessen Mitte dem Spieler am nächsten ist.
 Klein→Groß (Pilz), Groß/Feuer→Feuer (Blume); Treffer: Feuer→Groß→Klein→Tod
@@ -251,7 +263,9 @@ Nintendo-Themen. Loops werden mit umgeklapptem Nachhall gerendert (nahtlos);
   Eingaben per `Input.action_press()` und speichert Screenshots + Zustands-
   zeilen. Szenarien: basic, powerup, stomp, pipe, flag, dino, title, fire,
   star, gameover, dinohit, checkpoint, levels, card, ridebig, pause, worlds,
-  turtle (Stampfen/Kick/Kombo/rote Kante), exitpipe, ice.
+  turtle (Stampfen/Kick/Kombo/rote Kante), exitpipe, ice, jumpfeel
+  (Sprunghöhen, Nachrutschen, Säulen in 1-4), mutebtn (Mute-Anzeige im
+  Sound-Menü).
   `godot --path . --script res://tools/playtest.gd -- <szenario> <ordner>`
   — schneller als der MCP-Editor-Weg und ohne offenen Editor nutzbar.
 - `build.sh`: Editor-Check prüft nur echte `godot`-Prozesse (`pgrep -x`),

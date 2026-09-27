@@ -1196,8 +1196,13 @@ def castle_level(world, lid):
     L.blocks(6, 13, "?M?")
     # A: lava pit with bubbles and stone pillars
     L.lava(12, 23)
-    L.fill(15, 16, 14, ROWS - 1, "#")
-    L.fill(20, 21, 13 if hard else 14, ROWS - 1, "#")
+    if world == 1:
+        # first castle: 3-wide pillars, 2-wide gaps (v0.11, player feedback)
+        L.fill(14, 16, 14, ROWS - 1, "#")
+        L.fill(19, 21, 14, ROWS - 1, "#")
+    else:
+        L.fill(15, 16, 14, ROWS - 1, "#")
+        L.fill(20, 21, 13 if hard else 14, ROWS - 1, "#")
     for c in (13, 18, 23) if world > 1 else (13, 18):
         L.set(c, GROUND + 1, "b")
     L.coin_arc(12, 10, 12)
