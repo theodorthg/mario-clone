@@ -11,6 +11,9 @@ level.gd (see TILE_* constants there; keep the two in sync):
          cave interior 0..1, cave brick, water surface x4 (animation), water body
   row 2  pipe: top L/R, body L/R, side-mouth top/bottom, side-body top/bottom
   row 3  cave (bonus room) ground, variant = neighbour mask
+  row 4/5 sand / snow ground, row 6 extras (see main()), row 7/8 castle
+  row 9  cloud ground (sky world), variant = neighbour mask
+  row 10 cloud bridge L/M/R (one-way), sky marble brick, cloud interior x2
 blocks.png  ?-block x4, used, brick, cave brick (single 16x16 cells)
 decor.png   free-standing decorations, packed with a JSON-ish index in
             decor_index.gd (name -> Rect2)
@@ -295,6 +298,113 @@ def edge_tile(mask, pal, top_pal):
             px[T - 2, 7] = hex_rgba(top_pal["D"])
             px[T - 3, 7] = hex_rgba(top_pal["D"])
     return img
+
+
+# ------------------------------------------------------------------ clouds --
+CLOUD_PAL = {"w": "#ffffff", "l": "#eef4ff", "m": "#d8e6fb", "b": "#b8cbef", "d": "#93a9dc",
+             "k": "#4a5a8e"}
+
+
+def _bump(i):
+    """scallop depth (0..2) along a cloud edge, two puffs per tile"""
+    u = abs((i % 8) - 3.5)
+    return int(round(max(0.0, 3.5 - (max(0.0, 3.9 * 3.9 - u * u)) ** 0.5)))
+
+
+def cloud_tile(mask, variant=0):
+    """cloud ground: same neighbour mask as the other autotiles; open sides
+    get puffy scalloped edges with a soft blue outline, the underside a
+    blue shade (light from above)"""
+    up, down, left, right = mask & 1, mask & 2, mask & 4, mask & 8
+    inside = [[False] * T for _ in range(T)]
+    for y in range(T):
+        for x in range(T):
+            ok = True
+            if up and y < 1 + _bump(x):
+                ok = False
+            if down and y > T - 2 - _bump(x):
+                ok = False
+            if left and x < 1 + _bump(y):
+                ok = False
+            if right and x > T - 2 - _bump(y):
+                ok = False
+            # round the outer corners
+            for cu, cl, cx, cy in ((up, left, 5, 5), (up, right, T - 6, 5),
+                                   (down, left, 5, T - 6), (down, right, T - 6, T - 6)):
+                if cu and cl and abs(x - cx) + 0 <= 5 and ((x < cx) == (cx < 8)) and ((y < cy) == (cy < 8)):
+                    if (x - cx) ** 2 + (y - cy) ** 2 > 5.3 ** 2:
+                        ok = False
+            inside[y][x] = ok
+    img = Image.new("RGBA", (T, T), TRANSPARENT)
+    px = img.load()
+    for y in range(T):
+        for x in range(T):
+            if not inside[y][x]:
+                continue
+            col = "l"
+            if up:
+                top = 1 + _bump(x)
+                if y - top < 2:
+                    col = "w"
+            if down:
+                bot = T - 2 - _bump(x)
+                if bot - y < 1:
+                    col = "d"
+                elif bot - y < 3:
+                    col = "b"
+                elif bot - y < 5:
+                    col = "m"
+            if right and x > T - 5 - _bump(y) and col in "lw":
+                col = "m"
+            if variant and col == "l":
+                # interior swirl variants
+                sw = {1: [(4, 5), (5, 4), (6, 4), (7, 5), (11, 11), (12, 10)],
+                      2: [(9, 3), (10, 3), (11, 4), (3, 11), (4, 12), (5, 12)]}[variant]
+                if (x, y) in sw:
+                    col = "m"
+            px[x, y] = hex_rgba(CLOUD_PAL[col])
+    # soft outline on the open sides (only against transparency inside the tile)
+    k = hex_rgba(CLOUD_PAL["k"])
+    for y in range(T):
+        for x in range(T):
+            if inside[y][x]:
+                continue
+            for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                if 0 <= nx < T and 0 <= ny < T and inside[ny][nx]:
+                    px[x, y] = k
+                    break
+    return img
+
+
+def cloud_bridge(end):
+    """one-way cloud strip (top 7 px of the tile)"""
+    img = Image.new("RGBA", (T, T), TRANSPARENT)
+    px = img.load()
+    inside = set()
+    for x in range(T):
+        top = 1 + _bump(x)
+        bot = 6 - _bump(x + 4) // 2
+        for y in range(top, bot + 1):
+            if end == "L" and x < 4 and (x - 4) ** 2 + (y - 3.5) ** 2 > 3.6 ** 2:
+                continue
+            if end == "R" and x > 11 and (x - 11) ** 2 + (y - 3.5) ** 2 > 3.6 ** 2:
+                continue
+            inside.add((x, y))
+    for (x, y) in inside:
+        top = 1 + _bump(x)
+        col = "w" if y - top < 2 else ("b" if (x, y + 1) not in inside else "l")
+        px[x, y] = hex_rgba(CLOUD_PAL[col])
+    k = hex_rgba(CLOUD_PAL["k"])
+    for y in range(T):
+        for x in range(T):
+            if (x, y) in inside:
+                continue
+            if any((nx, ny) in inside for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))):
+                px[x, y] = k
+    return img
+
+
+SKY_BRICK_PAL = {"k": OUTLINE, "l": "#ffffff", "b": "#e4eaf8", "B": "#b4c0dc", "m": "#c8a24a"}
 
 
 # ------------------------------------------------------------------ blocks --
@@ -654,6 +764,12 @@ def biome_decor():
         ("banner", parse(BANNER, BANNER_PAL)),
         ("skull", ol_(parse(SKULL, SKULL_PAL))),
         ("rock_castle", ol_(recolored(ROCK, s="#6a687e", T="#8c8aa0", S="#4e4c62"))),
+        # sky: blossom bushes (pink reads well on white cloud ground)
+        ("sky_bush_l", ol_(recolored(BUSH_L, L="#ffe4f2", g="#ffb4da", G="#ec86be", H="#c05c98", D="#7e3464"))),
+        ("sky_bush_s", ol_(recolored(small_bush, L="#ffe4f2", g="#ffb4da", G="#ec86be", H="#c05c98", D="#7e3464"))),
+        ("sky_flower", recolored(FLOWER_C, w="#8ad4ff", y="#ffe060", G="#58c060")),
+        ("tuft_sky", recolored(TUFT, L="#ffffff", g="#e8f0ff", G="#b8cbef")),
+        ("rock_sky", ol_(recolored(ROCK, s="#e4eaf8", T="#ffffff", S="#a8b6d6"))),
     ]
 
 
@@ -826,13 +942,21 @@ def water_body():
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    atlas = Image.new("RGBA", (16 * T, 9 * T), TRANSPARENT)
+    atlas = Image.new("RGBA", (16 * T, 11 * T), TRANSPARENT)
     for m in range(16):
         atlas.paste(edge_tile(m, DIRT, GRASS), (m * T, 0))
         atlas.paste(edge_tile(m, CAVE, CAVE_TOP), (m * T, 3 * T))
         atlas.paste(edge_tile(m, SAND, SAND_TOP), (m * T, 4 * T))
         atlas.paste(edge_tile(m, SNOW, SNOW_TOP), (m * T, 5 * T))
         atlas.paste(castle_tile(m), (m * T, 7 * T))
+        atlas.paste(cloud_tile(m), (m * T, 9 * T))
+    # row 10: cloud bridge L/M/R (one-way), sky marble brick, cloud interior 1/2
+    atlas.paste(cloud_bridge("L"), (0, 10 * T))
+    atlas.paste(cloud_bridge("M"), (T, 10 * T))
+    atlas.paste(cloud_bridge("R"), (2 * T, 10 * T))
+    atlas.paste(parse(BRICK, SKY_BRICK_PAL), (3 * T, 10 * T))
+    atlas.paste(cloud_tile(0, 1), (4 * T, 10 * T))
+    atlas.paste(cloud_tile(0, 2), (5 * T, 10 * T))
     # row 8: castle interior 0 (plain) 1 (cracked), castle wall brick 2
     atlas.paste(castle_tile(0), (0, 8 * T))
     cracked = castle_tile(0)
@@ -906,6 +1030,39 @@ def main():
     lift_pal = {"L": "#ffd8a0", "o": "#e8872a", "O": "#a8561a", "b": "#fff4c8"}
     lift = parse([r * 3 for r in lift_seg], lift_pal)
     outline(lift, color=OUTLINE, selective=False).save(os.path.join(OUT, "lift.png"))
+
+    # falling platform ('D'): 3-tile cracked sandstone slab
+    drop_rows = [
+        "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL",
+        "lllllllllclllllllllllllllllllllllllllcllllllllll",
+        "llslllllccllllllllsllllcllllllllllllcclllllslllll"[:48],
+        "SSSSSSSScSSSSSSSSSSSSSccSSSSSSSSSSSSScSSSSSSSSSS",
+        "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD",
+        "..rr.......rr........rr.........rr.........rr...",
+    ]
+    drop_pal = {"L": "#fff0cc", "l": "#e8c88e", "s": "#d0a866", "S": "#b88a52", "D": "#8a5c30",
+                "c": "#5a3418", "r": "#8a5c30"}
+    outline(parse(drop_rows, drop_pal), color=OUTLINE, selective=False).save(os.path.join(OUT, "drop.png"))
+
+    # tipping plank ('T'): 4-tile wooden board, golden pivot bolt in the middle
+    tip_rows = []
+    for y, row in enumerate(["LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL",
+                             "bbbbbbbbbbbbbbbBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBbbbbbbbbbbbbbbb",
+                             "bbbbBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBbbbbbb",
+                             "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+                             "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"]):
+        r = list(row)
+        if 1 <= y <= 3:
+            for x in (30, 31, 32, 33):
+                r[x] = "y" if (y == 2 or x in (31, 32)) else "Y"
+            r[31] = "w" if y == 1 else r[31]
+        for x in (0, 15, 16, 47, 48, 63):
+            if y in (1, 2, 3):
+                r[x] = "B"
+        tip_rows.append("".join(r))
+    tip_pal = {"L": "#f8d8a0", "b": "#d8964e", "B": "#a86a30", "D": "#6e4018", "y": "#ffd83c",
+               "Y": "#c89018", "w": "#fff8c8"}
+    outline(parse(tip_rows, tip_pal), color=OUTLINE, selective=False).save(os.path.join(OUT, "tipper.png"))
 
     # brick shards (4 frames rotating)
     shard = parse(["lbb.", "bbbB", "bbBB", ".BB."], BRICK_PAL)

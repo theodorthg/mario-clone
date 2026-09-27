@@ -22,7 +22,8 @@ const LAYERS := [
 ## sky: [top, mid, horizon, mid_pos, stars, moon(, sun)]; tints: one per
 ## LAYERS entry (same order) — OR "layers": own list of [texture, y, fx, fy,
 ## auto, tint] for biomes with their own scenery; world: CanvasModulate tint
-## for tiles + actors; fx: screen-space particles ("snow", "motes", "sand").
+## for tiles + actors; fx: screen-space particles ("snow", "motes", "sand",
+## "embers", "wind").
 const THEMES := {
 	"grass": {
 		"sky": [Color("3b6bd6"), Color("73acf0"), Color("d8eefa"), 0.55, 0.0, 0.0],
@@ -99,6 +100,29 @@ const THEMES := {
 		],
 		"world": Color(1.0, 0.86, 0.78),
 		"fx": "sand",
+	},
+	"sky": {
+		# above the clouds: deep blue, sun high up, islands + a sea of clouds
+		"sky": [Color("2a70dc"), Color("78c0f6"), Color("e6f4ff"), 0.55, 0.0, 0.0, 1.0, Vector2(0.78, 0.16)],
+		"layers": [
+			["res://assets/graphics/bg_clouds.png", 20.0, 0.12, 0.1, 6.0, Color.WHITE],
+			["res://assets/graphics/bg_sky_islands.png", 92.0, 0.2, 0.35, 0.0, Color.WHITE],
+			["res://assets/graphics/bg_sky_sea_far.png", 150.0, 0.3, 0.55, 2.0, Color(0.86, 0.9, 1.0)],
+			["res://assets/graphics/bg_sky_sea_near.png", 224.0, 0.5, 0.8, 4.0, Color(0.78, 0.84, 0.98)],
+		],
+		"world": Color.WHITE,
+		"fx": "wind",
+	},
+	"sky_dusk": {
+		"sky": [Color("2a2268"), Color("d0688c"), Color("ffc890"), 0.5, 0.0, 0.0, 1.0, Vector2(0.74, 0.5)],
+		"layers": [
+			["res://assets/graphics/bg_clouds.png", 20.0, 0.12, 0.1, 6.0, Color(1.0, 0.72, 0.72, 0.85)],
+			["res://assets/graphics/bg_sky_islands.png", 92.0, 0.2, 0.35, 0.0, Color(0.8, 0.56, 0.66)],
+			["res://assets/graphics/bg_sky_sea_far.png", 150.0, 0.3, 0.55, 2.0, Color(1.0, 0.76, 0.72)],
+			["res://assets/graphics/bg_sky_sea_near.png", 224.0, 0.5, 0.8, 4.0, Color(0.92, 0.66, 0.7)],
+		],
+		"world": Color(1.0, 0.9, 0.86),
+		"fx": "wind",
 	},
 	"snow_night": {
 		"sky": [Color("050a20"), Color("16285a"), Color("3a4f8a"), 0.55, 1.0, 1.0],
@@ -251,6 +275,20 @@ func _set_fx(kind: String) -> void:
 			p.scale_amount_min = 1.0
 			p.scale_amount_max = 1.0
 			p.color = Color(1.0, 0.9, 0.66, 0.55)
+		"wind":
+			# thin fast streaks drifting left (drawn with a 7x1 fading dash)
+			p.amount = 18
+			p.lifetime = 3.0
+			p.direction = Vector2(-1.0, 0.02)
+			p.spread = 2.0
+			p.initial_velocity_min = 150.0
+			p.initial_velocity_max = 230.0
+			p.gravity = Vector2.ZERO
+			var img := Image.create_empty(7, 1, false, Image.FORMAT_RGBA8)
+			for x in 7:
+				img.set_pixel(x, 0, Color(1, 1, 1, 0.25 + 0.1 * x))
+			p.texture = ImageTexture.create_from_image(img)
+			p.color = Color(1, 1, 1, 0.55)
 	p.preprocess = p.lifetime
 	_fx = p
 	_fx_size = Vector2.ZERO

@@ -997,6 +997,182 @@ def biome_enemies():
 
 
 # =========================================================================
+# SKY ENEMIES — spiky shell walker, cloud imp (throws spikies), gull
+# =========================================================================
+SPIKY_PAL = {"r": "#e8402e", "R": "#ff8a6a", "d": "#a01c2c", "w": "#ffffff", "W": "#c9d3e6",
+             "y": "#ffc86a", "Y": "#d8903a", "e": "#1b1030", "o": "#f79a2a"}
+SPIKE_TIPS = [(4, 1), (8, 0), (12, 1), (15, 4)]
+
+
+def _spiky_shell(g, cx, cy, rx, ry, full=False):
+    for y in range(len(g)):
+        for x in range(len(g[0])):
+            dx, dy = (x - cx) / rx, (y - cy) / ry
+            if dx * dx + dy * dy <= 1.0 and (full or y <= cy):
+                if (x - (cx - rx * 0.35)) ** 2 + (y - (cy - ry * 0.45)) ** 2 < 5:
+                    g[y][x] = "R"
+                elif dx + dy > 0.55:
+                    g[y][x] = "d"
+                else:
+                    g[y][x] = "r"
+
+
+def spiky_frame(step):
+    W, H = 16, 14
+    g = [["."] * W for _ in range(H)]
+    _spiky_shell(g, 8.5, 10.5, 6.6, 8.0)
+    for tx, ty in SPIKE_TIPS:
+        g[ty][tx] = "w"
+        if ty + 1 < H:
+            g[ty + 1][tx] = "W"
+            for dx in (-1, 1):
+                if 0 <= tx + dx < W and g[ty + 2][tx + dx] in ".rRd":
+                    g[ty + 2][tx + dx] = "W"
+    # head in front (faces left), eye + little snout
+    for y in range(7, 12):
+        for x in range(0, 5):
+            if (x - 2.5) ** 2 / 6.5 + (y - 9.2) ** 2 / 5.0 <= 1.0:
+                g[y][x] = "y"
+    g[8][2] = "e"
+    g[10][0] = "Y"
+    for x in range(3, 15):
+        if g[11][x] == ".":
+            g[11][x] = "d"
+    feet = [(2, 3), (10, 11)] if step == 0 else [(3, 4), (9, 10)]
+    for a, b in feet:
+        for x in range(a, b + 1):
+            g[12][x] = "o"
+            g[13][x] = "o"
+    return ["".join(r) for r in g]
+
+
+def spiky_ball(rot):
+    W = 14
+    g = [["."] * W for _ in range(W)]
+    _spiky_shell(g, 6.5, 6.5, 5.2, 5.2, full=True)
+    tips = [(6, 0), (13, 6), (7, 13), (0, 7)] if rot == 0 else [(11, 1), (12, 11), (2, 12), (1, 2)]
+    for tx, ty in tips:
+        g[ty][tx] = "w"
+    return ["".join(r) for r in g]
+
+
+IMP_PAL = {"w": "#ffffff", "l": "#e8f0ff", "b": "#b8cbef", "c": "#e8402e", "C": "#a01c2c",
+           "p": "#ffd83c", "P": "#8a6410", "s": "#ffc890", "S": "#d8905a", "g": "#6ad0ff",
+           "G": "#2a78c0", "k": "#1b1030", "m": "#7a2030"}
+
+
+def imp_frame(throw=False, bob=0):
+    W, H = 22, 26
+    g = [["."] * W for _ in range(H)]
+    # cloud: overlapping puffs, shaded underside
+    for cx, cy, r in ((5, 20, 4.5), (11, 19, 5.5), (17, 20, 4.5), (8, 22, 4), (14, 22, 4)):
+        for y in range(H):
+            for x in range(W):
+                if (x - cx) ** 2 + (y - cy) ** 2 <= r * r:
+                    g[y][x] = "l"
+    for y in range(H):
+        for x in range(W):
+            if g[y][x] == "l":
+                below = y + 2 >= H or g[y + 2][x] == "."
+                above = y - 2 < 0 or g[y - 2][x] == "."
+                g[y][x] = "b" if below else ("w" if above else "l")
+    # head (propeller cap, goggles, grin) sitting in the cloud
+    hy = 9 + bob
+    for y in range(H):
+        for x in range(W):
+            if (x - 11) ** 2 + (y - hy) ** 2 <= 30 and y <= hy + 5:
+                g[y][x] = "s" if y > hy - 2 else ("c" if (x - 9) ** 2 + (y - (hy - 4)) ** 2 > 3 else "C")
+    for x in range(6, 17):
+        g[hy - 1][x] = "k" if x in (6, 16) else g[hy - 1][x]
+    for x in (7, 8, 9, 13, 14, 15):
+        g[hy][x] = "g"
+    g[hy][7] = g[hy][13] = "G"
+    for x in (10, 11, 12):
+        g[hy][x] = "k"
+    for x in (9, 10, 11, 12, 13):
+        g[hy + 3][x] = "m"
+    g[hy + 2][8] = g[hy + 2][14] = "S"
+    # propeller
+    g[hy - 6][11] = "P"
+    for x in range(7, 16):
+        g[hy - 7][x] = "p" if abs(x - 11) > 0 else "P"
+    # arms on the cloud rim / one raised to throw
+    g[hy + 6][4] = g[hy + 6][5] = "s"
+    if throw:
+        for y in range(hy - 3, hy + 3):
+            g[y][19] = "s"
+        g[hy - 4][19] = "s"
+        g[hy - 4][20] = "S"
+    else:
+        g[hy + 6][17] = g[hy + 6][18] = "s"
+    return ["".join(r) for r in g]
+
+
+GULL_PAL = {"w": "#ffffff", "s": "#d8e2f0", "W": "#aab8d0", "V": "#6a7a98", "e": "#1b1030",
+            "o": "#f79a2a", "t": "#6a7a98"}
+GULL = {
+    "fly1": ["........W......W....",
+             ".......WW.....WW....",
+             "......WWV....WWV....",
+             ".....WWV....WWV.....",
+             "..ww.WWwwwwWWw......",
+             ".ewwwwwwwwwwwwwww...",
+             "oowwwwwwwwwwwwwwwtt.",
+             "..sswwwwwwwwwwwss.tt",
+             "....ssssssssss......"],
+    "fly2": ["....................",
+             "....................",
+             "..ww................",
+             ".ewwwwwwwwwwwwwww...",
+             "oowwwWWwwwwWWwwwwtt.",
+             "..sswWWWwwwWWWwss.tt",
+             "....sWWVsssWWVs.....",
+             ".....WWV...WWV......",
+             ".....WV.....WV......",
+             "......V......V......"],
+}
+
+
+def sky_enemies():
+    sp = [("walk1", ol(parse(spiky_frame(0), SPIKY_PAL, "spiky1"))),
+          ("walk2", ol(parse(spiky_frame(1), SPIKY_PAL, "spiky2"))),
+          ("ball1", ol(parse(spiky_ball(0), SPIKY_PAL, "spikyb1"))),
+          ("ball2", ol(parse(spiky_ball(1), SPIKY_PAL, "spikyb2")))]
+    save_set("enemy_spiky", sp, 18, 16, {"walk": (["walk1", "walk2"], 6, True),
+                                         "ball": (["ball1", "ball2"], 10, True),
+                                         "flipped": (["walk1"], 1, False)})
+    imp = [("idle1", ol(parse(imp_frame(False, 0), IMP_PAL, "imp1"))),
+           ("idle2", ol(parse(imp_frame(False, 1), IMP_PAL, "imp2"))),
+           ("throw", ol(parse(imp_frame(True, 0), IMP_PAL, "imp3")))]
+    save_set("enemy_imp", imp, 24, 28, {"idle": (["idle1", "idle2"], 3, True),
+                                        "throw": (["throw"], 1, False),
+                                        "flipped": (["idle1"], 1, False)})
+    gull = [(n, ol(parse(GULL[n], GULL_PAL, "gull." + n))) for n in ["fly1", "fly2"]]
+    save_set("enemy_gull", gull, 22, 12, {"fly": (["fly1", "fly2"], 7, True),
+                                         "flipped": (["fly1"], 1, False)})
+    # world-5 boss: lightning bolt (zigzag, two flicker frames)
+    bolt_rows = [
+        "....wy..",
+        "...wyy..",
+        "..wyy...",
+        ".wyy....",
+        "wyyyyyy.",
+        "...wyy..",
+        "..wyy...",
+        ".wyy....",
+        "wyyyyyyy",
+        "...wyy..",
+        "..wyy...",
+        ".wyy....",
+        "wyy.....",
+        "wy......",
+    ]
+    b1 = ol(parse(bolt_rows, {"w": "#ffffff", "y": "#ffe860"}, "bolt"))
+    b2 = ol(parse(bolt_rows, {"w": "#fff8c0", "y": "#8ad4ff"}, "bolt2"))
+    save_set("bolt", [("b0", b1), ("b1", b2)], 10, 16, {"zap": (["b0", "b1"], 16, True)})
+
+
+# =========================================================================
 # BOSS — horned dragon-ogre king (own design), built from shapes + details
 # =========================================================================
 BOSS_PAL = {
@@ -1011,6 +1187,8 @@ BOSS_WORLD_SWAP = {
     2: {},                                                                      # purple
     3: {"#8a4ac0": "#d86a2a", "#5a2a88": "#8a3414", "#b27ae0": "#f4a060"},   # orange
     4: {"#8a4ac0": "#3a78c8", "#5a2a88": "#1e4488", "#b27ae0": "#7ab4f0"},   # blue
+    5: {"#8a4ac0": "#d8a820", "#5a2a88": "#8a6410", "#b27ae0": "#fff08a"},   # gold (sky)
+    6: {"#8a4ac0": "#2aa8a0", "#5a2a88": "#146860", "#b27ae0": "#7ae8d8"},   # teal (sea)
 }
 BW, BH = 30, 32
 
@@ -1342,5 +1520,6 @@ if __name__ == "__main__":
     enemies()
     turtles()
     biome_enemies()
+    sky_enemies()
     boss()
     items()

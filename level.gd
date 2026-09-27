@@ -24,6 +24,12 @@ const ROW_SNOW := 5
 const ROW_EXTRA := 6
 const ROW_CASTLE := 7
 const ROW_CASTLE_EXTRA := 8
+const ROW_CLOUD := 9
+const ROW_SKY_EXTRA := 10
+const CLOUD_BRIDGE_L := Vector2i(0, 10)
+const CLOUD_BRIDGE_M := Vector2i(1, 10)
+const CLOUD_BRIDGE_R := Vector2i(2, 10)
+const SKY_BRICK := Vector2i(3, 10)
 const CASTLE_WALL := Vector2i(2, 8)
 const ICE := Vector2i(8, 6)
 const LAVA_TOP := Vector2i(9, 6)      # 4-frame tile animation (9..12)
@@ -31,10 +37,10 @@ const LAVA := Vector2i(13, 6)
 const SANDSTONE := Vector2i(14, 6)
 const ICE_BRICK := Vector2i(15, 6)
 const BIOME_ROW := {"grass": ROW_GRASS, "cave": ROW_CAVE, "sand": ROW_SAND, "snow": ROW_SNOW,
-	"castle": ROW_CASTLE}
+	"castle": ROW_CASTLE, "sky": ROW_CLOUD}
 ## area theme (AREAS in the level data) -> ground/decor biome of those columns
 const THEME_BIOME := {"cave": "cave", "cavern": "cave", "desert": "sand", "desert_dusk": "sand",
-	"snow": "snow", "snow_night": "snow", "fortress": "castle"}
+	"snow": "snow", "snow_night": "snow", "fortress": "castle", "sky": "sky", "sky_dusk": "sky"}
 const HARD := Vector2i(4, 1)
 const BRIDGE_L := Vector2i(5, 1)
 const BRIDGE_M := Vector2i(6, 1)
@@ -59,6 +65,7 @@ const DECOR_BIOME := {
 	"snow": {"*": "pine", "+": "bush_snow", "f": "frost", "t": "tuft_snow", "r": "rock_snow"},
 	"cave": {"*": "crystal_l", "+": "crystal_s", "f": "glowshroom", "t": "tuft_cave", "r": "rock_cave"},
 	"castle": {"*": "banner", "+": "torch", "f": "skull", "t": "torch", "r": "rock_castle"},
+	"sky": {"*": "sky_bush_l", "+": "sky_bush_s", "f": "sky_flower", "t": "tuft_sky", "r": "rock_sky"},
 }
 const FLOWERS := ["flower_a", "flower_b", "flower_c"]
 
@@ -161,7 +168,8 @@ static func tileset() -> TileSet:
 			if coords in [WATER_TOP, WATER, LAVA_TOP, LAVA]:
 				continue      # water/lava: no collision (falling in = pit death)
 			var td := src.get_tile_data(coords, 0)
-			var one_way := y == ROW_MISC and x >= BRIDGE_L.x and x <= BRIDGE_R.x
+			var one_way := (y == ROW_MISC and x >= BRIDGE_L.x and x <= BRIDGE_R.x) \
+				or (y == ROW_SKY_EXTRA and x <= CLOUD_BRIDGE_R.x)
 			td.add_collision_polygon(0)
 			td.set_collision_polygon_points(0, 0, plank if one_way else full)
 			if one_way:
@@ -200,11 +208,15 @@ func _build_tiles() -> void:
 					tiles.set_cell(Vector2i(c, r), 0, HARD)
 				"w":
 					tiles.set_cell(Vector2i(c, r), 0, {"sand": SANDSTONE, "snow": ICE_BRICK,
-						"castle": CASTLE_WALL}.get(biome_at(c), CAVE_BRICK))
+						"castle": CASTLE_WALL, "sky": SKY_BRICK}.get(biome_at(c), CAVE_BRICK))
 				"=":
+					# log bridge; in the sky a one-way cloud strip
 					var l := at(c - 1, r) == "="
 					var rr := at(c + 1, r) == "="
-					tiles.set_cell(Vector2i(c, r), 0, BRIDGE_M if (l and rr) else (BRIDGE_L if rr else BRIDGE_R))
+					if biome_at(c) == "sky":
+						tiles.set_cell(Vector2i(c, r), 0, CLOUD_BRIDGE_M if (l and rr) else (CLOUD_BRIDGE_L if rr else CLOUD_BRIDGE_R))
+					else:
+						tiles.set_cell(Vector2i(c, r), 0, BRIDGE_M if (l and rr) else (BRIDGE_L if rr else BRIDGE_R))
 				"v":
 					water.set_cell(Vector2i(c, r), 0, WATER if at(c, r - 1) == "v" else WATER_TOP)
 				"P", "W", "Q":
@@ -239,6 +251,9 @@ func _ground_tile(c: int, r: int, ch: String, row: int) -> Vector2i:
 		return Vector2i(8 + (absi(c * 7 + r * 13) % 2), ROW_MISC)
 	if m == 0 and row == ROW_CASTLE:
 		return Vector2i(1 if absi(c * 31 + r * 17) % 7 == 0 else 0, ROW_CASTLE_EXTRA)
+	if m == 0 and row == ROW_CLOUD:
+		var hc := absi((c * 73856093) ^ (r * 19349663)) % 11
+		return Vector2i(4, ROW_SKY_EXTRA) if hc == 0 else (Vector2i(5, ROW_SKY_EXTRA) if hc == 1 else Vector2i(0, ROW_CLOUD))
 	if m == 0 and (row == ROW_SAND or row == ROW_SNOW):
 		var hv := absi((c * 73856093) ^ (r * 19349663)) % 20
 		var k := 0 if hv < 13 else (1 if hv < 15 else (2 if hv < 18 else 3))
@@ -246,7 +261,8 @@ func _ground_tile(c: int, r: int, ch: String, row: int) -> Vector2i:
 	return Vector2i(m, row)
 
 func _pipe_free(ch: String) -> bool:
-	return ch in [".", "o", "g", "G", "k", "K", "J", "Z", "a", "p", "q", "~", "^"] or DECOR.has(ch)
+	return ch in [".", "o", "g", "G", "k", "K", "J", "Z", "a", "p", "q", "~", "^", "D", "T", "u", "x", "y"] \
+		or DECOR.has(ch)
 
 func _place_pipe(c: int, r: int) -> void:
 	tiles.set_cell(Vector2i(c, r), 0, PIPE_TOP_L)
@@ -342,6 +358,26 @@ func _build_entities() -> void:
 					lift.phase = float(c % 4) * 0.25
 					lift.position = Vector2(c * T, r * T)
 					add_child(lift)
+				"D":
+					var drop := FallingPlatform.new()
+					drop.position = Vector2(c * T, r * T)
+					add_child(drop)
+				"T":
+					var tip := TipPlatform.new()
+					tip.position = Vector2(c * T, r * T)
+					add_child(tip)
+				"u":
+					var imp := CloudImp.new()
+					imp.position = cell_feet(c, r)
+					add_child(imp)
+				"x":
+					var sp := Spiky.new()
+					sp.position = cell_feet(c, r)
+					add_child(sp)
+				"y":
+					var gull := Gull.new()
+					gull.position = cell_feet(c, r)
+					add_child(gull)
 				"a":
 					var bat := Bat.new()
 					bat.position = Vector2(c * T + T * 0.5, r * T)

@@ -14,8 +14,9 @@ extends Node2D
 enum State { TITLE, INTRO, PLAYING, TRANSITION, DYING, CLEAR, GAMEOVER }
 
 const THEME_MUSIC := {"cave": "music_cave", "cavern": "music_cave", "desert": "music_desert",
-	"desert_dusk": "music_desert", "snow": "music_snow", "snow_night": "music_snow", "fortress": "music_castle"}
-const WORLD_NAMES := ["Meadows", "Caverns", "Desert", "Snow"]
+	"desert_dusk": "music_desert", "snow": "music_snow", "snow_night": "music_snow", "fortress": "music_castle",
+	"sky": "music_sky", "sky_dusk": "music_sky"}
+const WORLD_NAMES := ["Meadows", "Caverns", "Desert", "Snow", "Sky"]
 const LEVELS := [
 	preload("res://levels/level_1_1.gd"),
 	preload("res://levels/level_1_2.gd"),
@@ -30,6 +31,9 @@ const LEVELS := [
 	preload("res://levels/level_4_1.gd"),
 	preload("res://levels/level_4_2.gd"),
 	preload("res://levels/level_4_3.gd"),
+	preload("res://levels/level_5_1.gd"),
+	preload("res://levels/level_5_2.gd"),
+	preload("res://levels/level_5_3.gd"),
 ]
 const CHAIN := [100, 200, 400, 500, 800, 1000, 2000, 4000, 5000, 8000]
 const TIME_TICK := 0.4

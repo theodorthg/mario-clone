@@ -6,9 +6,13 @@ extends Node2D
 ##   "flame" — straight fire breath (aimed at the hero when breathed)
 ##   "wave"  — sand shock wave hugging the arena floor (jump over it)
 ##   "ice"   — ice ball thrown in an arc that bounces along the floor
+##   "bolt"  — lightning: flashes in place for BOLT_WARN s, then strikes
+##             straight down to the arena floor
 
 const FRAMES := preload("res://assets/graphics/boss_flame.tres")
 const ICE := preload("res://assets/graphics/ice_ball.tres")
+const BOLT := preload("res://assets/graphics/bolt.tres")
+const BOLT_WARN := 0.6
 
 var velocity := Vector2(-110, 0)
 var kind := "flame"
@@ -23,6 +27,10 @@ func _ready() -> void:
 	if kind == "ice":
 		_sprite.sprite_frames = ICE
 		_sprite.play(&"spin")
+	elif kind == "bolt":
+		_sprite.sprite_frames = BOLT
+		_sprite.play(&"zap")
+		_sprite.scale = Vector2(1.5, 1.5)
 	else:
 		_sprite.sprite_frames = FRAMES
 		_sprite.play(&"burn")
@@ -35,6 +43,15 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	_t += delta
+	if kind == "bolt":
+		if _t < BOLT_WARN:
+			_sprite.visible = int(_t * 14.0) % 2 == 0
+			return                     # warning flash: harmless
+		_sprite.visible = true
+		velocity = Vector2(0, 460.0)
+		if position.y >= floor_y - 12.0:
+			queue_free()
+			return
 	if kind == "ice":
 		velocity.y += 650.0 * delta
 		if position.y >= floor_y - 7.0 and velocity.y > 0.0:
@@ -46,7 +63,7 @@ func _physics_process(delta: float) -> void:
 				return
 	position += velocity * delta
 	var game := Game.instance
-	if game == null or _t > 5.0 or not game.is_near_view(global_position, 40.0):
+	if game == null or _t > 5.0 or not game.is_near_view(global_position, 60.0):
 		queue_free()
 		return
 	var p: Player = game.player
@@ -54,6 +71,7 @@ func _physics_process(delta: float) -> void:
 		return
 	var center := p.global_position + Vector2(0, -7.0 if not p.is_big() else -14.0)
 	var d := (global_position - center).abs()
-	if d.x < 12.0 and d.y < (9.0 if not p.is_big() else 16.0):
+	var reach := Vector2(8.0, 14.0) if kind == "bolt" else Vector2(12.0, 9.0)
+	if d.x < reach.x and d.y < reach.y + (0.0 if not p.is_big() else 7.0):
 		p.hurt()
 		queue_free()

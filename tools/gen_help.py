@@ -357,6 +357,42 @@ def page_worlds():
     return img
 
 
+def page_sky():
+    img, d = new_page()
+    text(d, (8, 6), "SKY WORLD", f8, GOLD)
+    tiles = Image.open(os.path.join(GFX, "tiles.png")).convert("RGBA")
+    drop = Image.open(os.path.join(GFX, "drop.png")).convert("RGBA")
+    tip = Image.open(os.path.join(GFX, "tipper.png")).convert("RGBA")
+    img.alpha_composite(drop, (8, 24))
+    text(d, (62, 20), "Falling slab: it shakes,")
+    text(d, (62, 30), "then drops - jump off in time!", fill=DIM)
+    img.alpha_composite(tip.rotate(12, resample=Image.NEAREST, expand=True), (4, 44))
+    text(d, (74, 46), "Tipping plank: tips toward")
+    text(d, (74, 56), "your side - keep moving.", fill=DIM)
+    for i in range(3):
+        img.alpha_composite(tiles.crop((i * 16, 10 * 16, i * 16 + 16, 10 * 16 + 8)), (10 + i * 16, 76))
+    text(d, (62, 76), "Clouds: jump up through them.")
+    d.line((8, 92, 332, 92), fill=(60, 70, 110, 255))
+    imp = trim(sheet_frame("enemy_imp", 24, 28, 2))
+    spiky = trim(sheet_frame("enemy_spiky", 18, 16, 0))
+    gull = trim(sheet_frame("enemy_gull", 22, 12, 0))
+    bolt = trim(sheet_frame("bolt", 10, 16, 0))
+    img.alpha_composite(imp, (8, 98))
+    text(d, (36, 100), "Cloud imp throws spikies.")
+    text(d, (36, 110), "Stomp it from up high!", fill=DIM)
+    img.alpha_composite(spiky, (10, 132))
+    text(d, (32, 130), "Spiky: never stomp!")
+    text(d, (32, 140), "Fire, shells or a star.", fill=DIM)
+    img.alpha_composite(gull, (186, 100))
+    text(d, (212, 98), "Gulls glide at you:")
+    text(d, (212, 108), "stomp or duck.", fill=DIM)
+    img.alpha_composite(bolt, (192, 128))
+    text(d, (212, 128), "Storm boss: lightning")
+    text(d, (212, 138), "flashes first - step aside!", fill=DIM)
+    text(d, (8, 157), "Fell off? The double jump helps (Settings).", fill=GOLD)
+    return img
+
+
 def page_castles():
     img, d = new_page()
     text(d, (8, 6), "CASTLES & SECRETS", f8, GOLD)
@@ -388,7 +424,7 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     pages = {"controls": page_controls, "touch": page_touch, "items": page_items,
              "dragon": page_dragon, "goal": page_goal, "worlds": page_worlds,
-             "castles": page_castles}
+             "sky": page_sky, "castles": page_castles}
     for n, fn in pages.items():
         fn().save(os.path.join(OUT, n + ".png"))
     print("  help pages:", ", ".join(pages))

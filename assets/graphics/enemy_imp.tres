@@ -1,0 +1,46 @@
+[gd_resource type="SpriteFrames" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/graphics/enemy_imp.png" id="1_tex"]
+
+[sub_resource type="AtlasTexture" id="at_idle1"]
+atlas = ExtResource("1_tex")
+region = Rect2(0, 0, 24, 28)
+
+[sub_resource type="AtlasTexture" id="at_idle2"]
+atlas = ExtResource("1_tex")
+region = Rect2(24, 0, 24, 28)
+
+[sub_resource type="AtlasTexture" id="at_throw"]
+atlas = ExtResource("1_tex")
+region = Rect2(48, 0, 24, 28)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_idle1")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_idle2")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 3.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_throw")
+}],
+"loop": false,
+"name": &"throw",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_idle1")
+}],
+"loop": false,
+"name": &"flipped",
+"speed": 1.0
+}]

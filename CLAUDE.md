@@ -162,7 +162,8 @@ Dach, Schildkröten-Reihe auf einem Sims (Kombo), Stufenpyramide mit Tunnel.
 4-2 (Thema `snow_night`: Sterne + Mond, blaue Tönung): lange Eisbahn,
 Eisziegel-Türme, See mit Eisschollen, Eisbrücke über Wasser.
 Reihenfolge in `game.gd::LEVELS`: 1-1 … 1-4, 2-1 … 2-3, 3-1 … 3-3,
-4-1 … 4-3 (x-4/x-3 = Burg); nach 4-3 Siegerbildschirm.
+4-1 … 4-3, 5-1 … 5-3 (x-4/x-3 = Burg); nach der letzten Burg
+Siegerbildschirm.
 
 ### 1-1 „Green Hills“ (312 Spalten, davon 262 Hauptlevel)
 Start-Wiese mit ?-Blöcken → Röhrenfeld (Warp-Röhre Spalte 53 → Münzhöhle,
@@ -309,6 +310,38 @@ Ducken und Absteigen auf Touch unmöglich.
   bis zu 4× vom Arenaboden ab).
 - Playtests: `lifts`, `bossvariants`, `bossstress` (Arena-Einmauern
   wiederholt, `RUNS=`).
+
+## Welt 5 „Sky“ (v0.12)
+
+- Levels 5-1 „Cloud Kingdom“ (Thema `sky`, Münzraum), 5-2 „Sunset Skyway“
+  (`sky_dusk`), Burg 5-3 „Storm Citadel“ (dort ist der erste Sims über dem
+  Lavasee eine fallende Platte). Wolkeninseln über bodenlosem Himmel.
+- Biom `sky`: `#` = Wolken-Autotile (Atlas-Reihe 9, weiche blaue Kontur,
+  bogige Ränder), Reihe 10: Wolkenbrücke L/M/R (`=` im Himmel, Einweg),
+  Marmorziegel (`w`), zwei Wolken-Innenvarianten. Deko: rosa Blütenbüsche,
+  Himmelsblume, Wolkenbüschel, Marmorfels.
+- Hintergrund (`backdrop.gd` Thema `sky`/`sky_dusk`): Wolken, schwebende
+  Inseln mit Wasserfall, zwei Wolkenmeer-Bänder (leicht bläulich getönt,
+  damit sie sich vom Wolkenboden abheben), Sonne; Partikel `wind`.
+  Musik `music_sky` „Cloud Nine“ (D-Dur mit lydischem G#, 124 bpm, Harfen-
+  Arpeggien).
+- `D` = fallende Platte (`falling_platform.gd`, 3 Kacheln, `drop.png`):
+  0,5 s nach dem Betreten wackelt sie, fällt dann (nimmt den Helden mit) und
+  erscheint 3,5 s später wieder (nicht, solange der Held dort steht).
+- `T` = Kippplanke (`tip_platform.gd`, 4 Kacheln, Drehpunkt in der Mitte,
+  `tipper.png`): kippt zur belasteten Seite (je weiter außen, desto
+  schneller, max. 75°), ohne Last zurück. „Steht drauf“ wird über die
+  Position erkannt, NICHT über `is_on_floor()` (auf steiler Planke gilt der
+  Held kurz als nicht am Boden → die Planke pendelte sonst bei 45°).
+- Gegner: `u` Wolkenkobold (`cloud_imp.gd`: folgt dem Helden hoch oben,
+  wirft alle 3,4 s einen Stachelball, max. 3; nach 110 Spalten fliegt er
+  weg; stampfbar von oben), `x` Stachi (`spiky.gd`, `extends Shroom`: nicht
+  stampfbar; vom Kobold geworfen als Kugel, entrollt sich bei der Landung),
+  `y` Möwe (`gull.gd`: gleitet mit Wellenbewegung auf den Helden zu).
+- Boss Welt 5 (gold): gezielte Flamme + drei Blitze um den Helden
+  (`boss_flame.gd` Art `bolt`: 0,6 s blinkende Warnung oben, dann Einschlag).
+- Hilfeseite „Sky World“; Playtests `sky` (Platte, Planke, Kobold, Möwe,
+  Blitze) und `selects` (Level-/Weltauswahl passen auf 270 px).
 
 ## Biom-Gegner (v0.9)
 

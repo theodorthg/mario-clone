@@ -7,15 +7,18 @@ Git-Log.
 
 ## Offen
 
-- [ ] Neue Welt Wolken/Himmel (Nutzer 2026-09-27: freigegeben).
 - [ ] Neue Welt Unterwasser (freigegeben).
-- [ ] Weitere Gegner (freigegeben).
-- [ ] Fallende/kippende Plattformen (freigegeben).
+- [ ] Weitere Gegner (freigegeben) — Himmel erledigt (v0.12), für
+      Unterwasser noch offen (Fische, Qualle …).
 - [ ] Boss-Balancing nach Spieltests (HP, Tempo, Angriffsrate der neuen
       Varianten) — Nutzer schaut sich die Bosskämpfe gerade an.
 
 ## Erledigt
 
+- [x] v0.12.0 Welt 5 „Sky“: 5-1 Cloud Kingdom, 5-2 Sunset Skyway, Burg 5-3
+      Storm Citadel; Wolkenboden/-brücken, fallende Platten (`D`),
+      Kippplanken (`T`), Wolkenkobold + Stachi, Möwen, Blitz-Boss, Musik
+      „Cloud Nine“, Hilfeseite „Sky World“.
 - [x] v0.11.0 Sprung-Gefühl (Nutzer 2026-09-27: schmale Plattformen in 1-4
       zu schwer): weniger Nachrutschen (Bodenbremse ×2, Landebremse),
       Mindest-Sprunghöhe ~3 Tiles auch bei kurzem Tippen, Doppelsprung

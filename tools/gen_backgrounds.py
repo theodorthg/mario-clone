@@ -426,6 +426,88 @@ def castle_pillars():
     return img
 
 
+def cloud_sea(h, base_y, puffs, colors, edge, seed):
+    """continuous band of cloud tops (seamless): the silhouette is the upper
+    envelope of round puffs along a baseline, filled down to the bottom,
+    shaded darker with depth. colors: [top, body, deep]"""
+    img = Image.new("RGBA", (BG_W, h), TRANSPARENT)
+    px = img.load()
+    rng = random.Random(seed)
+    specs = []
+    x = 0
+    while x < BG_W:
+        r = rng.randint(*puffs)
+        specs.append((x, r))
+        x += int(r * rng.uniform(1.1, 1.6))
+    tops = []
+    for xx in range(BG_W):
+        t = base_y
+        for cx, r in specs:
+            for off in (-BG_W, 0, BG_W):
+                d = xx - (cx + off)
+                if abs(d) < r:
+                    t = min(t, base_y - int((r * r - d * d) ** 0.5 * 0.8))
+        tops.append(t)
+    c_top, c_body, c_deep = (hex_rgba(c) for c in colors)
+    for xx in range(BG_W):
+        for y in range(max(0, tops[xx]), h):
+            depth = y - tops[xx]
+            col = c_top if depth < 3 else c_body
+            t = max(0.0, (y - base_y - 6) / 26.0)
+            if t > 0 and dither(xx, y, min(1.0, t)):
+                col = c_deep
+            px[xx, y] = col
+        if tops[xx] - 1 >= 0:
+            px[xx, tops[xx] - 1] = hex_rgba(edge)
+    return img
+
+
+def sky_islands():
+    """distant floating islands: grassy top, rock body tapering down,
+    blossom trees, one little waterfall (hazy blue = far away)"""
+    h = 120
+    img = Image.new("RGBA", (BG_W, h), TRANSPARENT)
+    px = img.load()
+    grass, grass_d = hex_rgba("#a8dca0"), hex_rgba("#84bf86")
+    rock, rock_d, rock_dd = hex_rgba("#b4b8e0"), hex_rgba("#9296c8"), hex_rgba("#7a7eb4")
+    edge = hex_rgba("#6a70a8")
+    tree, tree_d = hex_rgba("#f4c4e0"), hex_rgba("#d8a0c8")
+    fall = hex_rgba("#e6f4ff")
+    rng = random.Random(11)
+    for cx, top, w, depth, trees, water in ((95, 46, 64, 44, 2, False), (320, 30, 90, 62, 3, True),
+                                             (520, 60, 48, 34, 1, False)):
+        x0 = cx - w // 2
+        for x in range(x0, x0 + w):
+            k = (x - x0) / (w - 1)
+            bottom = top + 4 + int(depth * (1 - abs(k - 0.5) * 2) ** 0.7) + rng.randint(0, 2)
+            for y in range(top, min(h, bottom)):
+                if y < top + 3:
+                    col = grass if y == top else grass_d
+                else:
+                    col = rock if k < 0.45 else rock_d
+                    if (x * 3 + y * 5) % 11 == 0:
+                        col = rock_dd
+                px[x % BG_W, y] = col
+            px[x % BG_W, top - 1] = edge
+            if bottom < h:
+                px[x % BG_W, bottom] = edge
+        for i in range(trees):
+            tx = x0 + 8 + i * (w - 16) // max(1, trees - 1) if trees > 1 else cx
+            for y in range(top - 12, top):
+                for x in range(tx - 6, tx + 7):
+                    if (x - tx) ** 2 + ((y - (top - 8)) * 1.3) ** 2 <= 30:
+                        px[x % BG_W, y] = tree if y < top - 8 else tree_d
+            for y in range(top - 3, top):
+                px[tx % BG_W, y] = rock_dd
+        if water:
+            wx = cx + w // 2 - 14
+            for y in range(top + 2, h):
+                for x in (wx, wx + 1, wx + 2):
+                    if dither(x, y, max(0.0, 1.0 - (y - top) / (h - top))):
+                        px[x % BG_W, y] = fall
+    return img
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     layers = {
@@ -453,6 +535,10 @@ def main():
         # castle
         "bg_castle_wall": castle_wall(),
         "bg_castle_pillars": castle_pillars(),
+        # sky
+        "bg_sky_sea_far": cloud_sea(90, 30, (14, 26), ["#ffffff", "#eaf0fc", "#d4dcf4"], "#b8c6ea", 21),
+        "bg_sky_islands": sky_islands(),
+        "bg_sky_sea_near": cloud_sea(110, 34, (20, 36), ["#ffffff", "#f4f8ff", "#dde8fa"], "#a8bce6", 23),
     }
     for name, im in layers.items():
         im.save(os.path.join(OUT, name + ".png"))

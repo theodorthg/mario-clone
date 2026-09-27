@@ -444,6 +444,32 @@ def snow():
     return s.render(loop=True)
 
 
+def sky():
+    """'Cloud Nine' — airy D major with a Lydian G# (the E chord), 124 bpm,
+    16 bars: harp-like 16th arpeggios, singing lead with echo, soft bass."""
+    s = Song(124)
+    melody = bars(
+        "F#5:4 A5:4 D6:6 C#6:2", "B5:4 G#5:4 E5:6 F#5:2", "D6:4 C#6:2 B5:2 F#5:8", "G5:4 A5:4 B5:4 D6:4",
+        "F#5:4 A5:4 D6:6 E6:2", "F#6:4 E6:2 D6:2 B5:8", "C#6:4 A5:4 F#5:4 A5:4", "E5:8 A5:4 C#6:4",
+        "D6:6 B5:2 G5:8", "E6:6 C#6:2 A5:8", "F#6:4 E6:4 C#6:4 A5:4", "B5:6 C#6:2 D6:8",
+        "B5:4 D6:4 G6:4 F#6:4", "E6:4 D6:4 B5:4 G#5:4", "A5:4 B5:4 C#6:4 E6:4", "D6:12 r:4",
+    )
+    prog = ["D", "E", "Bm", "G", "D", "E", "F#m", "A", "G", "A", "F#m", "Bm", "G", "E", "A", "D"]
+    tones = {"D": ["D4", "F#4", "A4", "D5"], "E": ["E4", "G#4", "B4", "E5"], "Bm": ["B3", "D4", "F#4", "B4"],
+             "G": ["G3", "B3", "D4", "G4"], "F#m": ["F#3", "A3", "C#4", "F#4"], "A": ["A3", "C#4", "E4", "A4"]}
+    roots = {"D": ("D2", "A2"), "E": ("E2", "B2"), "Bm": ("B1", "F#2"), "G": ("G1", "D2"),
+             "F#m": ("F#1", "C#2"), "A": ("A1", "E2")}
+    pat = [0, 1, 2, 3, 2, 1, 2, 3, 0, 1, 2, 3, 2, 1, 2, 3]
+    arp = " ".join(" ".join("%s:1" % tones[c][i] for i in pat) for c in prog)
+    bass = " ".join("%s:8 %s:8" % roots[c] for c in prog)
+    s.track("pulse", melody, 0.3, duty=0.25, legato=0.85, vib=0.25, d=0.1, s=0.6, echo=0.3)
+    s.track("tri", melody, 0.12, legato=0.6, s=0.5, octave=-1)
+    s.track("pulse", arp, 0.08, duty=0.125, legato=0.6, a=0.002, d=0.05, s=0.3)
+    s.track("tri", bass, 0.45, legato=0.85, s=0.9)
+    s.drums(("K..h..h.K..h.hh." * 16), 0.16)
+    return s.render(loop=True)
+
+
 def castle():
     """'Castle' — tense D minor ostinato, 140 bpm, 8 bars: driving triangle
     bass in 8ths, stabbing chords, a chromatic lead."""
@@ -512,6 +538,7 @@ def music():
         "music_desert": desert,
         "music_snow": snow,
         "music_castle": castle,
+        "music_sky": sky,
         "jingle_world": jingle_world,
         "jingle_clear": jingle_clear,
         "jingle_death": jingle_death,

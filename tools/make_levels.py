@@ -29,7 +29,12 @@ Grid legend (one char per 16x16 cell, row 0 = top):
   a  cave bat (hangs under the ceiling)      p  desert cactus stack (spiky)
   q  snow penguin (walks, belly-slides)
   ~  3-tile lift moving sideways (4 tiles)   ^  3-tile lift moving up (4.5 tiles)
-     (top-left at the cell; one-way from below; not part of surface())
+  D  3-tile falling slab (drops after standing on it, comes back)
+  T  4-tile tipping plank (pivot in its middle; tips toward the heavy side)
+     (lifts/slabs/planks: top-left at the cell; one-way from below; not
+     part of surface())
+  u  cloud imp (throws spiky balls; place it high)   x  spiky walker (no stomp)
+  y  seagull (glides toward the hero)
   decorations: * bush  + small bush  f flower  t grass tuft  r rock
                s sign  n fence
   Ground '#', bricks 'w' and decorations take the look of the BIOME of the
@@ -47,7 +52,7 @@ ROWS = 20
 GROUND = 17          # top row of the default ground
 SOLID = set("#cXwBP W?MYSCUh>IN")
 THEME_BIOME = {"cave": "cave", "cavern": "cave", "desert": "sand", "desert_dusk": "sand",
-               "snow": "snow", "snow_night": "snow", "fortress": "castle"}
+               "snow": "snow", "snow_night": "snow", "fortress": "castle", "sky": "sky", "sky_dusk": "sky"}
 
 
 class Level:
@@ -1175,10 +1180,182 @@ def level_4_2():
 
 
 # =========================================================================
+# 5-1  "Cloud Kingdom" — cloud islands over a bottomless sky: falling slabs,
+#      tipping planks, cloud bridges, seagulls and a spiky-throwing imp
+# =========================================================================
+def level_5_1():
+    L = Level("5-1", "CLOUD KINGDOM", 320, time=400)
+    MAIN_END = 270
+    # start island
+    L.ground(0, 20)
+    L.decor(1, "s")
+    L.decor(5, "*")
+    L.decor(11, "f")
+    L.decor(15, "+")
+    L.blocks(8, 13, "?B?M?")
+    L.blocks(10, 9, "?")
+    L.enemy(17)
+    # small gap, island one step higher, a gull at head height
+    L.coin_arc(20, 12, 5)
+    L.ground(24, 40, top=16)
+    L.decor(26, "t")
+    L.enemy(30)
+    L.enemy(35)
+    L.set(38, 13, "y")
+    # a falling slab bridges the next gap
+    L.set(42, 15, "D")
+    L.coins(42, 13, 3)
+    L.ground(47, 60, top=15)
+    L.decor(49, "*")
+    L.blocks(52, 11, "B?B")
+    L.enemy(56, ch="J")
+    # two tipping planks
+    L.set(63, 14, "T")
+    L.set(69, 13, "T")
+    L.coins(69, 10, 4)
+    # long island: the cloud imp arrives, warp pipe to a coin room
+    L.ground(75, 97)
+    L.set(84, 9, "u")
+    L.decor(77, "f")
+    L.blocks(80, 13, "?B?B?")
+    L.blocks(82, 9, "M")
+    warp_in = L.pipe(90, 3, warp=True)
+    L.decor(95, "+")
+    # one-way cloud bridge over open sky
+    L.bridge(98, 105, 14)
+    L.coins(99, 12, 6)
+    # checkpoint island
+    L.ground(106, 130)
+    L.checkpoints.append((110, GROUND - 1))
+    L.decor(108, "*")
+    L.blocks(115, 13, "BCB")
+    L.enemy(119)
+    L.enemy(122, ch="k")
+    L.set(126, 14, "y")
+    L.decor(128, "r")
+    # falling slab staircase
+    for c, r in ((131, 15), (135, 13), (139, 11), (143, 13)):
+        L.set(c, r, "D")
+    L.coins(139, 9, 3)
+    L.ground(147, 170, top=15)
+    L.enemy(152)
+    L.blocks(154, 11, "?")
+    warp_out = L.pipe(160, 2)
+    L.enemy(165, ch="x")
+    # lift over a wide gap
+    L.set(172, 15, "~")
+    L.coins(174, 12, 4)
+    L.ground(181, 206, top=16)
+    L.enemy(188, ch="k")
+    L.enemy(196, ch="k")
+    L.blocks(192, 12, "B?B")
+    L.set(190, 13, "y")
+    L.set(200, 14, "y")
+    L.set(204, 11, "y")
+    L.decor(183, "f")
+    # tipping planks, then the last stretch with spikies + a hidden 1-UP
+    L.set(208, 14, "T")
+    L.set(214, 13, "T")
+    L.ground(220, 236)
+    L.enemy(226, ch="x")
+    L.enemy(231, ch="x")
+    L.blocks(224, 13, "B?B")
+    L.set(233, 12, "h")
+    L.decor(221, "+")
+    L.ground(237, MAIN_END - 1)
+    finale(L, 240, 256, 260)
+    L.decor(252, "*")
+    B0, B1 = 280, 319
+    exit_mouth = coin_room(L, B0, B1)
+    L.areas = {"main": (0, MAIN_END - 1, "sky"), "bonus": (B0, B1, "cave")}
+    L.warps = [
+        {"entry": warp_in, "kind": "down", "arrive": (B0 + 3, 4), "arrive_kind": "drop", "area": "bonus"},
+        {"entry": exit_mouth, "kind": "right", "arrive": warp_out, "arrive_kind": "up", "area": "main"},
+    ]
+    return L
+
+
+# =========================================================================
+# 5-2  "Sunset Skyway" — evening sky, harder: slab chains, lifts, a vertical
+#      lift up to a cloud tower, tipping planks down again, two imps
+# =========================================================================
+def level_5_2():
+    L = Level("5-2", "SUNSET SKYWAY", 300, time=400)
+    L.ground(0, 18)
+    L.decor(2, "*")
+    L.decor(9, "f")
+    L.decor(14, "+")
+    L.blocks(7, 13, "?M?")
+    L.enemy(15)
+    # falling slab chain over a wide gap
+    for c, r in ((20, 15), (25, 14), (30, 15)):
+        L.set(c, r, "D")
+    L.coins(25, 12, 3)
+    L.ground(35, 50, top=16)
+    L.set(38, 9, "u")
+    L.enemy(42, ch="x")
+    L.enemy(47)
+    # two sideways lifts
+    L.set(53, 15, "~")
+    L.set(62, 13, "~")
+    L.coins(63, 10, 3)
+    L.ground(71, 84, top=15)
+    L.blocks(75, 11, "B?B?B")
+    L.enemy(80, ch="k")
+    # three tipping planks in a row
+    L.set(86, 14, "T")
+    L.set(92, 13, "T")
+    L.set(98, 14, "T")
+    L.coins(93, 10, 4)
+    L.ground(104, 125)
+    L.checkpoints.append((107, GROUND - 1))
+    L.blocks(112, 13, "?C?")
+    L.enemy(110, ch="x")
+    L.enemy(116)
+    L.enemy(120, ch="k")
+    L.set(114, 14, "y")
+    L.set(123, 12, "y")
+    # cloud bridge with a winged turtle above
+    L.bridge(127, 136, 14)
+    L.set(131, 11, "J")
+    L.ground(138, 150, top=16)
+    L.set(143, 12, "h")
+    L.decor(140, "*")
+    # slabs down to a vertical lift, up onto a cloud tower
+    for c, r in ((152, 14), (157, 12), (162, 14)):
+        L.set(c, r, "D")
+    L.set(167, 15, "^")
+    L.ground(172, 192, top=12)
+    L.enemy(178, ch="k")
+    L.enemy(186)
+    L.blocks(180, 8, "?M?")
+    L.decor(190, "+")
+    # tipping planks back down
+    L.set(194, 13, "T")
+    L.set(200, 15, "T")
+    L.ground(206, 228)
+    L.set(210, 8, "u")
+    L.enemy(215, ch="x")
+    L.enemy(221, ch="x")
+    L.blocks(214, 13, "B?B")
+    L.bridge(229, 236, 14)
+    L.set(233, 12, "y")
+    L.ground(238, 250, top=16)
+    L.enemy(244, ch="J")
+    for c, r in ((252, 15), (256, 13)):
+        L.set(c, r, "D")
+    L.ground(261, 299)
+    L.decor(263, "f")
+    finale(L, 268, 284, 288)
+    L.areas = {"main": (0, 299, "sky_dusk")}
+    return L
+
+
+# =========================================================================
 # castles — the last course of every world: fire bars, lava bubbles,
 # a power-up before the arena and the boss. Harder with every world.
 # =========================================================================
-CASTLE_NAMES = {1: "STONE KEEP", 2: "MAGMA FORT", 3: "SUN CITADEL", 4: "FROST BASTION"}
+CASTLE_NAMES = {1: "STONE KEEP", 2: "MAGMA FORT", 3: "SUN CITADEL", 4: "FROST BASTION", 5: "STORM CITADEL"}
 
 
 def castle_level(world, lid):
@@ -1226,7 +1403,10 @@ def castle_level(world, lid):
     L.decor(55, "f")
     # D: lava lake with narrow platforms, bubbles, a fire bar in the middle
     L.lava(68, 90 if hard else 87)
-    L.ledge(71, 72, 14)
+    if world >= 5:
+        L.set(70, 14, "D")          # falling slab: keep moving!
+    else:
+        L.ledge(71, 72, 14)
     L.ledge(76, 78, 12)
     L.set(77, 11, "F") if world >= 2 else None
     if hard:
@@ -1287,6 +1467,11 @@ def render_preview(L, path):
     coin = Image.open(os.path.join(gfx, "coin.png")).convert("RGBA").crop((0, 0, 12, 16))
     decor = Image.open(os.path.join(gfx, "decor.png")).convert("RGBA")
     hero = Image.open(os.path.join(gfx, "hero_small.png")).convert("RGBA").crop((0, 0, 20, 20))
+    drop_im = Image.open(os.path.join(gfx, "drop.png")).convert("RGBA")
+    tip_im = Image.open(os.path.join(gfx, "tipper.png")).convert("RGBA")
+    imp_im = Image.open(os.path.join(gfx, "enemy_imp.png")).convert("RGBA").crop((0, 0, 24, 28))
+    spiky_im = Image.open(os.path.join(gfx, "enemy_spiky.png")).convert("RGBA").crop((0, 0, 18, 16))
+    gull_im = Image.open(os.path.join(gfx, "enemy_gull.png")).convert("RGBA").crop((0, 0, 22, 12))
     import re
     idx = {}
     for line in open(os.path.join(ROOT, "decor_index.gd")):
@@ -1317,6 +1502,7 @@ def render_preview(L, path):
         "snow": {"*": "pine", "+": "bush_snow", "f": "frost", "t": "tuft_snow", "r": "rock_snow"},
         "cave": {"*": "crystal_l", "+": "crystal_s", "f": "glowshroom", "t": "tuft_cave", "r": "rock_cave"},
         "castle": {"*": "banner", "+": "torch", "f": "skull", "t": "torch", "r": "rock_castle"},
+        "sky": {"*": "sky_bush_l", "+": "sky_bush_s", "f": "sky_flower", "t": "tuft_sky", "r": "rock_sky"},
     }
     col_biome = ["grass"] * L.cols
     for c0, c1, theme in L.areas.values():
@@ -1338,7 +1524,7 @@ def render_preview(L, path):
                     m |= 4
                 if not solid_ground(c + 1, r, ch):
                     m |= 8
-                row = {"grass": 0, "cave": 3, "sand": 4, "snow": 5, "castle": 7}[bio] if ch == "#" else 3
+                row = {"grass": 0, "cave": 3, "sand": 4, "snow": 5, "castle": 7, "sky": 9}[bio] if ch == "#" else 3
                 img.alpha_composite(tile(m, row), (x, y))
             elif ch == "I":
                 img.alpha_composite(tile(8, 6), (x, y))
@@ -1353,6 +1539,16 @@ def render_preview(L, path):
                 later.append((boss_im, x - 8, y - 18))
             elif ch in "~^":
                 later.append((lift_im, x - 1, y - 1))
+            elif ch == "D":
+                later.append((drop_im, x - 1, y - 1))
+            elif ch == "T":
+                later.append((tip_im, x - 1, y - 1))
+            elif ch == "u":
+                later.append((imp_im, x - 4, y - 12))
+            elif ch == "x":
+                later.append((spiky_im, x - 1, y))
+            elif ch == "y":
+                later.append((gull_im, x - 3, y + 4))
             elif ch == "a":
                 later.append((bat_im, x - 1, y))
             elif ch == "q":
@@ -1367,10 +1563,12 @@ def render_preview(L, path):
                     img.alpha_composite(tile(2, 8), (x, y))
                 elif bio in ("sand", "snow"):
                     img.alpha_composite(tile(14 if bio == "sand" else 15, 6), (x, y))
+                elif bio == "sky":
+                    img.alpha_composite(tile(3, 10), (x, y))
                 else:
                     img.alpha_composite(blk(6), (x, y))
             elif ch == "=":
-                img.alpha_composite(tile(6, 1), (x, y))
+                img.alpha_composite(tile(1, 10) if bio == "sky" else tile(6, 1), (x, y))
             elif ch == "v":
                 later.append((tile(15 if L.get(c, r - 1) == "v" else 11, 1), x, y))
             elif ch in "?MYN":
@@ -1443,3 +1641,6 @@ if __name__ == "__main__":
     level_4_1().emit()
     level_4_2().emit()
     castle_level(4, "4-3").emit()
+    level_5_1().emit()
+    level_5_2().emit()
+    castle_level(5, "5-3").emit()

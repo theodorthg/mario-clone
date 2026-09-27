@@ -721,6 +721,107 @@ func _run() -> void:
 						kinds[n.kind] = int(kinds.get(n.kind, 0)) + 1
 				print("VARIANT world=%d projectiles=%s" % [w, kinds])
 				await shot("boss_w%d" % w)
+		"sky":
+			# world 5: backdrop, falling slab, tipping plank, imp, gull, boss bolts
+			game.menus.hide_all()
+			game._start_game(Game.first_level_of_world(5))
+			await _wait(Game.CARD_TIME + 0.4)
+			var p := game.player
+			await shot("start")
+			var slab: FallingPlatform = null
+			var tip: TipPlatform = null
+			for n in game.level.get_children():
+				if n is FallingPlatform and slab == null:
+					slab = n
+				if n is TipPlatform and tip == null:
+					tip = n
+			p.global_position = slab.global_position + Vector2(24, -2)
+			p.velocity = Vector2.ZERO
+			game._update_camera(0.0, true)
+			await _wait(0.3)
+			var y0 := p.global_position.y
+			print("SLAB t=0.3 hero_y=%.0f slab_y=%.0f on_floor=%s" % [y0, slab.global_position.y, p.is_on_floor()])
+			await _wait(0.6)
+			print("SLAB t=0.9 hero_y=%.0f slab_y=%.0f on_floor=%s (falls with it)" % [p.global_position.y, slab.global_position.y, p.is_on_floor()])
+			await shot("slab_falling")
+			await _wait(2.5)
+			print("SLAB after fall: state=%d lives=%d" % [game.state, game.lives])
+			await _wait(3.0)
+			game.menus.hide_all()
+			game._start_game(Game.first_level_of_world(5))
+			await _wait(Game.CARD_TIME + 0.4)
+			p = game.player
+			for n in game.level.get_children():
+				if n is TipPlatform:
+					tip = n
+					break
+			p.global_position = tip.global_position + Vector2(26, -2)
+			p.velocity = Vector2.ZERO
+			game._update_camera(0.0, true)
+			for i in 9:
+				await _wait(0.3)
+				var col := p.get_last_slide_collision()
+				print("TIP t=%.1f rot=%.0f deg hero=(%.0f,%.0f) on_floor=%s floor_n=%s col=%s" % [0.3 * (i + 1), rad_to_deg(tip.rotation),
+					p.global_position.x - tip.global_position.x, p.global_position.y - tip.global_position.y, p.is_on_floor(),
+					p.get_floor_normal().snapped(Vector2(0.01, 0.01)), col.get_collider().get_class() + " n=" + str(col.get_normal().snapped(Vector2(0.01, 0.01))) if col else "-"])
+				if i == 1:
+					await shot("tipping")
+			await _wait(2.5)
+			game.menus.hide_all()
+			game._start_game(Game.first_level_of_world(5))
+			await _wait(Game.CARD_TIME + 0.4)
+			p = game.player
+			p.star_t = 60.0
+			await teleport(Vector2i(80, 16))
+			await _wait(5.5)
+			var spikies := 0
+			var imp_x := -1.0
+			for n in game.level.get_children():
+				if n is Spiky and n.from_sky:
+					spikies += 1
+				if n is CloudImp:
+					imp_x = n.global_position.x - p.global_position.x
+			print("IMP rel_x=%.0f thrown spikies=%d" % [imp_x, spikies])
+			await shot("imp")
+			await teleport(Vector2i(118, 16))
+			await _wait(1.0)
+			for n in game.level.get_children():
+				if n is Gull:
+					print("GULL active=%s pos=%s" % [n.active, n.global_position.round()])
+			await shot("gull")
+			game.menus.hide_all()
+			game._start_game(Game.castle_of_world(5), true, true)
+			await _wait(Game.CARD_TIME + 0.3)
+			game.player.star_t = 30.0
+			Input.action_press("move_right")
+			await _wait(1.8)
+			Input.action_release("move_right")
+			await _wait(0.3)
+			var boss: Boss = game.get_tree().get_nodes_in_group("boss")[0]
+			boss._act = 99.0
+			boss._breathe(game.player)
+			await _wait(0.3)
+			await shot("bolts_warn")
+			await _wait(0.45)
+			var kinds := {}
+			for n in game.level.get_children():
+				if n is BossFlame:
+					kinds[n.kind] = int(kinds.get(n.kind, 0)) + 1
+			print("BOSS5 hp=%d projectiles=%s" % [boss.max_hp, kinds])
+			await shot("bolts_strike")
+			game.menus.hide_all()
+			game._start_game(Game.first_level_of_world(5) + 1)
+			await _wait(Game.CARD_TIME + 0.4)
+			await shot("dusk")
+		"selects":
+			# level select + world select must fit all worlds on the 270-px canvas
+			await _wait(0.5)
+			game.menus._show_screen(Menus.Screen.LEVELS)
+			await _frames(3)
+			await shot("levels")
+			game.menus._show_screen(Menus.Screen.WORLDS)
+			await _frames(3)
+			await shot("worlds")
 		"mutebtn":
 			# the Sound menu's mute label must follow every toggle (v0.11 fix)
 			await _wait(0.5)

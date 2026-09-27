@@ -34,10 +34,10 @@ func _ready() -> void:
 	collision_layer = 4
 	collision_mask = 1
 	add_to_group("boss")
-	max_hp = 3 + (1 if world >= 3 else 0)
+	max_hp = 3 + (1 if world >= 3 else 0) + (1 if world >= 6 else 0)
 	hp = max_hp
 	sprite = AnimatedSprite2D.new()
-	sprite.sprite_frames = load("res://assets/graphics/boss_%d.tres" % clampi(world, 1, 4))
+	sprite.sprite_frames = load("res://assets/graphics/boss_%d.tres" % clampi(world, 1, 6))
 	sprite.offset = Vector2(0, -17)
 	sprite.scale = Vector2(2, 2)      # 32x34 art drawn at 2x: a 4-tile giant
 	sprite.play(&"walk")
@@ -118,6 +118,8 @@ func _physics_process(delta: float) -> void:
 ## Attack by world (each castle's boss fights a little differently):
 ## 1 one aimed flame · 2 a fan of three flames · 3 aimed flame, and every
 ## landing sends sand shock waves along the floor · 4 two bouncing ice balls
+## · 5 aimed flame + three lightning bolts striking around the hero (they
+## flash at the top of the arena first — step aside)
 func _breathe(p: Player) -> void:
 	_roar = 0.6
 	sprite.play(&"roar")
@@ -133,6 +135,12 @@ func _breathe(p: Player) -> void:
 		4:
 			_shoot("ice", mouth, Vector2(facing * 95.0, -230.0))
 			_shoot("ice", mouth, Vector2(facing * 140.0, -150.0))
+		5:
+			_shoot("flame", mouth, aim * 115.0)
+			var sky_y := global_position.y - 11.0 * Level.T
+			for dx in [-52.0, 0.0, 52.0]:
+				var x := clampf(p.global_position.x + dx, arena_left + 24.0, arena_right - 24.0)
+				_shoot("bolt", Vector2(x, sky_y), Vector2.ZERO)
 		_:
 			_shoot("flame", mouth, aim * 115.0)
 
