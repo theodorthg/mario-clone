@@ -484,19 +484,14 @@ func _enter_area(name: String, snap := false) -> void:
 	backdrop.set_theme(a.theme)
 	if player:
 		var water: bool = a.theme in Level.WATER_THEMES
+		player.area_water = water
 		player.swimming = water
 		player.left_limit = r.position.x
 		player.right_limit = r.end.x
-		# the dragon can't swim: it waits on dry land and comes back when the
-		# hero leaves the water (underwater bonus grotto, beach exits)
+		# the dragon can't swim: it stays behind right away (no dragon in the
+		# pipe animation); _update_dino_water() brings it back on dry land
 		if water and player.park_dino():
 			_dino_parked = true
-		elif not water and _dino_parked and player.riding == null and player.mode != Player.Mode.DEAD:
-			_dino_parked = false
-			var d := Dino.new()
-			level.add_child(d)
-			d.global_position = player.global_position
-			player.mount(d)
 	if snap and player:
 		_cam_pos = player.global_position + Vector2(0, -30)
 
@@ -532,7 +527,25 @@ func _physics_process(delta: float) -> void:
 			_cam_pos = Vector2(world_map.hero_position().x, WorldMapData.SIZE.y * 0.5)
 			_apply_camera()
 		return
+	if state == State.PLAYING:
+		_update_dino_water()
 	_update_camera(delta, false)
+
+## The dragon can't swim: diving into water (underwater area, bonus grotto,
+## castle pool) it waits "off stage"; back on dry ground it is there again.
+func _update_dino_water() -> void:
+	if player == null or player.mode != Player.Mode.NORMAL:
+		return
+	if player.swimming and player.riding:
+		player.park_dino()
+		_dino_parked = true
+	elif _dino_parked and player.riding == null and not player.swimming and not player.area_water \
+			and player.is_on_floor():
+		_dino_parked = false
+		var d := Dino.new()
+		level.add_child(d)
+		d.global_position = player.global_position
+		player.mount(d)
 
 func _attract(delta: float) -> void:
 	var vw := get_viewport_rect().size.x

@@ -39,6 +39,10 @@ Grid legend (one char per 16x16 cell, row 0 = top):
   z  crab (sea floor walker)   i  sea urchin (hazard, can't be defeated)
   Underwater areas (theme sea / sea_deep): the hero swims; put water
   surface tiles 'v' in row 2 (see add_surface()).
+  Pools (v1.3, L.pools): rectangles of swimmable water inside a dry area
+  (castle tanks) — drawn as water, coins/urchins may sit inside; jump at
+  the surface to leap out. Currents (L.currents): rectangles where the
+  water pushes the swimming hero left or right (streaks show the flow).
   decorations: * bush  + small bush  f flower  t grass tuft  r rock
                s sign  n fence
   Ground '#', bricks 'w' and decorations take the look of the BIOME of the
@@ -78,6 +82,8 @@ class Level:
         self.areas = {}
         self.top = 0
         self.arena = None
+        self.pools = []       # (c0, r0, c1, r1): swimmable water inside a dry area
+        self.currents = []    # (c0, r0, c1, r1, dir): water flowing left (-1) / right (1)
 
     # ---------------------------------------------------------------- basics
     def set(self, c, r, ch):
@@ -194,6 +200,12 @@ class Level:
             fh.write("const CASTLE := Vector2i(%d, %d)\n" % (self.castle or (-1, -1)))
             if self.arena:
                 fh.write("const ARENA := Vector2i(%d, %d)\n" % self.arena)
+            if self.pools:
+                fh.write("const POOLS := [%s]\n" % ", ".join("Rect2i(%d, %d, %d, %d)" % (c0, r0, c1 - c0 + 1, r1 - r0 + 1)
+                                                            for c0, r0, c1, r1 in self.pools))
+            if self.currents:
+                fh.write("const CURRENTS := [%s]\n" % ", ".join("[Rect2i(%d, %d, %d, %d), %d]" % (c0, r0, c1 - c0 + 1, r1 - r0 + 1, d)
+                                                               for c0, r0, c1, r1, d in self.currents))
             fh.write("const CHECKPOINTS := [%s]\n" % ", ".join("Vector2i(%d, %d)" % p for p in self.checkpoints))
             fh.write("const AREAS := {\n")
             for k, (c0, c1, theme) in self.areas.items():
@@ -1614,14 +1626,17 @@ def level_6_1():
     L.set(113, 14, "e")
     L.coins(99, 13, 4)
     L.coins(106, 14, 3)
-    # open water with jellyfish
+    # open water with jellyfish; a warm stream up high carries you along
+    L.currents.append((121, 4, 139, 7, 1))
+    L.coins(124, 5, 13)
     L.decor(124, "*")
     L.set(126, 10, "j")
     L.set(134, 13, "j")
     L.enemy(130, ch="z")
     L.blocks(128, 9, "?S?")
     L.decor(137, "+")
-    # reef pillar between two pits
+    # reef pillar between two pits, a current pushing back over them
+    L.currents.append((141, 10, 151, 15, -1))
     L.pit(141, 144)
     L.fill(145, 147, 12, ROWS - 1, "#")
     L.pit(148, 151)
@@ -1684,8 +1699,10 @@ def level_6_2():
     L.blocks(64, 12, "B?BCB")
     L.checkpoints.append((84, GROUND - 1))
     L.decor(86, "*")
-    # the deep trench: long pit with three pillars, jellyfish above
+    # the deep trench: long pit with three pillars, jellyfish above; a
+    # current high up carries a quick swimmer over it
     L.pit(90, 120)
+    L.currents.append((89, 3, 121, 6, 1))
     for c0, top in ((95, 14), (103, 12), (111, 14)):
         L.fill(c0, c0 + 2, top, ROWS - 1, "#")
     L.set(104, 11, "i")
@@ -1696,8 +1713,9 @@ def level_6_2():
     L.coins(111, 11, 3)
     L.set(118, 6, "E")
     L.set(121, 12, "E")
-    # low tunnel with urchins on floor and roof
+    # low tunnel with urchins on floor and roof, against the current
     L.fill(126, 150, 3, 11, "#")
+    L.currents.append((127, 12, 149, GROUND - 1, -1))
     for c in (131, 139, 146):
         L.set(c, GROUND - 1, "i")
     L.set(135, 12, "i")
@@ -1907,9 +1925,43 @@ def _sec_maze(L, c, world):
     L.coins(c + 11, 12, 2)
 
 
+def _sec_moat(L, c, world):
+    """flooded moat (v1.3): hop over the rim, dive under two stone teeth that
+    reach below the surface, against a current under the second one"""
+    L.fill(c, c, 14, GROUND - 1, "w")
+    L.fill(c + 21, c + 21, 14, GROUND - 1, "w")
+    L.fill(c + 1, c + 20, GROUND, GROUND + 1, ".")
+    L.pools.append((c + 1, 14, c + 20, GROUND + 1))
+    L.fill(c + 6, c + 7, 3, 15, "#")
+    L.fill(c + 14, c + 15, 3, 15, "#")
+    L.currents.append((c + 12, 16, c + 17, GROUND + 1, -1))
+    for d in (3, 10, 18):
+        L.coins(c + d, GROUND, 2)
+    L.set(c + 10, GROUND + 1, "i")
+    L.coins(c + 9, 11, 4)
+
+
+def _sec_tank(L, c, world):
+    """tall water tank (v1.3): stairs up to its rim, a current across the
+    middle (swim high or low), urchins on the bottom, leap out at the far rim"""
+    for k in range(4):
+        L.fill(c + 2 * k, c + 2 * k + 1, GROUND - 2 * (k + 1), GROUND - 1, "w")
+    L.fill(c + 22, c + 23, 9, GROUND - 1, "w")
+    for k in range(3):
+        L.fill(c + 24 + 2 * k, c + 25 + 2 * k, 11 + 2 * k, GROUND - 1, "w")
+    L.fill(c + 8, c + 21, GROUND, GROUND + 1, ".")
+    L.pools.append((c + 8, 9, c + 21, GROUND + 1))
+    L.currents.append((c + 11, 12, c + 18, 14, -1))
+    L.coins(c + 10, 10, 10)
+    L.coins(c + 12, 16, 6)
+    L.set(c + 11, GROUND + 1, "i")
+    L.set(c + 18, GROUND + 1, "i")
+
+
 SECTION_WIDTH = {_sec_pillars: 12, _sec_steps: 13, _sec_walkway: 20, _sec_bridge: 20, _sec_lifts: 20,
                  _sec_low: 15, _sec_slabs: 15, _sec_tips: 15, _sec_lake: 23, _sec_bubbles: 23,
-                 _sec_vlifts: 23, _sec_gallery: 16, _sec_tower: 17, _sec_maze: 17}
+                 _sec_vlifts: 23, _sec_gallery: 16, _sec_tower: 17, _sec_maze: 17,
+                 _sec_moat: 22, _sec_tank: 30}
 
 CASTLE_PLAN = {
     # world: (sections in order, area theme)
@@ -1918,7 +1970,8 @@ CASTLE_PLAN = {
     3: ([_sec_lifts, _sec_low, _sec_tower, _sec_tips, _sec_lake], "fortress_sun"),
     4: ([_sec_slabs, _sec_gallery, _sec_walkway, _sec_steps, _sec_bubbles], "fortress_ice"),
     5: ([_sec_tips, _sec_maze, _sec_vlifts, _sec_bridge, _sec_steps], "fortress_storm"),
-    6: ([_sec_tower, _sec_slabs, _sec_gallery, _sec_lifts, _sec_maze, _sec_vlifts], "fortress_tide"),
+    # the tide fortress is partly flooded (v1.3): a moat and a tank to swim
+    6: ([_sec_tower, _sec_moat, _sec_gallery, _sec_tank, _sec_maze, _sec_vlifts], "fortress_tide"),
 }
 SEC_GAP = 3
 
@@ -2151,6 +2204,21 @@ def render_preview(L, path):
                 later.append((d, x + (T - d.size[0]) // 2, y + T - d.size[1]))
     for im, x, y in later:
         img.alpha_composite(im, (x, y))
+    # pools: water over every non-solid cell; currents: arrows
+    from PIL import ImageDraw
+    for c0, r0, c1, r1 in L.pools:
+        for r in range(r0, r1 + 1):
+            for c in range(c0, c1 + 1):
+                if L.g[r][c] not in "#cXwI":
+                    img.alpha_composite(tile(11 if r == r0 else 15, 1), (c * T, r * T))
+    dr = ImageDraw.Draw(img)
+    for c0, r0, c1, r1, d in L.currents:
+        for r in range(r0, r1 + 1, 2):
+            for c in range(c0, c1 + 1, 3):
+                x, y = c * T + 8, r * T + 8
+                dr.line((x - 6 * d, y, x + 6 * d, y), fill=(255, 255, 255, 200), width=2)
+                dr.line((x + 6 * d, y, x + 2 * d, y - 3), fill=(255, 255, 255, 200), width=2)
+                dr.line((x + 6 * d, y, x + 2 * d, y + 3), fill=(255, 255, 255, 200), width=2)
     if L.flag and L.flag[0] >= 0:
         c, r = L.flag
         pole = idx["pole"]

@@ -9,6 +9,7 @@ const TIME := 400
 const START := Vector2i(3, 16)
 const FLAG := Vector2i(268, 16)
 const CASTLE := Vector2i(272, 16)
+const CURRENTS := [[Rect2i(89, 3, 33, 4), 1], [Rect2i(127, 12, 23, 5), -1]]
 const CHECKPOINTS := [Vector2i(84, 16)]
 const AREAS := {
 	"main": {"from": 0, "to": 229, "theme": "sea_deep"},

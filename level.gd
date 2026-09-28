@@ -94,6 +94,10 @@ var decor_tex: Texture2D
 var world := 1
 var biome := "grass"                 # biome of the "main" area
 var _col_biome := PackedStringArray()
+## v1.3: swimmable water inside dry areas (castle tanks) and currents that
+## push a swimming hero — px rects from the level data (POOLS / CURRENTS)
+var pools: Array[Rect2] = []
+var currents: Array = []             # [{rect: Rect2, dir: int}]
 
 static var _tileset_cache: TileSet
 
@@ -112,9 +116,16 @@ func setup(level_script: Script) -> void:
 		if name == "main":
 			biome = b
 	decor_tex = load("res://assets/graphics/decor.png")
+	var consts := data.get_script_constant_map()
+	for r in consts.get("POOLS", []):
+		pools.append(Rect2(Vector2(r.position) * T, Vector2(r.size) * T))
+	for cur in consts.get("CURRENTS", []):
+		var cr: Rect2i = cur[0]
+		currents.append({"rect": Rect2(Vector2(cr.position) * T, Vector2(cr.size) * T), "dir": int(cur[1])})
 	_build_tiles()
 	_build_entities()
 	_build_meta()
+	_build_water()
 
 func cell_center(c: int, r: int) -> Vector2:
 	return Vector2(c * T + T * 0.5, r * T + T * 0.5)
@@ -132,6 +143,46 @@ func biome_at(c: int) -> String:
 
 func is_ice(c: int, r: int) -> bool:
 	return at(c, r) == "I"
+
+## Is this point in pool water (not a whole underwater area)?
+func in_pool(p: Vector2) -> bool:
+	for r in pools:
+		if r.has_point(p):
+			return true
+	return false
+
+## Flow at this point: -1 left, 1 right, 0 none.
+func current_at(p: Vector2) -> int:
+	for cur in currents:
+		if cur.rect.has_point(p):
+			return cur.dir
+	return 0
+
+## Pools drawn with the water tiles (in front of actors, see-through) and
+## currents shown as drifting streaks.
+func _build_water() -> void:
+	if not pools.is_empty():
+		# own, lighter layer: the swimming hero must stay clearly visible
+		# (the pit water of the early worlds is meant to be murky)
+		var pool := TileMapLayer.new()
+		pool.name = "PoolWater"
+		pool.tile_set = tiles.tile_set
+		pool.z_index = 2
+		pool.collision_enabled = false
+		pool.modulate = Color(1, 1, 1, 0.55)
+		add_child(pool)
+		for pr in pools:
+			var c0 := int(pr.position.x / T)
+			var r0 := int(pr.position.y / T)
+			for r in range(r0, int(pr.end.y / T)):
+				for c in range(c0, int(pr.end.x / T)):
+					if tiles.get_cell_source_id(Vector2i(c, r)) == -1:
+						pool.set_cell(Vector2i(c, r), 0, WATER_TOP if r == r0 else WATER)
+	for cur in currents:
+		var fx := CurrentFx.new()
+		fx.rect = cur.rect
+		fx.dir = cur.dir
+		add_child(fx)
 
 func area_at(x: float) -> String:
 	for name in areas:

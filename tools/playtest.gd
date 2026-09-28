@@ -1582,6 +1582,74 @@ func _run() -> void:
 			await shot("clear_dialog")
 			await _press_button("Delete")
 			print("CLEAR done: entries=%d buttons=%s" % [HallOfFame.load_list().size(), _button_texts()])
+		"water":
+			# v1.3: castle pools (moat + tank in 6-3), leap out at the surface,
+			# currents, the dragon waiting at a pool, currents in 6-1
+			game.menus.hide_all()
+			game._start_game(Game.castle_of_world(6))
+			await _wait(Game.CARD_TIME + 0.4)
+			var p := game.player
+			p.star_t = 60.0
+			await teleport(Vector2i(32, 13))
+			await hold("move_right", 0.6)
+			await _wait(0.4)
+			print("POOL in: swimming=%s area_water=%s pos=%s" % [p.swimming, p.area_water, p.global_position.round()])
+			await shot("moat")
+			await teleport(Vector2i(46, 17))
+			var x0 := p.global_position.x
+			await _wait(0.6)
+			print("CURRENT (moat, flows left): dx after 0.6 s = %.0f px" % (p.global_position.x - x0))
+			await teleport(Vector2i(35, 14))
+			await _wait(0.1)
+			Input.action_press("jump")
+			await _wait(0.05)
+			print("LEAP: vy=%.0f swimming=%s" % [p.velocity.y, p.swimming])
+			var top_y := p.global_position.y
+			for i in 30:
+				await physics_frame
+				top_y = minf(top_y, p.global_position.y)
+			Input.action_release("jump")
+			print("LEAP highest feet y=%.0f (surface y=224, rim top y=224)" % top_y)
+			# tank: leap out onto the far rim
+			await teleport(Vector2i(96, 9))
+			await shot("tank")
+			await teleport(Vector2i(96, 9))
+			Input.action_press("move_right")
+			Input.action_press("jump")
+			for i in 48:
+				await physics_frame
+				if i % 4 == 0:
+					print("TANK t=%d pos=%s v=%s swim=%s leap=%.2f floor=%s" % [i, p.global_position.round(), p.velocity.round(),
+						p.swimming, p._leap_t, p.is_on_floor()])
+			Input.action_release("jump")
+			await _wait(0.3)
+			Input.action_release("move_right")
+			await _wait(0.5)
+			print("TANK leap: pos=%s on_floor=%s (rim top y=144, cols 98-99)" % [p.global_position.round(), p.is_on_floor()])
+			# the dragon waits at the pool
+			await teleport(Vector2i(31, 16))
+			var d := Dino.new()
+			game.level.add_child(d)
+			d.global_position = p.global_position
+			p.mount(d)
+			await _wait(0.2)
+			await teleport(Vector2i(40, 16))
+			await _wait(0.3)
+			print("DINO in pool: riding=%s parked=%s swimming=%s" % [p.riding != null, game._dino_parked, p.swimming])
+			await teleport(Vector2i(57, 16))
+			await _wait(0.5)
+			print("DINO back on land: riding=%s parked=%s" % [p.riding != null, game._dino_parked])
+			# 6-1: the warm stream carries you right
+			game.menus.hide_all()
+			game._start_game(Game.first_level_of_world(6))
+			await _wait(Game.CARD_TIME + 0.4)
+			p = game.player
+			p.star_t = 60.0
+			await teleport(Vector2i(125, 5))
+			x0 = p.global_position.x
+			await _wait(1.0)
+			print("STREAM 6-1 (flows right): dx after 1 s = %.0f px" % (p.global_position.x - x0))
+			await shot("stream")
 	await _wait(0.3)
 	_restore_user_files()
 	quit()

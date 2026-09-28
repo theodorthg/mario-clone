@@ -434,6 +434,63 @@ def page_sea():
     return img
 
 
+def page_water():
+    """v1.3: castle pools (leap out at the surface) and currents"""
+    img, d = new_page()
+    text(d, (8, 6), "POOLS & CURRENTS", f8, GOLD)
+    tl = Image.open(os.path.join(GFX, "tiles.png")).convert("RGBA")
+
+    def tile(tx, ty):
+        return tl.crop((tx * 16, ty * 16, tx * 16 + 16, ty * 16 + 16))
+
+    def water(x, y, top):
+        w = tile(11 if top else 15, 1)
+        a = w.getchannel("A").point(lambda v: v * 55 // 100)
+        w.putalpha(a)
+        img.alpha_composite(w, (x, y))
+
+    # a pool between two rims, the hero leaping out onto the right one
+    for y in (52, 68):
+        img.alpha_composite(tile(2, 8), (10, y))
+        img.alpha_composite(tile(2, 8), (90, y))
+    for x in range(10, 106, 16):
+        img.alpha_composite(tile(1, 7), (x, 84))
+    for x in range(26, 90, 16):
+        for y in (52, 68):
+            water(x, y, y == 52)
+    swim = trim(sheet_frame("hero_small", 20, 20, 7))
+    img.alpha_composite(swim, (40, 60))
+    jump = trim(sheet_frame("hero_small", 20, 20, 4))
+    img.alpha_composite(jump, (86, 24))
+    for k in range(11):                     # dotted leap arc: surface -> rim
+        t = k / 10.0
+        x = 52 + 36 * t
+        y = 56 - 34 * t * (2 - t) + 6 * t * t
+        d.rectangle((x, y, x + 1, y + 1), fill=GOLD)
+    text(d, (120, 22), "Castle pools: you swim in them.")
+    text(d, (120, 32), "Press jump at the surface to", fill=GOLD)
+    text(d, (120, 42), "leap out onto the rim.", fill=GOLD)
+    text(d, (120, 56), "Stone teeth reach into the", fill=DIM)
+    text(d, (120, 66), "water: dive under them.", fill=DIM)
+    d.line((8, 100, 332, 100), fill=(60, 70, 110, 255))
+    # a current: streaks flowing left, the hero swimming against it
+    for x in range(10, 122, 16):
+        for y in (112, 128):
+            water(x, y, y == 112)
+    for row, y in enumerate((118, 126, 134)):
+        for k in range(4):
+            x = 16 + k * 26 + (12 if row % 2 else 0)
+            d.line((x, y, x + 10, y), fill=(255, 255, 255, 230))
+            d.line((x, y, x + 3, y - 2), fill=WHITE)       # flowing left
+            d.line((x, y, x + 3, y + 2), fill=WHITE)
+    img.alpha_composite(swim, (96, 116))
+    text(d, (130, 108), "Currents (moving streaks) push you.")
+    text(d, (130, 118), "Hold run and swim hard against them,", fill=GOLD)
+    text(d, (130, 128), "or let one carry you along!", fill=GOLD)
+    text(d, (8, 152), "Tip: the dragon can't swim - it waits on dry land.", fill=DIM)
+    return img
+
+
 def page_map():
     img, d = new_page()
     text(d, (8, 6), "WORLD MAP", f8, GOLD)
@@ -513,7 +570,7 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     pages = {"controls": page_controls, "touch": page_touch, "map": page_map, "items": page_items,
              "dragon": page_dragon, "goal": page_goal, "worlds": page_worlds,
-             "sky": page_sky, "sea": page_sea, "castles": page_castles}
+             "sky": page_sky, "sea": page_sea, "water": page_water, "castles": page_castles}
     for n, fn in pages.items():
         fn().save(os.path.join(OUT, n + ".png"))
     print("  help pages:", ", ".join(pages))

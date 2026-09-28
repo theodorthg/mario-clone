@@ -7,8 +7,18 @@ Git-Log.
 
 ## Offen
 
-- [ ] Ideen für später (nach 1.0): Unterwasser-Burg mit Wasserabschnitten,
-      Strömungen, weitere Welten (z. B. Vulkan, Geisterhaus).
+Letzte Erweiterungsrunde (Nutzer 2026-09-28: „alle machen, dann ist mit
+Erweiterungen Schluss, bis mir etwas einfällt“), jede Stufe als eigene
+Version inkl. itch.io-Upload:
+- [x] v1.3.0 Wasser: Schwimmbecken mitten im Level, Strömungen, Burg 6-3
+      mit gefluteten Abschnitten (Graben + Tank), Strömungen in 6-1/6-2,
+      Hilfeseite „Pools & Currents“.
+- [ ] v1.4.0 Welt 7 „Geisterhaus“: Türen als Durchgänge, Geister (kommen
+      nur, wenn man wegschaut), Knochen-Schildkröte, Boss.
+- [ ] v1.5.0 Welt 8 „Vulkan“ (letzte Welt, Endboss).
+- [ ] itch.io-Upload: das Chrome-Werkzeug schafft nur 10 MB je Datei —
+      beim ersten Release Umweg testen (lokaler Server + Browser), sonst
+      mit dem Nutzer klären (butler oder Dateien bereitlegen).
 
 ## Erledigt
 

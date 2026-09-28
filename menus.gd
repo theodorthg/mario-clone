@@ -38,6 +38,7 @@ const HELP_DESKTOP := [
 	{"file": "worlds", "h": "Turtles & Worlds"},
 	{"file": "sky", "h": "Sky World"},
 	{"file": "sea", "h": "Sea World"},
+	{"file": "water", "h": "Pools & Currents"},
 	{"file": "castles", "h": "Castles & Secrets"},
 ]
 const HELP_TOUCH := [
@@ -49,6 +50,7 @@ const HELP_TOUCH := [
 	{"file": "worlds", "h": "Turtles & Worlds"},
 	{"file": "sky", "h": "Sky World"},
 	{"file": "sea", "h": "Sea World"},
+	{"file": "water", "h": "Pools & Currents"},
 	{"file": "castles", "h": "Castles & Secrets"},
 ]
 const HELP_FALLBACK := {
@@ -60,6 +62,7 @@ const HELP_FALLBACK := {
 	"castles": "Fire bars spin, lava bubbles leap: time your jumps.\nThe boss ends every world: stomp its head 3-5 times\n(5 fireballs = 1 hit). A fire flower waits before\nthe arena; Easy/Normal: no fire left? it drops one. A win = 1UP.\nLevel select: on the title press B Y X A, type LEVELS\nor tap the title 5 times. 'Boss' starts at the boss arena\n(practice runs: not saved, no high score).",
 	"sky": "Falling slabs shake, then drop: jump off in time.\nTipping planks tip toward your side: keep moving.\nJump up through the clouds.\nThe cloud imp throws spikies: stomp it from up high.\nSpikies can't be stomped: fire, shells or a star.\nGulls glide at you. The storm boss's lightning flashes first.",
 	"sea": "Underwater you swim: every jump press is one stroke up.\nThe side pipe at the end leads to the beach.\nFish can't be stomped while swimming: dodge or use fire.\nJellyfish pulse toward you, crabs can be stomped.\nSea urchins can't be beaten: swim around them.",
+	"water": "Castle pools: you swim in them. Press jump at\nthe surface to leap out onto the rim.\nStone teeth reach into the water: dive under them.\nCurrents (moving streaks) push you: hold run and\nswim hard against them, or let one carry you along.\nThe dragon can't swim - it waits on dry land.",
 	"map": "Play opens the world map. Walk with left / right,\nA or Space plays the course you stand on.\nTouch: tap a course to walk there, tap it again to play.\nA check = cleared, a lock = not reached yet.\nAfter a course the road to the next one opens.\nYour run is saved all along: quit any time,\nthen Continue on the title screen.",
 	"goal": "Stomp enemies from above.\nCoins: points, 100 coins = extra life.\nPipes marked by coins lead to bonus rooms.\nGrab the flag pole as high as you can!\nExtra lives for points: Settings > 1-UP points.",
 }

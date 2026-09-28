@@ -19,7 +19,9 @@ davon ist aus Nintendo-Spielen übernommen (Figuren nur „im Stil von“).
   Weitere Ideen stehen in `TODO.md` unter „Offen“.
 - v1.1.0 Weltkarte, v1.2.0 Spielstand/Continue + Quit-Dialog mit
   Highscore-Eintrag, v1.2.1 Feinschliff (Highscore-Liste, Panzer-Limit,
-  zehn eigene Bonusräume, Boss je Schwierigkeit).
+  zehn eigene Bonusräume, Boss je Schwierigkeit), v1.3.0 Becken +
+  Strömungen, geflutete Burg 6-3. Letzte Erweiterungsrunde (Nutzer
+  2026-09-28): danach Welt 7 Geisterhaus, Welt 8 Vulkan.
 
 ## Design-Entscheidungen
 
@@ -414,11 +416,12 @@ Ducken und Absteigen auf Touch unmöglich.
   Gruben aufrufen — `pit()` löscht die ganze Spalte).
 - Der Drache kann nicht schwimmen: in einem Unterwasser-Kurs wartet er
   (`game.gd::_dino_parked`) und ist im nächsten Kurs wieder da — außer der
-  Held verliert ein Leben. Seit v1.2.1 auch bereichsweise
-  (`game.gd::_enter_area`): wer auf dem Drachen in Wasser kommt (Bonus-
-  Grotte 3-2), lässt ihn zurück (`Player.park_dino()`); beim nächsten
-  trockenen Bereich (Grotte verlassen, Strand-Ausgang in 6-1/6-2) steigt
-  er wieder auf.
+  Held verliert ein Leben. Seit v1.2.1/v1.3 allgemein
+  (`game.gd::_update_dino_water()`, jeden Physik-Frame in PLAYING): sobald
+  der Held auf dem Drachen schwimmt (Wasser-Bereich, Bonus-Grotte 3-2,
+  Burgbecken), bleibt der Drache zurück (`Player.park_dino()`); steht der
+  Held wieder auf trockenem Boden (kein Schwimmen, kein Wasser-Bereich),
+  steigt er wieder auf — auch am Strand-Ausgang von 6-1/6-2.
 - Biom `sea`: `#` = Riff-Autotile (Atlas-Reihe 11, Sand mit Korallenkappe),
   `w` = Korallenziegel (10/6), Innenvarianten (10/7–9); Deko Seetang
   (wiegt sich: `Level.SWAYING`, Tween auf `skew`, Drehpunkt am Fuß),
@@ -434,6 +437,34 @@ Ducken und Absteigen auf Touch unmöglich.
 - Endboss Welt 6 (türkis, 5 HP): wählt jedes Mal Fächer / Eisbälle /
   Blitze, bei jeder zweiten Landung Schockwellen.
 - Hilfeseite „Sea World“; Playtest `sea`.
+
+## Becken + Strömungen (v1.3)
+
+- **Becken** (`L.pools` in make_levels.py → Level-Konstante `POOLS`,
+  Rect2i in Zellen): schwimmbares Wasser in einem trockenen Bereich. Als
+  Rechteck-Metadaten statt Rasterzeichen, damit Münzen/Seeigel mitten im
+  Wasser liegen können. `level.gd::in_pool(p)`, eigene, hellere
+  Wasserebene `PoolWater` (modulate α 0,55 — der Held muss sichtbar
+  bleiben; das Gruben-Wasser `v` der frühen Welten bleibt trüb).
+- `player.gd`: `swimming = area_water or in_pool(Körpermitte)`
+  (`area_water` setzt game.gd für ganze Unterwasser-Bereiche, nur dort
+  gilt der `SWIM_TOP`-Deckel). Im Becken: Sprung, solange der Kopf ≤ 12 px
+  unter der Oberfläche ist → echter Sprung heraus (`_leap_t` 0,35 s
+  Trockenland-Physik, reicht auf einen Rand in Oberflächenhöhe).
+- **Strömungen** (`L.currents` → `CURRENTS`, [Rect2i, dir]): schieben den
+  Schwimmer mit `CURRENT_PUSH` 45 px/s (Schwimmen 75 / Rennen 105
+  dagegen). Sichtbar als wandernde Streifen (`current_fx.gd`, `CurrentFx`,
+  z 3). Vorschau (`--preview`) zeichnet Becken + Pfeile.
+- Burg 6-3 „Tide Fortress“ ist teilweise geflutet: `_sec_moat` (Graben
+  mit Rand, zwei Steinzähne bis unter die Oberfläche → durchtauchen,
+  Gegenströmung unter dem zweiten) und `_sec_tank` (Treppe hoch auf einen
+  8 hohen Tank, Strömung quer durch die Mitte — oben oder unten
+  schwimmen, Seeigel am Grund, am rechten Rand herausspringen).
+  Fische kommen NICHT in Becken (sie schwimmen kollisionsfrei geradeaus
+  und würden das Becken verlassen).
+- 6-1/6-2: je eine helfende Strömung weit oben (über Riff bzw. Graben)
+  und eine Gegenströmung (über den Gruben bzw. im niedrigen Tunnel).
+- Hilfeseite „Pools & Currents“; Playtest `water`.
 
 ## Biom-Gegner (v0.9)
 

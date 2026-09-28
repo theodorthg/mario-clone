@@ -9,9 +9,11 @@ extends CharacterBody2D
 ## Assists (v0.11, "old men must make it too"): firm ground braking (little
 ## sliding after landing, extra brake on touchdown without input), stronger
 ## air control, and one double jump (press jump again in mid-air; setting).
-## Underwater areas (Level.WATER_THEMES) switch to `swimming` (set by
-## game.gd): slow sinking, every jump press is a swim stroke, the water
-## surface (SWIM_TOP) caps how high the hero can rise.
+## Underwater areas (Level.WATER_THEMES, `area_water` set by game.gd) and
+## pools inside dry areas (v1.3, Level.pools) switch to `swimming`: slow
+## sinking, every jump press is a swim stroke. In a whole underwater area the
+## surface (SWIM_TOP) caps how high the hero can rise; in a pool a jump at
+## the surface leaps out. Currents (Level.currents) push a swimmer along.
 ##
 ## Scripted sequences (pipe, flag pole, death, power change) put the player
 ## into a non-NORMAL `mode`; game.gd drives those via the helper methods at
@@ -51,6 +53,7 @@ const SWIM_ACCEL := 260.0
 const SWIM_DRAG := 150.0
 const SWIM_WALK := 55.0          # walking on the sea floor
 const SWIM_TOP := 44.0           # water surface: the head stays below it
+const CURRENT_PUSH := 45.0       # drift of a current (swim 75 / run 105 against it)
 const STOMP_BOUNCE := 190.0
 const STOMP_BOUNCE_HELD := 290.0
 
@@ -82,6 +85,9 @@ var stomp_chain := 0
 var throw_t := 0.0
 var riding: Dino = null
 var swimming := false
+var area_water := false         # the whole area is underwater (game.gd)
+var _current := 0               # flow at the body this frame (-1 / 0 / 1)
+var _leap_t := 0.0              # leaping out of a pool: dry-land jump physics
 var auto_walk := 0.0            # scripted walking while input is disabled
 var left_limit := -INF
 var right_limit := INF
@@ -213,6 +219,11 @@ func _physics_process(delta: float) -> void:
 	if crouching:
 		dir = 0.0
 
+	var level: Level = Game.instance.level if Game.instance else null
+	var body := global_position + Vector2(0, -_rect.size.y * 0.5)
+	_leap_t = maxf(_leap_t - delta, 0.0)
+	swimming = area_water or (_leap_t <= 0.0 and level != null and level.in_pool(body))
+	_current = level.current_at(body) if swimming and level != null else 0
 	if swimming:
 		_swim(delta, dir, run, on_floor, jump_now)
 	else:
@@ -254,7 +265,7 @@ func _physics_process(delta: float) -> void:
 		_fall_t = 0.12
 	move_and_slide()
 	_check_head_bump(vy_before)
-	if swimming and body_top() < SWIM_TOP:
+	if area_water and body_top() < SWIM_TOP:
 		global_position.y = SWIM_TOP + _rect.size.y
 		velocity.y = maxf(velocity.y, 0.0)
 
@@ -274,17 +285,29 @@ func _physics_process(delta: float) -> void:
 ## Underwater movement: slower, floaty; every jump press is a stroke up.
 func _swim(delta: float, dir: float, run: bool, on_floor: bool, stroke: bool) -> void:
 	var top := SWIM_WALK if on_floor else (SWIM_RUN_MAX if run else SWIM_MAX)
+	var drift := CURRENT_PUSH * _current
 	if dir != 0.0:
 		facing = 1 if dir > 0.0 else -1
-		velocity.x = move_toward(velocity.x, dir * top, SWIM_ACCEL * delta)
+		velocity.x = move_toward(velocity.x, dir * top + drift, SWIM_ACCEL * delta)
 	else:
-		velocity.x = move_toward(velocity.x, 0.0, (DECEL if on_floor else SWIM_DRAG) * delta)
+		velocity.x = move_toward(velocity.x, drift, (DECEL if on_floor else SWIM_DRAG) * delta)
+	# pool surface: a jump leaps out of the water (onto the rim)
+	if stroke and not area_water and _at_pool_surface():
+		_jump()
+		_leap_t = 0.35
+		swimming = false
+		return
 	if stroke:
 		jump_buffer_t = 0.0
 		velocity.y = -SWIM_STROKE
 		_snd("swim")
 	jump_held_phase = false
 	velocity.y = minf(velocity.y + SWIM_GRAVITY * delta, SWIM_MAX_FALL)
+
+## Head at (or above) the surface of the pool the body is in?
+func _at_pool_surface() -> bool:
+	var level: Level = Game.instance.level if Game.instance else null
+	return level != null and not level.in_pool(Vector2(global_position.x, body_top() - 12.0))
 
 func _jump() -> void:
 	jump_buffer_t = 0.0
