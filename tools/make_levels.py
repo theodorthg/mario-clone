@@ -332,27 +332,9 @@ def level_1_1():
     # --- coin room (bonus area), separate columns --------------------------
     B0 = 268
     B1 = 307
-    L.ground(B0, B1, top=GROUND, ch="c")
-    L.fill(B0, B0 + 1, 0, GROUND - 1, "w")
-    L.fill(B0, B1, 0, 2, "w")
-    L.fill(B1 - 1, B1, 0, GROUND - 1, "w")
-    # staggered brick shelves, each reachable with a normal jump from the one
-    # below (3 tiles apart), every shelf topped with coins
-    L.blocks(B0 + 5, 14, "wwww")
-    L.coins(B0 + 5, 13, 4)
-    L.blocks(B0 + 11, 11, "wwww")
-    L.coins(B0 + 11, 10, 4)
-    L.blocks(B0 + 17, 8, "wwwwww")
-    L.coins(B0 + 17, 7, 6)
-    L.coins(B0 + 17, 6, 6)
-    L.blocks(B0 + 25, 11, "wwww")
-    L.coins(B0 + 25, 10, 4)
-    L.coins(B0 + 10, 16, 14)
-    L.coins(B0 + 10, 15, 14)
-    exit_mouth = L.side_pipe(B1 - 6, GROUND - 2)
-    L.fill(B1 - 5, B1 - 2, 3, GROUND - 3, "w")
+    exit_mouth, bonus = coin_room(L, B0, B1, "classic")
 
-    L.areas = {"main": (0, MAIN_END - 1, "grass"), "bonus": (B0, B1, "cave")}
+    L.areas = {"main": (0, MAIN_END - 1, "grass"), "bonus": (B0, B1, bonus)}
     L.warps = [
         {"entry": warp_in, "kind": "down", "arrive": (B0 + 3, 4), "arrive_kind": "drop", "area": "bonus"},
         {"entry": exit_mouth, "kind": "right", "arrive": warp_out, "arrive_kind": "up", "area": "main"},
@@ -360,26 +342,228 @@ def level_1_1():
     return L
 
 
-def coin_room(L, B0, B1, exit_row=GROUND - 2):
-    """standard 40-column coin cave; returns the side-pipe exit mouth"""
-    L.ground(B0, B1, top=GROUND, ch="c")
+def coin_room(L, B0, B1, style="classic"):
+    """40-column bonus room behind a warp pipe; returns (exit mouth, theme).
+    Every course has its own room (v1.2.1, player: "the coin caves are a bit
+    dull, they're ALWAYS the same"): a different layout AND a different
+    look/music by area theme. Shared frame: the hero drops in at column
+    B0+3 (row 4), the exit is a side pipe at the bottom right (B1-6)."""
+    assert B1 - B0 == 39
+    return BONUS_ROOMS[style](L, B0, B1)
+
+
+def _bonus_frame(L, B0, B1, ceiling=3, exit_row=GROUND - 2):
+    """floor, side walls, optional ceiling (rows 0..ceiling-1) and the exit
+    side pipe with a wall block above it; '#' and 'w' take the room's biome"""
+    L.ground(B0, B1, top=GROUND)
     L.fill(B0, B0 + 1, 0, GROUND - 1, "w")
-    L.fill(B0, B1, 0, 2, "w")
     L.fill(B1 - 1, B1, 0, GROUND - 1, "w")
-    L.blocks(B0 + 5, 14, "wwww")
-    L.coins(B0 + 5, 13, 4)
-    L.blocks(B0 + 11, 11, "wwww")
-    L.coins(B0 + 11, 10, 4)
-    L.blocks(B0 + 17, 8, "wwwwww")
-    L.coins(B0 + 17, 7, 6)
-    L.coins(B0 + 17, 6, 6)
-    L.blocks(B0 + 25, 11, "wwww")
-    L.coins(B0 + 25, 10, 4)
-    L.coins(B0 + 10, 16, 14)
-    L.coins(B0 + 10, 15, 14)
+    if ceiling:
+        L.fill(B0, B1, 0, ceiling - 1, "w")
     mouth = L.side_pipe(B1 - 6, exit_row)
-    L.fill(B1 - 5, B1 - 2, 3, exit_row - 1, "w")
+    L.fill(B1 - 5, B1 - 2, ceiling if ceiling else exit_row - 2, exit_row - 1, "w")
     return mouth
+
+
+def _bonus_classic(L, B0, B1):
+    """1-1: the original coin cave — staggered brick shelves"""
+    mouth = _bonus_frame(L, B0, B1)
+    o = B0
+    L.blocks(o + 5, 14, "wwww")
+    L.coins(o + 5, 13, 4)
+    L.blocks(o + 11, 11, "wwww")
+    L.coins(o + 11, 10, 4)
+    L.blocks(o + 17, 8, "wwwwww")
+    L.coins(o + 17, 7, 6)
+    L.coins(o + 17, 6, 6)
+    L.blocks(o + 25, 11, "wwww")
+    L.coins(o + 25, 10, 4)
+    L.coins(o + 10, 16, 14)
+    L.coins(o + 10, 15, 14)
+    return mouth, "cave"
+
+
+def _bonus_heaven(L, B0, B1):
+    """1-2: coin heaven above the evening clouds — cloud steps up to a coin
+    heart, a hidden 1-UP, a wavy coin trail along the floor"""
+    mouth = _bonus_frame(L, B0, B1, ceiling=0)
+    o = B0
+    for i in range(26):
+        L.set(o + 5 + i, 16 - (i // 3) % 2, "o")
+    L.bridge(o + 6, o + 10, 14)
+    L.coins(o + 6, 13, 5)
+    L.bridge(o + 13, o + 17, 11)
+    L.coins(o + 13, 10, 5)
+    L.set(o + 15, 7, "h")
+    L.bridge(o + 20, o + 26, 8)
+    heart = [".oo.oo.", "ooooooo", "ooooooo", ".ooooo.", "..ooo..", "...o..."]
+    for r, line in enumerate(heart):
+        L.blocks(o + 20, 2 + r, line.replace(".", " "))
+    L.bridge(o + 28, o + 31, 11)
+    L.coins(o + 28, 10, 4)
+    for c in (4, 12, 26, 31):
+        L.decor(o + c, "*+"[c % 2])
+    return mouth, "sky_dusk"
+
+
+def _bonus_blocks(L, B0, B1):
+    """1-3: crystal cave full of ?-blocks — a long row to bump while running,
+    a second row on top of it, a 10-coin brick and a hidden 1-UP"""
+    mouth = _bonus_frame(L, B0, B1)
+    o = B0
+    L.fill(o + 6, o + 6, 15, 16, "X")               # step up to the block row
+    L.blocks(o + 8, 13, "????????????")
+    L.coins(o + 8, 12, 3)
+    L.coins(o + 17, 12, 3)
+    L.blocks(o + 11, 9, "??????")
+    L.coins(o + 11, 8, 6)
+    L.blocks(o + 24, 13, "C")
+    L.set(o + 28, 13, "h")
+    L.coins(o + 22, 16, 10)
+    L.coins(o + 22, 15, 10)
+    for c in (4, 21, 31):
+        L.decor(o + c, "*+f"[c % 3])
+    return mouth, "cavern"
+
+
+def _bonus_pillars(L, B0, B1):
+    """2-1: pillars rising and falling, a stack of coins on every top, coins
+    in the gaps, a hidden 1-UP above the highest one"""
+    mouth = _bonus_frame(L, B0, B1)
+    o = B0
+    for k, h in enumerate((2, 3, 4, 5, 4, 3)):
+        c = o + 7 + 4 * k
+        top = GROUND - h
+        L.fill(c, c + 1, top, GROUND - 1, "w")
+        for r in range(top - 3, top):
+            L.coins(c, r, 2)
+        if k < 5:
+            L.coins(c + 2, 16, 2)
+    L.set(o + 19, 7, "h")
+    L.decor(o + 4, "*")
+    L.decor(o + 31, "+")
+    return mouth, "cave"
+
+
+def _bonus_lifts(L, B0, B1):
+    """2-2: ride the lifts — coin rows along their paths and above them, a
+    rising lift up to a high shelf with a 10-coin brick"""
+    mouth = _bonus_frame(L, B0, B1)
+    o = B0
+    L.coins(o + 4, 16, 28)
+    L.set(o + 6, 13, "~")
+    L.coins(o + 6, 12, 7)
+    L.coins(o + 6, 9, 7)
+    L.set(o + 17, 14, "^")
+    L.blocks(o + 21, 7, "wwwwww")
+    L.coins(o + 21, 6, 6)
+    L.coins(o + 21, 5, 6)
+    L.blocks(o + 23, 3, "C")
+    L.set(o + 27, 11, "~")
+    L.coins(o + 27, 10, 7)
+    L.decor(o + 3, "+")
+    return mouth, "cave"
+
+
+def _bonus_pyramid(L, B0, B1):
+    """3-1: open treasure court with a stepped sandstone pyramid — coins on
+    every step, a 10-coin brick over the top, a hidden 1-UP"""
+    mouth = _bonus_frame(L, B0, B1, ceiling=0)
+    o = B0
+    for k in range(5):
+        c0, c1 = o + 9 + 2 * k, o + 28 - 2 * k
+        L.fill(c0, c1, 15 - 2 * k, 16 - 2 * k, "w")
+        if k < 4:
+            L.coins(c0, 14 - 2 * k, 2)
+            L.coins(c1 - 1, 14 - 2 * k, 2)
+        else:
+            L.coins(c0, 6, 4)
+    L.blocks(o + 18, 3, "C")
+    L.set(o + 5, 13, "h")
+    L.coins(o + 3, 16, 5)
+    L.coins(o + 29, 16, 4)
+    L.decor(o + 7, "*")
+    L.decor(o + 32, "+")
+    return mouth, "desert"
+
+
+def _bonus_grotto(L, B0, B1):
+    """3-2: underwater grotto below the dunes — swim a wave of coins between
+    coral mounds and hanging coral"""
+    mouth = _bonus_frame(L, B0, B1, ceiling=2)
+    o = B0
+    for c0, c1, top in ((8, 10, 12), (18, 20, 13), (28, 29, 12)):
+        L.fill(o + c0, o + c1, top, GROUND - 1, "#")
+    for c0, c1, bot in ((13, 15, 7), (23, 25, 8)):
+        L.fill(o + c0, o + c1, 2, bot, "w")
+    import math
+    for i in range(30):
+        r = 10 + int(round(3.5 * math.sin(i / 3.0)))
+        for rr in (r, r + 1):
+            if L.get(o + 3 + i, rr) == ".":
+                L.set(o + 3 + i, rr, "o")
+    L.set(o + 19, 5, "h")
+    add_surface(L, o + 2, o + 32, row=2)
+    for c in (5, 12, 17, 22, 26, 31):
+        L.decor(o + c, "*+f"[c % 3])
+    return mouth, "sea"
+
+
+def _bonus_ice(L, B0, B1):
+    """4-1: ice rink under the open sky — slide along the coin line, hop up
+    the ice floes, a hidden 1-UP"""
+    mouth = _bonus_frame(L, B0, B1, ceiling=0)
+    o = B0
+    L.fill(o + 2, o + 32, GROUND, ROWS - 1, "I")
+    L.coins(o + 4, 16, 28)
+    L.fill(o + 8, o + 12, 14, 14, "I")
+    L.coins(o + 8, 13, 5)
+    L.fill(o + 15, o + 19, 11, 11, "I")
+    L.coins(o + 15, 10, 5)
+    L.set(o + 17, 7, "h")
+    L.fill(o + 22, o + 26, 14, 14, "I")
+    L.coins(o + 22, 13, 5)
+    L.coins(o + 21, 6, 7)
+    L.decor(o + 3, "*")
+    return mouth, "snow"
+
+
+def _bonus_zigzag(L, B0, B1):
+    """4-2: a night tower of ice shelves, left and right — the higher, the
+    richer; a big coin jackpot on the top shelf"""
+    mouth = _bonus_frame(L, B0, B1, ceiling=0)
+    o = B0
+    for k, (c, r) in enumerate(((6, 14), (16, 11), (6, 8), (16, 5))):
+        L.blocks(o + c, r, "wwwwwwww")
+        L.coins(o + c, r - 1, 8)
+        if k == 3:
+            L.coins(o + c, r - 2, 8)
+    L.coins(o + 24, 16, 8)
+    L.decor(o + 3, "*")
+    L.decor(o + 27, "+")
+    return mouth, "snow_night"
+
+
+def _bonus_slabs(L, B0, B1):
+    """5-1: cloud vault — falling slabs up and down with coins above, a
+    tipping plank at the end (nothing to fall into: cloud floor below)"""
+    mouth = _bonus_frame(L, B0, B1, ceiling=0)
+    o = B0
+    L.coins(o + 4, 16, 26)
+    for c, r in ((6, 14), (11, 11), (16, 8), (21, 11)):
+        L.set(o + c, r, "D")
+        L.coins(o + c, r - 1, 3)
+    L.coins(o + 14, 4, 7)
+    L.set(o + 27, 12, "T")
+    L.coins(o + 27, 9, 4)
+    L.decor(o + 3, "*")
+    return mouth, "sky"
+
+
+BONUS_ROOMS = {"classic": _bonus_classic, "heaven": _bonus_heaven, "blocks": _bonus_blocks,
+               "pillars": _bonus_pillars, "lifts": _bonus_lifts, "pyramid": _bonus_pyramid,
+               "grotto": _bonus_grotto, "ice": _bonus_ice, "zigzag": _bonus_zigzag,
+               "slabs": _bonus_slabs}
 
 
 def finale(L, stairs_at, flag_at, castle_at):
@@ -480,8 +664,8 @@ def level_1_2():
     finale(L, 212, 228, 232)
     L.decor(225, "t")
     B0, B1 = 244, 283
-    exit_mouth = coin_room(L, B0, B1)
-    L.areas = {"main": (0, MAIN_END - 1, "sunset"), "bonus": (B0, B1, "cave")}
+    exit_mouth, bonus = coin_room(L, B0, B1, "heaven")
+    L.areas = {"main": (0, MAIN_END - 1, "sunset"), "bonus": (B0, B1, bonus)}
     L.warps = [
         {"entry": warp_in, "kind": "down", "arrive": (B0 + 3, 4), "arrive_kind": "drop", "area": "bonus"},
         {"entry": exit_mouth, "kind": "right", "arrive": warp_out, "arrive_kind": "up", "area": "main"},
@@ -572,8 +756,8 @@ def level_1_3():
     L.enemy(210)
     finale(L, 216, 234, 238)
     B0, B1 = 250, 289
-    exit_mouth = coin_room(L, B0, B1)
-    L.areas = {"main": (0, MAIN_END - 1, "night"), "bonus": (B0, B1, "cave")}
+    exit_mouth, bonus = coin_room(L, B0, B1, "blocks")
+    L.areas = {"main": (0, MAIN_END - 1, "night"), "bonus": (B0, B1, bonus)}
     L.warps = [
         {"entry": warp_in, "kind": "down", "arrive": (B0 + 3, 4), "arrive_kind": "drop", "area": "bonus"},
         {"entry": exit_mouth, "kind": "right", "arrive": warp_out, "arrive_kind": "up", "area": "main"},
@@ -688,8 +872,8 @@ def level_2_1():
     finale(L, E0 + 12, E0 + 28, E0 + 32)
     L.decor(E0 + 25, "t")
     B0, B1 = 266, 305
-    exit_mouth = coin_room(L, B0, B1)
-    L.areas = {"main": (0, MAIN_END - 1, "cavern"), "exit": (E0, E1, "sunset"), "bonus": (B0, B1, "cave")}
+    exit_mouth, bonus = coin_room(L, B0, B1, "pillars")
+    L.areas = {"main": (0, MAIN_END - 1, "cavern"), "exit": (E0, E1, "sunset"), "bonus": (B0, B1, bonus)}
     L.warps = [
         {"entry": warp_in, "kind": "down", "arrive": (B0 + 3, 4), "arrive_kind": "drop", "area": "bonus"},
         {"entry": exit_mouth, "kind": "right", "arrive": warp_out, "arrive_kind": "up", "area": "main"},
@@ -789,8 +973,8 @@ def level_3_1():
     finale(L, 214, 230, 234)
     L.decor(227, "*")
     B0, B1 = 256, 295
-    exit_mouth = coin_room(L, B0, B1)
-    L.areas = {"main": (0, MAIN_END - 1, "desert"), "bonus": (B0, B1, "cave")}
+    exit_mouth, bonus = coin_room(L, B0, B1, "pyramid")
+    L.areas = {"main": (0, MAIN_END - 1, "desert"), "bonus": (B0, B1, bonus)}
     L.warps = [
         {"entry": warp_in, "kind": "down", "arrive": (B0 + 3, 4), "arrive_kind": "drop", "area": "bonus"},
         {"entry": exit_mouth, "kind": "right", "arrive": warp_out, "arrive_kind": "up", "area": "main"},
@@ -883,8 +1067,8 @@ def level_4_1():
     finale(L, 214, 230, 234)
     L.decor(226, "*")
     B0, B1 = 256, 295
-    exit_mouth = coin_room(L, B0, B1)
-    L.areas = {"main": (0, MAIN_END - 1, "snow"), "bonus": (B0, B1, "cave")}
+    exit_mouth, bonus = coin_room(L, B0, B1, "ice")
+    L.areas = {"main": (0, MAIN_END - 1, "snow"), "bonus": (B0, B1, bonus)}
     L.warps = [
         {"entry": warp_in, "kind": "down", "arrive": (B0 + 3, 4), "arrive_kind": "drop", "area": "bonus"},
         {"entry": exit_mouth, "kind": "right", "arrive": warp_out, "arrive_kind": "up", "area": "main"},
@@ -987,8 +1171,8 @@ def level_2_2():
     finale(L, E0 + 12, E0 + 28, E0 + 32)
     L.decor(E0 + 24, "t")
     B0, B1 = 266, 305
-    exit_mouth = coin_room(L, B0, B1)
-    L.areas = {"main": (0, MAIN_END - 1, "cavern"), "exit": (E0, E1, "night"), "bonus": (B0, B1, "cave")}
+    exit_mouth, bonus = coin_room(L, B0, B1, "lifts")
+    L.areas = {"main": (0, MAIN_END - 1, "cavern"), "exit": (E0, E1, "night"), "bonus": (B0, B1, bonus)}
     L.warps = [
         {"entry": warp_in, "kind": "down", "arrive": (B0 + 3, 4), "arrive_kind": "drop", "area": "bonus"},
         {"entry": exit_mouth, "kind": "right", "arrive": warp_out, "arrive_kind": "up", "area": "main"},
@@ -1083,8 +1267,8 @@ def level_3_2():
     finale(L, 214, 230, 234)
     L.decor(227, "*")
     B0, B1 = 256, 295
-    exit_mouth = coin_room(L, B0, B1)
-    L.areas = {"main": (0, MAIN_END - 1, "desert_dusk"), "bonus": (B0, B1, "cave")}
+    exit_mouth, bonus = coin_room(L, B0, B1, "grotto")
+    L.areas = {"main": (0, MAIN_END - 1, "desert_dusk"), "bonus": (B0, B1, bonus)}
     L.warps = [
         {"entry": warp_in, "kind": "down", "arrive": (B0 + 3, 4), "arrive_kind": "drop", "area": "bonus"},
         {"entry": exit_mouth, "kind": "right", "arrive": warp_out, "arrive_kind": "up", "area": "main"},
@@ -1177,8 +1361,8 @@ def level_4_2():
     finale(L, 214, 230, 234)
     L.decor(226, "*")
     B0, B1 = 256, 295
-    exit_mouth = coin_room(L, B0, B1)
-    L.areas = {"main": (0, MAIN_END - 1, "snow_night"), "bonus": (B0, B1, "cave")}
+    exit_mouth, bonus = coin_room(L, B0, B1, "zigzag")
+    L.areas = {"main": (0, MAIN_END - 1, "snow_night"), "bonus": (B0, B1, bonus)}
     L.warps = [
         {"entry": warp_in, "kind": "down", "arrive": (B0 + 3, 4), "arrive_kind": "drop", "area": "bonus"},
         {"entry": exit_mouth, "kind": "right", "arrive": warp_out, "arrive_kind": "up", "area": "main"},
@@ -1273,8 +1457,8 @@ def level_5_1():
     finale(L, 240, 256, 260)
     L.decor(252, "*")
     B0, B1 = 280, 319
-    exit_mouth = coin_room(L, B0, B1)
-    L.areas = {"main": (0, MAIN_END - 1, "sky"), "bonus": (B0, B1, "cave")}
+    exit_mouth, bonus = coin_room(L, B0, B1, "slabs")
+    L.areas = {"main": (0, MAIN_END - 1, "sky"), "bonus": (B0, B1, bonus)}
     L.warps = [
         {"entry": warp_in, "kind": "down", "arrive": (B0 + 3, 4), "arrive_kind": "drop", "area": "bonus"},
         {"entry": exit_mouth, "kind": "right", "arrive": warp_out, "arrive_kind": "up", "area": "main"},

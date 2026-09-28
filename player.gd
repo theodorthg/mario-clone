@@ -419,6 +419,16 @@ func lose_dino() -> void:
 	d.dismounted(facing, true)
 	_snd("powerdown")
 
+## The dragon can't swim: entering water it stays behind (game.gd keeps it
+## "parked" and brings it back on dry land). False when not riding.
+func park_dino() -> bool:
+	if riding == null:
+		return false
+	var d := riding
+	_detach_dino(false)
+	d.queue_free()
+	return true
+
 func _detach_dino(_hit: bool) -> void:
 	riding.detach_from(self)
 	riding = null

@@ -21,6 +21,11 @@ const WAKE_TIME := 6.0
 const PEEK_TIME := 1.6
 const KICK_POINTS := 400
 const SHELL_CHAIN := [500, 800, 1000, 2000, 4000, 5000, 8000]
+## No endless point farm (v1.2.1, player: a shell stuck between two pipes
+## can be stomped and kicked again and again): once one turtle has paid out
+## this much for stomps and kicks — a 1UP counts as the whole amount — it
+## breaks and flies off.
+const PAYOUT_LIMIT := 10000
 
 var red := false
 var winged := false
@@ -40,6 +45,7 @@ var _safe_t := 0.0
 var _chain := 0
 var _hop_wait := 0.0
 var _turn_cd := 0.0
+var paid := 0                 # points paid out for stomps + kicks (PAYOUT_LIMIT)
 
 func _ready() -> void:
 	collision_layer = 4
@@ -241,11 +247,15 @@ func _touch_player(p: Player) -> void:
 				_stomped(p)
 			elif _safe_t <= 0.0:
 				p.hurt()
+	if paid >= PAYOUT_LIMIT and not dead:
+		kill_flip(p.global_position.x)
 
 func _stomped(p: Player) -> void:
 	p.bounce()
 	_safe_t = 0.2
 	if Game.instance:
+		var i := p.stomp_chain
+		paid += Game.CHAIN[i] if i < Game.CHAIN.size() else PAYOUT_LIMIT
 		Game.instance.award_chain(p, global_position)
 	_snd("stomp")
 
@@ -255,6 +265,7 @@ func _kick(kick_dir: int) -> void:
 	_safe_t = 0.25
 	position.x += dir * 4.0
 	if Game.instance:
+		paid += KICK_POINTS
 		Game.instance.add_score(KICK_POINTS, global_position)
 	_snd("kick")
 

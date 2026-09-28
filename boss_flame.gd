@@ -5,7 +5,7 @@ extends Node2D
 ## or after 5 s. Kinds (boss variants per world, see boss.gd):
 ##   "flame" — straight fire breath (aimed at the hero when breathed)
 ##   "wave"  — sand shock wave hugging the arena floor (jump over it)
-##   "ice"   — ice ball thrown in an arc that bounces along the floor
+##   "ice"   — ice ball spat out level that bounces along the floor
 ##   "bolt"  — lightning: flashes in place for BOLT_WARN s, then strikes
 ##             straight down to the arena floor
 
@@ -63,7 +63,9 @@ func _physics_process(delta: float) -> void:
 		velocity.y += 650.0 * delta
 		if position.y >= floor_y - 7.0 and velocity.y > 0.0:
 			position.y = floor_y - 7.0
-			velocity.y = -absf(velocity.y) * 0.78
+			# spat out level (never upward, v1.2.1): a minimum rebound keeps it
+			# a bouncing obstacle — about 2, 1.5, 1 tiles high
+			velocity.y = -maxf(absf(velocity.y) * 0.78, 200.0 - 30.0 * _bounces)
 			_bounces += 1
 			if _bounces > 4:
 				queue_free()

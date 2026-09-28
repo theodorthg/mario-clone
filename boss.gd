@@ -17,13 +17,24 @@ extends CharacterBody2D
 ##   projectile still flying fizzles; afterwards it first walks off to the
 ##   far side and waits a moment before the next attack;
 ## - no breath while the hero is (nearly) above it — it backs off instead;
-##   flames are never aimed steeper than ~22° upward;
+##   nothing is ever fired upward: flames go level or down, ice balls are
+##   spat out level and only bounce up off the floor (v1.2.1);
 ## - no fire power left? A hit makes it drop a fire flower (ammo).
 ## Animation: idle breathing, 4-phase walk, squash & stretch on jump/landing.
+##
+## By Settings > Difficulty (v1.2.1, player wish): Easy = as before (1 s
+## daze, flowers); Normal = shorter daze, flowers; Hard = short daze, no
+## flowers. Flowers: on a hit AND shortly after the hero loses fire power,
+## tossed to the far side of the arena. No difficulty ever shoots upward at
+## the hero (the rules above hold for all).
 
 const GRAVITY := 1100.0
 const INVULN := 1.2
-const STUN := 1.0
+const STUN := [1.0, 0.8, 0.5]            # by difficulty
+const FLOWERS := [true, true, false]     # by difficulty
+const FLOWER_DELAY := 1.2                # after the hero lost fire power
+const MAX_DOWN := 0.65                   # steepest aim below the horizon (rad)
+const FAN_STEP := 0.32
 const WINDUP := 0.4
 const CROUCH := 0.2
 const SCALE := Vector2(2, 2)
@@ -50,11 +61,15 @@ var _hit_rect: RectangleShape2D
 var _jumping := false        # own jump in progress (world 3: shock waves on landing)
 var _stars: Node2D
 var _squash: Tween
+var difficulty := 1
+var _no_fire_t := 0.0         # how long the hero has been without fire power
 
 func _ready() -> void:
 	collision_layer = 4
 	collision_mask = 1
 	add_to_group("boss")
+	if Game.instance:
+		difficulty = clampi(int(Game.instance.cfg.get("difficulty", 1)), 0, 2)
 	max_hp = 3 + (1 if world >= 3 else 0) + (1 if world >= 6 else 0)
 	hp = max_hp
 	sprite = AnimatedSprite2D.new()
@@ -105,6 +120,14 @@ func _physics_process(delta: float) -> void:
 	velocity.y = minf(velocity.y + GRAVITY * delta, 400.0)
 	var rage := 1.0 + 0.25 * (max_hp - hp)
 	var dx := p.global_position.x - global_position.x
+	# lost the fire power mid-fight (Easy/Normal): a flower flies in soon
+	if FLOWERS[difficulty] and p.power != Player.Power.FIRE and p.mode == Player.Mode.NORMAL:
+		_no_fire_t += delta
+		if _no_fire_t >= FLOWER_DELAY:
+			_no_fire_t = 0.0
+			_drop_flower(p)
+	else:
+		_no_fire_t = 0.0
 	if _stun > 0.0:
 		# dizzy: no attacks, slides to a stop
 		_stun -= delta
@@ -209,20 +232,16 @@ func _breathe(p: Player) -> void:
 	_stretch(Vector2(1.08, 0.94))
 	_snd("dino")
 	var mouth := global_position + Vector2(facing * 28.0, -40.0)
-	var aim := (p.global_position + Vector2(0, -10) - mouth).normalized()
-	if absf(aim.x) < 0.01:
-		aim.x = float(facing)
-	# never steeply upward: at most ~22° above the horizon
-	aim.y = maxf(aim.y, -0.37)
-	aim.x = signf(aim.x) * maxf(absf(aim.x), 0.8)
-	aim = aim.normalized()
+	# never upward (v1.2.1, player: "no shooting upward in any variant"):
+	# level with the mouth or down toward the hero, at most ~37° down
+	var to := p.global_position + Vector2(0, -10) - mouth
+	var down := clampf(atan2(to.y, maxf(absf(to.x), 1.0)), 0.0, MAX_DOWN)
+	var aim := _dir(down)
 	match world:
 		2:
-			for a in [-0.32, 0.0, 0.32]:
-				_shoot("flame", mouth, aim.rotated(a) * 110.0)
+			_fan(down, 110.0, mouth)
 		4:
-			_shoot("ice", mouth, Vector2(facing * 95.0, -230.0))
-			_shoot("ice", mouth, Vector2(facing * 140.0, -150.0))
+			_ice_pair(mouth)
 		5:
 			_shoot("flame", mouth, aim * 115.0)
 			_bolts(p)
@@ -230,16 +249,29 @@ func _breathe(p: Player) -> void:
 			# the last boss knows every trick of the others
 			match randi() % 3:
 				0:
-					for a in [-0.32, 0.0, 0.32]:
-						_shoot("flame", mouth, aim.rotated(a) * 115.0)
+					_fan(down, 115.0, mouth)
 				1:
-					_shoot("ice", mouth, Vector2(facing * 95.0, -230.0))
-					_shoot("ice", mouth, Vector2(facing * 140.0, -150.0))
+					_ice_pair(mouth)
 				_:
 					_shoot("flame", mouth, aim * 120.0)
 					_bolts(p)
 		_:
 			_shoot("flame", mouth, aim * 115.0)
+
+## Flight direction `down` radians below the horizon, toward `facing`.
+func _dir(down: float) -> Vector2:
+	return Vector2(float(facing) * cos(down), sin(down))
+
+## Three flames 0.32 rad apart; the top one never above the horizon.
+func _fan(down: float, speed: float, mouth: Vector2) -> void:
+	var top := clampf(down - FAN_STEP, 0.0, 0.26)
+	for k in 3:
+		_shoot("flame", mouth, _dir(top + FAN_STEP * k) * speed)
+
+## Two ice balls spat out level: they drop to the floor and bounce along it.
+func _ice_pair(mouth: Vector2) -> void:
+	_shoot("ice", mouth, Vector2(facing * 95.0, 0.0))
+	_shoot("ice", mouth, Vector2(facing * 140.0, 60.0))
 
 func _bolts(p: Player) -> void:
 	var sky_y := global_position.y - 11.0 * Level.T
@@ -304,21 +336,22 @@ func take_hit() -> void:
 	if hp <= 0:
 		_die()
 		return
-	_stun = STUN
+	_stun = STUN[difficulty]
 	_windup = 0.0
 	_crouch = 0.0
 	_roar = 0.0
 	sprite.play(&"hurt")
 	_stars.visible = true
 	_stretch(Vector2(1.2, 0.8))
-	if game and game.player and game.player.power != Player.Power.FIRE:
+	if FLOWERS[difficulty] and game and game.player and game.player.power != Player.Power.FIRE:
 		_drop_flower(game.player)
 
 ## Ammo: without fire power a hit makes the boss drop a fire flower, tossed
 ## to the side of the arena away from it (one at a time).
-func _drop_flower(p: Player) -> void:
+func _drop_flower(_p: Player) -> void:
 	for it in get_tree().get_nodes_in_group("items"):
-		if it is PowerUp and it.kind == PowerUp.Kind.FLOWER:
+		if it is PowerUp and it.kind == PowerUp.Kind.FLOWER and not it.is_queued_for_deletion() \
+				and it.global_position.x >= arena_left:
 			return
 	var f := PowerUp.new()
 	f.kind = PowerUp.Kind.FLOWER

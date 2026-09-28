@@ -1452,6 +1452,136 @@ func _run() -> void:
 			await _press_button("Main Menu")
 			await _wait(0.3)
 			print("SAVE practice kept save: %s" % (int(SaveGame.load_run().id) == keep))
+		"polish":
+			# v1.2.1: shell payout limit, boss by difficulty (daze, flowers) and
+			# never firing upward, the ten bonus rooms, the dragon waiting at the
+			# grotto, level select = no high score, name asked once, Clear list
+			game.menus.hide_all()
+			game._start_game(Game.first_level_of_world(2))
+			await _wait(Game.CARD_TIME + 0.4)
+			var p := game.player
+			var tt := Turtle.new()
+			game.level.add_child(tt)
+			tt.global_position = p.global_position + Vector2(48, 0)
+			await _wait(0.3)
+			tt._set_state(Turtle.State.SHELL)
+			var s0 := game.score
+			var l0 := game.lives
+			var n := 0
+			for i in 60:
+				if tt.dead:
+					break
+				tt._safe_t = 0.0
+				p.invuln_t = 0.0
+				p.stomp_grace = 0.1
+				p.global_position = tt.global_position + Vector2(0, -12)
+				tt._touch_player(p)
+				n += 1
+			print("SHELL farm: touches=%d dead=%s paid=%d score +%d lives +%d" % [n, tt.dead, tt.paid,
+				game.score - s0, game.lives - l0])
+			# boss by difficulty
+			var cfg0 := GameSettings.load_all()
+			var flames := func() -> Array:
+				var out := []
+				for c in game.level.get_children():
+					if c is BossFlame and not c.is_queued_for_deletion():
+						out.append(c)
+				return out
+			for d in 3:
+				var cf := GameSettings.load_all()
+				cf.difficulty = d
+				GameSettings.save(cf)
+				game.menus.hide_all()
+				game._start_game(Game.castle_of_world(1), false, true)
+				await _wait(Game.CARD_TIME + 0.3)
+				p = game.player
+				Input.action_press("move_right")
+				await _wait(1.6)
+				Input.action_release("move_right")
+				await _wait(0.3)
+				var boss: Boss = game.get_tree().get_nodes_in_group("boss")[0]
+				boss._act = 99.0
+				game.change_power(Player.Power.BIG, false)
+				await _wait(2.4)
+				var fl := 0
+				for it in game.get_tree().get_nodes_in_group("items"):
+					if it is PowerUp and it.kind == PowerUp.Kind.FLOWER and it.global_position.x >= boss.arena_left:
+						fl += 1
+				boss.take_hit()
+				print("BOSS %s: difficulty=%d stun=%.2f flower after losing fire=%d" % [
+					GameSettings.DIFF_NAMES[d], boss.difficulty, boss._stun, fl])
+				if d == 1:
+					await _wait(0.9)
+					await shot("boss_flower")
+					# never upward: hero in the air in front of it, every world's breath
+					var min_vy := 999.0
+					var kinds := {}
+					for w in [1, 2, 4, 5, 6, 6, 6, 6]:
+						for f in flames.call():
+							f.queue_free()
+						boss.world = w
+						boss._stun = 0.0
+						p.global_position = boss.global_position + Vector2(-100, -70)
+						boss._breathe(p)
+						for f in flames.call():
+							if f.kind in ["flame", "ice"]:
+								min_vy = minf(min_vy, f.velocity.y)
+								kinds[f.kind] = true
+					print("BOSS aim: smallest vy of flames/ice = %.1f (>= 0: nothing upward) kinds=%s" % [min_vy, kinds.keys()])
+					await _wait(0.8)
+					await shot("boss_ice")
+			GameSettings.save(cfg0)
+			# the ten bonus rooms
+			for id in ["1-1", "1-2", "1-3", "2-1", "2-2", "3-1", "3-2", "4-1", "4-2", "5-1"]:
+				game.menus.hide_all()
+				game._start_game(Game.level_of_id(id))
+				if id == "3-2":
+					game.has_dino = true
+					game._begin_level()
+				await _wait(Game.CARD_TIME + 0.3)
+				p = game.player
+				var rode := p.riding != null
+				for z in game.level.get_children():
+					if z is WarpZone and z.warp.area == "bonus":
+						game.enter_warp(z)
+						break
+				await _wait(1.6)
+				print("BONUS %s: area=%s theme=%s music=%s swimming=%s dragon: rode=%s now=%s parked=%s" % [id,
+					game.area, game.backdrop.theme, game._snd_call("current_music", ""), p.swimming, rode,
+					p.riding != null, game._dino_parked])
+				await shot("bonus_" + id)
+				if id == "3-2":
+					for z in game.level.get_children():
+						if z is WarpZone and z.warp.area == "main":
+							p.global_position = z.global_position + Vector2(-6, 0)
+							game.enter_warp(z)
+							break
+					await _wait(2.2)
+					print("GROTTO left: area=%s swimming=%s riding=%s parked=%s" % [game.area, p.swimming,
+						p.riding != null, game._dino_parked])
+					await shot("grotto_back")
+			print("HOF practice: score=%d rank=%d (expected -1)" % [game.score, HallOfFame.run_rank(game.run_id)])
+			# a named run: the quit dialog shows the entry, no name field
+			game.menus.hide_all()
+			game.menus.play_pressed.emit(-1)
+			await _wait(0.8)
+			game.score = 987650
+			game.set_run_name("anna")
+			await _act("pause")
+			await _wait(0.3)
+			await _press_button("Main Menu")
+			print("QUIT named: name_field=%s text=%s buttons=%s" % [game.menus._name_edit != null, _hints(), _button_texts()])
+			await shot("quit_named")
+			await _press_button("Save & Menu")
+			await _wait(0.3)
+			await _press_button("High Scores")
+			print("HOF screen: buttons=%s" % [_button_texts()])
+			await _press_button("Clear list")
+			var fo := game.get_viewport().gui_get_focus_owner()
+			print("CLEAR dialog: screen=%d focus=%s" % [game.menus.screen, fo.text if fo is Button else "?"])
+			await shot("clear_dialog")
+			await _press_button("Delete")
+			print("CLEAR done: entries=%d buttons=%s" % [HallOfFame.load_list().size(), _button_texts()])
 	await _wait(0.3)
 	_restore_user_files()
 	quit()

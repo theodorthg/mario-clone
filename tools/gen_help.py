@@ -500,12 +500,12 @@ def page_castles():
     img.alpha_composite(boss, (8, 88))
     text(d, (52, 90), "The boss waits at the end of every")
     text(d, (52, 100), "world: stomp its head 3-5 times", fill=GOLD)
-    text(d, (52, 110), "(5 fireballs = 1 hit). No fire left? Each", fill=GOLD)
-    text(d, (52, 120), "hit drops a flower. Win = extra life!", fill=GOLD)
+    text(d, (52, 110), "(5 fireballs = 1 hit). Win = extra life!", fill=GOLD)
+    text(d, (52, 120), "Easy/Normal: no fire left? It drops a flower.", fill=DIM)
     d.line((8, 131, 332, 131), fill=DIM)
     text(d, (8, 135), "LEVEL SELECT on the title screen:", fill=WHITE)
     text(d, (8, 146), "pad B Y X A - keys L E V E L S - tap title 5x", fill=GOLD)
-    text(d, (8, 157), "\"Boss\" = straight to the arena. Unreached: no high score.", fill=DIM)
+    text(d, (8, 157), "\"Boss\" = straight to the arena. Practice: no high score.", fill=DIM)
     return img
 
 

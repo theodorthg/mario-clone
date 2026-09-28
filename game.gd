@@ -99,8 +99,9 @@ var _run_best := 0
 ## the player gave it ("" = not asked yet, the entry reads "YOU")
 var run_id := 0
 var run_name := ""
-## started from the level select: never written to the saved game, so
-## trying a course there can't replace the player's real run
+## started from the level select: never written to the saved game and no
+## high score entry, so trying a course there can't replace the player's
+## real run or fill up the list
 var practice := false
 var splash: Splash
 
@@ -317,13 +318,16 @@ func save_run() -> Dictionary:
 		SaveGame.store({"id": run_id, "name": run_name, "score": score, "coins": coins,
 			"lives": lives, "power": cur_power, "dino": cur_dino, "at": LEVELS[at].ID,
 			"best": LEVELS[maxi(_run_best, at)].ID})
-	return {"saved": not practice, "cheated": cheated, "in_course": state != State.MAP,
+	return {"saved": not practice, "practice": practice, "in_course": state != State.MAP,
 		"score": score, "lives": lives, "coins": coins, "world": LEVELS[at].ID,
 		"rank": HallOfFame.run_rank(run_id), "name": run_name}
 
 ## Keep the run's high score entry up to date (created once it qualifies).
+## Level select runs (practice) never get one (v1.2.1, player: "the high
+## score list fills up" — every boss tried from the level select left a
+## "YOU" entry).
 func _sync_hof() -> int:
-	if cheated or run_id == 0 or score <= 0:
+	if practice or run_id == 0 or score <= 0:
 		return -1
 	return HallOfFame.record_run(run_id, run_name if run_name != "" else "YOU", score,
 		LEVELS[maxi(_run_best, level_index)].ID)
@@ -479,9 +483,20 @@ func _enter_area(name: String, snap := false) -> void:
 	camera.limit_bottom = int(r.end.y)
 	backdrop.set_theme(a.theme)
 	if player:
-		player.swimming = a.theme in Level.WATER_THEMES
+		var water: bool = a.theme in Level.WATER_THEMES
+		player.swimming = water
 		player.left_limit = r.position.x
 		player.right_limit = r.end.x
+		# the dragon can't swim: it waits on dry land and comes back when the
+		# hero leaves the water (underwater bonus grotto, beach exits)
+		if water and player.park_dino():
+			_dino_parked = true
+		elif not water and _dino_parked and player.riding == null and player.mode != Player.Mode.DEAD:
+			_dino_parked = false
+			var d := Dino.new()
+			level.add_child(d)
+			d.global_position = player.global_position
+			player.mount(d)
 	if snap and player:
 		_cam_pos = player.global_position + Vector2(0, -30)
 

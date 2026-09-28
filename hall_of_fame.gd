@@ -16,7 +16,14 @@ static func load_list() -> Array:
 	if c.load(PATH) != OK:
 		return []
 	var raw = c.get_value("hof", "entries", [])
-	return raw if raw is Array else []
+	if not raw is Array:
+		return []
+	# older versions could store a 0-point "YOU"
+	return raw.filter(func(e): return e is Dictionary and int(e.get("score", 0)) > 0)
+
+## High Scores "Clear list" (title only, after a confirmation).
+static func clear() -> void:
+	_save_list([])
 
 static func _save_list(list: Array) -> void:
 	var c := ConfigFile.new()

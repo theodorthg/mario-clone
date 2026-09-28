@@ -17,7 +17,7 @@ signal quit_to_menu_pressed
 signal settings_changed(cfg: Dictionary)
 
 enum Screen { NONE, START, SETTINGS, SOUND, PAUSE, GAMEOVER, HELP, HIGHSCORES, VICTORY, CONTROLS, LEVELS,
-	QUIT, NEWGAME }
+	QUIT, NEWGAME, CLEARHOF }
 
 const PANEL_W := 250.0
 const BTN_H := 22.0
@@ -57,7 +57,7 @@ const HELP_FALLBACK := {
 	"items": "Hit ? blocks from below.\nMushroom: grow big.  Fire flower: throw fireballs.\nStar: invincible for a while.  Green mushroom: extra life.\nBig heroes break bricks.",
 	"dragon": "An egg hides in one ? block.\nJump onto the dragon to ride it.\nRun button: tongue eats enemies.\nDown + jump: hop off.  A hit throws you off.",
 	"worlds": "Stomp a turtle, then kick its shell:\nit knocks out every enemy in its way.\nRed turtles turn at edges, winged ones need two stomps.\nIce is slippery. Lava and water: don't fall in!\nCave bats swoop (small: walk under them, big: duck),\ncactus stacks are spiky (use fire),\npenguins belly-slide.",
-	"castles": "Fire bars spin, lava bubbles leap: time your jumps.\nThe boss ends every world: stomp its head 3-5 times\n(5 fireballs = 1 hit). A fire flower waits before\nthe arena; no fire left? each hit drops one. A win = 1UP.\nLevel select: on the title press B Y X A, type LEVELS\nor tap the title 5 times. 'Boss' starts at the boss arena\n(no high score for unreached courses).",
+	"castles": "Fire bars spin, lava bubbles leap: time your jumps.\nThe boss ends every world: stomp its head 3-5 times\n(5 fireballs = 1 hit). A fire flower waits before\nthe arena; Easy/Normal: no fire left? it drops one. A win = 1UP.\nLevel select: on the title press B Y X A, type LEVELS\nor tap the title 5 times. 'Boss' starts at the boss arena\n(practice runs: not saved, no high score).",
 	"sky": "Falling slabs shake, then drop: jump off in time.\nTipping planks tip toward your side: keep moving.\nJump up through the clouds.\nThe cloud imp throws spikies: stomp it from up high.\nSpikies can't be stomped: fire, shells or a star.\nGulls glide at you. The storm boss's lightning flashes first.",
 	"sea": "Underwater you swim: every jump press is one stroke up.\nThe side pipe at the end leads to the beach.\nFish can't be stomped while swimming: dodge or use fire.\nJellyfish pulse toward you, crabs can be stomped.\nSea urchins can't be beaten: swim around them.",
 	"map": "Play opens the world map. Walk with left / right,\nA or Space plays the course you stand on.\nTouch: tap a course to walk there, tap it again to play.\nA check = cleared, a lock = not reached yet.\nAfter a course the road to the next one opens.\nYour run is saved all along: quit any time,\nthen Continue on the title screen.",
@@ -156,6 +156,8 @@ func _rebuild() -> void:
 			_build_quit()
 		Screen.NEWGAME:
 			_build_newgame()
+		Screen.CLEARHOF:
+			_build_clearhof()
 	_panel.reset_size()
 	_recenter_panel.call_deferred()
 	# again once wrapped hint labels know their real width (before that they
@@ -381,16 +383,18 @@ func _build_quit() -> void:
 				+ "Continue it any time from the title screen."
 			if info.in_course:
 				lines += "\nThis course then starts over (from the map)."
-		elif info.cheated:
-			lines = "Level select run: it is not saved and gets no high score.\nYour saved game stays as it is."
 		else:
-			lines = "Level select run: it is not saved (your saved game stays\nas it is), but its score counts for the high scores."
+			lines = "Level select run: not saved, no high score.\nYour saved game stays as it is."
 		var h := _hint(lines)
 		h.add_theme_color_override("font_color", UiStyle.ACCENT)
 		_vbox.add_child(h)
-		if int(info.rank) >= 0 and not info.cheated:
+		# the name is asked once per run; later quits just show the entry
+		# (v1.2.1, player: "asked again although nothing changed")
+		if int(info.rank) >= 0 and str(info.name) != "":
+			_vbox.add_child(_hint("High score #%d: %s" % [int(info.rank) + 1, info.name]))
+		elif int(info.rank) >= 0:
 			_vbox.add_child(_hint("HIGH SCORE #%d!  Enter your name:" % (int(info.rank) + 1)))
-			_name_edit = _make_name_edit(str(info.name))
+			_name_edit = _make_name_edit("")
 			_name_edit.text_submitted.connect(func(_t: String): _quit_name_done())
 			var entry := HBoxContainer.new()
 			entry.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -454,7 +458,7 @@ func _make_name_edit(text := "") -> LineEdit:
 func _build_gameover(victory: bool) -> void:
 	_panel.custom_minimum_size = Vector2(320, 0)
 	_name_edit = null
-	var cheated := Game.instance != null and Game.instance.cheated
+	var practice := Game.instance != null and Game.instance.practice
 	var score: int = get_meta("go_score", 0)
 	var world: String = get_meta("go_world", "1-1")
 	var committed: bool = get_meta("go_committed", false)
@@ -463,8 +467,8 @@ func _build_gameover(victory: bool) -> void:
 	_vbox.add_child(_heading("YOU WIN!" if victory else "GAME OVER"))
 	var score_l := _hint("SCORE %06d  -  WORLD %s" % [score, world], 16)
 	_vbox.add_child(score_l)
-	if cheated:
-		var h := _hint("Level select was used - no high score entry.")
+	if practice:
+		var h := _hint("Level select run - no high score entry.")
 		h.add_theme_color_override("font_color", UiStyle.ACCENT)
 		_vbox.add_child(h)
 	elif rank >= 0 and not committed:
@@ -625,7 +629,7 @@ func _build_levels() -> void:
 			bb.add_theme_color_override("font_color", Color(1.0, 0.75, 0.5))
 		grid.add_child(bb)
 	_vbox.add_child(grid)
-	var h := _hint("* = castle, Boss = start at the boss arena.\nOrange = not reached yet: no high score entry for that run.")
+	var h := _hint("* = castle   Boss = boss arena   orange = not reached\nPractice runs: not saved, no high score entry.")
 	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_vbox.add_child(h)
 	_vbox.add_child(_button("Back", func(): _show_screen(Screen.START), true))
@@ -639,9 +643,28 @@ func _build_highscores() -> void:
 	var run := int(SaveGame.load_run().get("id", 0))
 	if _return_screen == Screen.PAUSE and Game.instance:
 		run = Game.instance.run_id
-	_render_hof(grid, HallOfFame.load_list(), HallOfFame.run_rank(run))
+	var list := HallOfFame.load_list()
+	_render_hof(grid, list, HallOfFame.run_rank(run))
 	_vbox.add_child(_spacer(2))
-	_vbox.add_child(_button("Back", func(): _show_screen(_return_screen), true))
+	var back := _button("Back", func(): _show_screen(_return_screen), true)
+	if _return_screen == Screen.START and not list.is_empty():
+		_vbox.add_child(_hbox([back, _button("Clear list", func(): _show_screen(Screen.CLEARHOF))]))
+	else:
+		_vbox.add_child(back)
+
+## "Clear list": the whole board goes (default focus on "Back").
+func _build_clearhof() -> void:
+	_panel.custom_minimum_size = Vector2(300, 0)
+	_vbox.add_child(_heading("CLEAR LIST?"))
+	_vbox.add_child(_hint("All high score entries will be deleted.\nThis can't be undone."))
+	var back := _button("Back", func(): show_highscores(Screen.START), true)
+	_vbox.add_child(_hbox([
+		_button("Delete", func():
+			HallOfFame.clear()
+			show_highscores(Screen.START)),
+		back,
+	]))
+	_default_focus = back
 
 # --------------------------------------------------------------- settings --
 func _build_settings() -> void:

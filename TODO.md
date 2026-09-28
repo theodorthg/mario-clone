@@ -12,6 +12,17 @@ Git-Log.
 
 ## Erledigt
 
+- [x] v1.2.1 Feinschliff (Nutzer 2026-09-28, nach RG552-Test):
+      1. Highscore-Liste müllt nicht mehr zu: Levelauswahl-Läufe ohne
+         Eintrag, Name wird pro Lauf nur einmal gefragt, „Clear list“.
+      2. Eingeklemmter Panzer: nach 10.000 ausgezahlten Punkten zerbricht er
+         (kein endloses Punkte-/1UP-Farmen).
+      3. Zehn verschiedene Bonusräume statt der immer gleichen Münzhöhle
+         (eigener Aufbau, Hintergrund, Musik; Unterwasser-Grotte in 3-2).
+      4. Boss je Schwierigkeit: Leicht wie bisher, Mittel kürzer betäubt,
+         Schwer kurz betäubt ohne Feuerblumen; Blume auch nach Feuerverlust;
+         nie mehr nach oben schießen (Flammen waagrecht/abwärts, Eisbälle
+         waagrecht).
 - [x] v1.2.0 Kein Fortschritt geht beim Aufhören verloren (Nutzer
       2026-09-27: „bei Exit kein Highscore-Eintrag, Leben nicht
       gespeichert“): Autosave des Laufs (Punkte, Leben, Münzen, Kraft,

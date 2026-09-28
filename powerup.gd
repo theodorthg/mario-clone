@@ -62,13 +62,17 @@ func emerge() -> void:
 				_collect(b))
 
 ## Tossed out of a hit boss: arcs to `target` (a floor spot), then stays
-## put like every flower. Collectable during the flight too.
+## put like every flower. Only collectable once it has landed (v1.2.1: it
+## starts inside the boss, where the stomping hero is — it used to be
+## picked up at once, unseen; the player never noticed the drop).
 func toss_to(target: Vector2) -> void:
 	var start := position
+	_emerging = true
 	var tw := create_tween()
 	tw.tween_method(func(t: float):
 		position = start.lerp(target, t) + Vector2(0.0, -70.0 * sin(PI * t)), 0.0, 1.0, 0.8)
 	tw.tween_callback(func():
+		_emerging = false
 		for b in area.get_overlapping_bodies():
 			if b is Player:
 				_collect(b))

@@ -18,7 +18,8 @@ davon ist aus Nintendo-Spielen übernommen (Figuren nur „im Stil von“).
   Wüste, Schnee, Himmel, Meer), 19 Kurse inkl. 6 Burgen mit Boss.
   Weitere Ideen stehen in `TODO.md` unter „Offen“.
 - v1.1.0 Weltkarte, v1.2.0 Spielstand/Continue + Quit-Dialog mit
-  Highscore-Eintrag.
+  Highscore-Eintrag, v1.2.1 Feinschliff (Highscore-Liste, Panzer-Limit,
+  zehn eigene Bonusräume, Boss je Schwierigkeit).
 
 ## Design-Entscheidungen
 
@@ -119,7 +120,21 @@ der Welt; Spieler-/Gegner-Kontakt läuft über die Hitbox-`Area2D` des Gegners.
 - 20 Zeilen hoch, Boden-Oberkante Zeile 17. Bonusräume liegen als eigener
   Spaltenbereich hinter dem Hauptlevel (`AREAS`), mind. 40 Spalten breit
   (sonst sieht man auf 2,2:1-Geräten über die Kamera-Grenze hinaus).
-- `level.gd` baut das TileSet **zur Laufzeit** aus `tiles.png` (Physik-
+- **Bonusräume (v1.2.1, Nutzer: „immer gleich, etwas öde“)**: jeder Kurs
+  hat seinen eigenen, `coin_room(L, B0, B1, style)` → (Ausgang, Thema),
+  genau 40 Spalten, gemeinsamer Rahmen `_bonus_frame()` (Einstieg fällt in
+  Spalte B0+3 aus Zeile 4, Ausgang Seitenröhre unten rechts bei B1-6,
+  Decke optional). Stil + Thema (Aussehen, Hintergrund, Musik): 1-1
+  classic (Höhle, das Original), 1-2 heaven (Abendwolken, Münzherz,
+  Wolkenstufen), 1-3 blocks (Kristallhöhle voller ?-Blöcke), 2-1 pillars
+  (Säulen mit Münztürmen), 2-2 lifts (Lifte + Hochregal), 3-1 pyramid
+  (offener Wüstenhof, Stufenpyramide), 3-2 grotto (Unterwasser, Münz-
+  welle zwischen Korallen), 4-1 ice (Eisbahn unter freiem Himmel), 4-2
+  zigzag (Nacht-Turm aus Eisregalen, Jackpot oben), 5-1 slabs (fallende
+  Wolkenplatten + Kippplanke über Wolkenboden). Keine Gegner, kein
+  tödlicher Abgrund; teils versteckte 1-UPs (`h`) und 10-Münz-Ziegel.
+  Deko nie in die Zellen der Ausgangsröhre setzen (B1-6..B1-2, Zeilen
+  15/16) — die Röhre wächst nur durch leere Zellen.- `level.gd` baut das TileSet **zur Laufzeit** aus `tiles.png` (Physik-
   Polygone, Einweg-Kollision für die Holzbrücke), autotiled Gras/Erde und
   Höhle über eine 4-Bit-Nachbarmaske (1 oben offen, 2 unten, 4 links,
   8 rechts), wählt Innen-Erde-Varianten deterministisch per Zell-Hash.
@@ -213,7 +228,11 @@ Siegerbildschirm mit Hall-of-Fame-Eintrag.
   oder Stampfen) SPIN (210 px/s, prallt an Wänden ab, stößt Blöcke seitlich
   an — Ziegel zerbrechen, `Block.bump(player, true)`) → Stampfen stoppt ihn.
   Nach 6 s schaut sie heraus (Wackeln) und läuft wieder. Kick 400, Panzer-
-  Kette 500/800/1000/2000/4000/5000/8000, dann 1UP. Feuerball/Zunge/Stern
+  Kette 500/800/1000/2000/4000/5000/8000, dann 1UP. **Auszahlungs-Limit
+  (v1.2.1, Nutzer: eingeklemmter Panzer zwischen zwei Röhren = endlos
+  Punkte/Leben)**: `paid` zählt Stampf- und Kick-Punkte einer Schildkröte
+  (ein 1UP zählt als ganzes Limit); ab `PAYOUT_LIMIT` 10000 zerbricht sie
+  (`kill_flip`). Feuerball/Zunge/Stern
   behandeln alle Gegner generisch (`has_method("kill_flip")`).
 
 ## Punkte
@@ -296,7 +315,9 @@ Nintendo-Themen. Loops werden mit umgeklapptem Nachhall gerendert (nahtlos);
   der Boss-Animation), lifepoints (Extraleben nach Punkten, Scrollen der
   Settings), save (v1.2: Autosave, Quit-Dialog mit Name, Continue, Game
   Over löscht, New-Game-Rückfrage, Levelauswahl lässt den Spielstand in
-  Ruhe). **Jedes Szenario sichert `savegame.cfg`, `hall_of_fame.cfg` und
+  Ruhe), polish (v1.2.1: Panzer-Limit, Boss je Schwierigkeit + nichts nach
+  oben, alle zehn Bonusräume mit Screenshot, Drache an der Grotte,
+  benannter Lauf ohne Namensfeld, „Clear list“). **Jedes Szenario sichert `savegame.cfg`, `hall_of_fame.cfg` und
   `settings.cfg` vorher und stellt sie danach wieder her** (Autosave/Game
   Over schreiben sonst in die echten Dateien des Entwicklungsrechners).
   Synthetische Mausklicks zählen in
@@ -393,7 +414,11 @@ Ducken und Absteigen auf Touch unmöglich.
   Gruben aufrufen — `pit()` löscht die ganze Spalte).
 - Der Drache kann nicht schwimmen: in einem Unterwasser-Kurs wartet er
   (`game.gd::_dino_parked`) und ist im nächsten Kurs wieder da — außer der
-  Held verliert ein Leben.
+  Held verliert ein Leben. Seit v1.2.1 auch bereichsweise
+  (`game.gd::_enter_area`): wer auf dem Drachen in Wasser kommt (Bonus-
+  Grotte 3-2), lässt ihn zurück (`Player.park_dino()`); beim nächsten
+  trockenen Bereich (Grotte verlassen, Strand-Ausgang in 6-1/6-2) steigt
+  er wieder auf.
 - Biom `sea`: `#` = Riff-Autotile (Atlas-Reihe 11, Sand mit Korallenkappe),
   `w` = Korallenziegel (10/6), Innenvarianten (10/7–9); Deko Seetang
   (wiegt sich: `Level.SWAYING`, Tween auf `skew`, Drehpunkt am Fuß),
@@ -472,9 +497,18 @@ Partikel, Musik `music_castle`). Deko: `*` Banner, `+`/`t` Fackel
   `stun_stars.gd`, keine Angriffe, kein Laufen), alle fliegenden Geschosse
   verpuffen (`BossFlame.fizzle()`), danach weicht er vom Helden weg
   (`_retreat`, nie durch ihn hindurch) und wartet ≥ 1 s; kein Feuer, wenn
-  der Held (fast) über ihm ist, Flammen höchstens ~22° nach oben; hat der
+  der Held (fast) über ihm ist; hat der
   Held keine Feuerkraft, wirft der Boss bei jedem Treffer eine Feuerblume
-  in die ferne Arenahälfte (`PowerUp.toss_to`). Frames je Boss: idle1/2
+  in die ferne Arenahälfte (`PowerUp.toss_to`).
+- **Nie nach oben + Schwierigkeit (v1.2.1, Nutzer)**: Flammen fliegen nur
+  waagrecht oder nach unten (max. 37°, `MAX_DOWN`), auch jede Fächer-
+  Flamme (`_fan`); Eisbälle werden waagrecht ausgespuckt und springen erst
+  am Boden hoch (Mindest-Rückprall in `boss_flame.gd`). Settings >
+  Difficulty: `STUN` 1,0 / 0,8 / 0,5 s, Feuerblumen (`FLOWERS`) bei Leicht
+  und Mittel, bei Schwer keine — Blumen kommen bei einem Treffer UND
+  1,2 s nachdem der Held seine Feuerkraft verloren hat (`_no_fire_t`; der
+  Nutzer hatte den Abwurf nie gesehen). Die Feuerblume vor der Arena und
+  der Neustart mit Feuerkraft bleiben auf allen Stufen (faire Neustarts). Frames je Boss: idle1/2
   (atmen), walk1-3 (4-Phasen-Zyklus mit Auf und Ab), windup, roar, crouch,
   jump, hurt (`_boss_canvas`: `head`-Versatz, `arm`, `hurt`); Squash &
   Stretch beim Absprung, Landen, Treffer. Stampf-Test über
@@ -606,8 +640,14 @@ gehen.“ Lösung:
   (Pause) bzw. gespeicherten (Titel) Lauf hervor.
 - **Levelauswahl-Läufe** (`practice`, auch „Boss“ und nicht-gecheatete)
   schreiben den Spielstand NIE — sonst würde Ausprobieren den echten Lauf
-  ersetzen. Ihr Highscore zählt weiter (gecheatete: keiner); der Quit-Dialog
-  sagt das. „Play Again“ behält `practice`.
+  ersetzen — und bekommen seit v1.2.1 auch KEINEN Highscore (jeder
+  ausprobierte Boss hinterließ einen „YOU“-Eintrag, Nutzer: „die Liste
+  müllt zu“). „Play Again“ behält `practice`.
+- **Name nur einmal (v1.2.1)**: hat der Lauf schon einen Namen, zeigt der
+  Quit-Dialog nur „High score #n: NAME“ ohne Eingabefeld (Fokus direkt auf
+  „Save & …“). High Scores vom Titel: „Clear list“ mit Rückfrage
+  (`Screen.CLEARHOF`, Fokus auf „Back“). `HallOfFame.load_list()` wirft
+  0-Punkte-Einträge alter Versionen weg.
 - Hilfeseite „World Map“: „Saved all along: quit any time, Continue on
   title“. Playtest `save`.
 
