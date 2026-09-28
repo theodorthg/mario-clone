@@ -1,0 +1,46 @@
+[gd_resource type="SpriteFrames" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/graphics/enemy_ghost.png" id="1_tex"]
+
+[sub_resource type="AtlasTexture" id="at_chase1"]
+atlas = ExtResource("1_tex")
+region = Rect2(0, 0, 18, 18)
+
+[sub_resource type="AtlasTexture" id="at_chase2"]
+atlas = ExtResource("1_tex")
+region = Rect2(18, 0, 18, 18)
+
+[sub_resource type="AtlasTexture" id="at_shy"]
+atlas = ExtResource("1_tex")
+region = Rect2(36, 0, 18, 18)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_chase1")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_chase2")
+}],
+"loop": true,
+"name": &"chase",
+"speed": 4.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_shy")
+}],
+"loop": false,
+"name": &"shy",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_shy")
+}],
+"loop": false,
+"name": &"flipped",
+"speed": 1.0
+}]

@@ -36,6 +36,7 @@ const FLOWER_DELAY := 1.2                # after the hero lost fire power
 const MAX_DOWN := 0.65                   # steepest aim below the horizon (rad)
 const FAN_STEP := 0.32
 const WINDUP := 0.4
+const PHASE := 0.4                       # world 7: fade out / fade in time
 const CROUCH := 0.2
 const SCALE := Vector2(2, 2)
 
@@ -63,6 +64,7 @@ var _stars: Node2D
 var _squash: Tween
 var difficulty := 1
 var _no_fire_t := 0.0         # how long the hero has been without fire power
+var _phase_t := 0.0           # world 7: phasing (faded out, harmless, untouchable)
 
 func _ready() -> void:
 	collision_layer = 4
@@ -73,7 +75,7 @@ func _ready() -> void:
 	max_hp = 3 + (1 if world >= 3 else 0) + (1 if world >= 6 else 0)
 	hp = max_hp
 	sprite = AnimatedSprite2D.new()
-	sprite.sprite_frames = load("res://assets/graphics/boss_%d.tres" % clampi(world, 1, 6))
+	sprite.sprite_frames = load("res://assets/graphics/boss_%d.tres" % clampi(world, 1, 8))
 	sprite.offset = Vector2(0, -17)
 	sprite.scale = SCALE              # 32x34 art drawn at 2x: a 4-tile giant
 	sprite.play(&"idle")
@@ -128,7 +130,14 @@ func _physics_process(delta: float) -> void:
 			_drop_flower(p)
 	else:
 		_no_fire_t = 0.0
-	if _stun > 0.0:
+	if _phase_t > 0.0:
+		# phasing (world 7): the tween moves it; attack right after
+		_phase_t -= delta
+		velocity.x = 0.0
+		if _phase_t <= 0.0:
+			_windup = WINDUP
+			sprite.play(&"windup")
+	elif _stun > 0.0:
 		# dizzy: no attacks, slides to a stop
 		_stun -= delta
 		velocity.x = move_toward(velocity.x, 0.0, 300.0 * delta)
@@ -166,6 +175,8 @@ func _physics_process(delta: float) -> void:
 			if _hero_above(p):
 				_retreat(p)
 				_act = 0.8
+			elif world == 7 and randf() < 0.45:
+				_phase(p)
 			elif randf() < 0.55:
 				_windup = WINDUP
 				sprite.play(&"windup")
@@ -221,7 +232,8 @@ func _retreat(p: Player) -> void:
 ## 1 one aimed flame · 2 a fan of three flames · 3 aimed flame, and every
 ## landing sends sand shock waves along the floor · 4 two bouncing ice balls
 ## · 5 aimed flame + three lightning bolts striking around the hero (they
-## flash at the top of the arena first — step aside) · 6 (last boss, 5 HP)
+## flash at the top of the arena first — step aside) · 7 fades out and
+## reappears across the arena (see _phase), then a fan of flames · 6 (5 HP)
 ## picks one of the fan / ice balls / bolts each time, and every other
 ## landing sends shock waves
 func _breathe(p: Player) -> void:
@@ -238,7 +250,7 @@ func _breathe(p: Player) -> void:
 	var down := clampf(atan2(to.y, maxf(absf(to.x), 1.0)), 0.0, MAX_DOWN)
 	var aim := _dir(down)
 	match world:
-		2:
+		2, 7:
 			_fan(down, 110.0, mouth)
 		4:
 			_ice_pair(mouth)
@@ -246,7 +258,7 @@ func _breathe(p: Player) -> void:
 			_shoot("flame", mouth, aim * 115.0)
 			_bolts(p)
 		6:
-			# the last boss knows every trick of the others
+			# the tide king (world 6) knows every trick of the others
 			match randi() % 3:
 				0:
 					_fan(down, 115.0, mouth)
@@ -292,7 +304,7 @@ func _shock_waves() -> void:
 		_shoot("wave", global_position + Vector2(d * 22.0, -5.0), Vector2(d * 125.0, 0.0))
 
 func _touch_player(p: Player) -> void:
-	if p.mode != Player.Mode.NORMAL or _inv > 0.0:
+	if p.mode != Player.Mode.NORMAL or _inv > 0.0 or _phase_t > 0.0:
 		return
 	if p.star_t > 0.0:
 		take_hit()
@@ -309,7 +321,7 @@ func _touch_player(p: Player) -> void:
 
 ## Fireball hit (fireball.gd checks for this method first).
 func fire_hit() -> void:
-	if dead or _inv > 0.0:
+	if dead or _inv > 0.0 or _phase_t > 0.0:
 		return
 	_fire_hits += 1
 	sprite.modulate = Color(1.6, 1.6, 1.6)
@@ -319,7 +331,7 @@ func fire_hit() -> void:
 		take_hit()
 
 func take_hit() -> void:
-	if dead or _inv > 0.0:
+	if dead or _inv > 0.0 or _phase_t > 0.0:
 		return
 	hp -= 1
 	_inv = INVULN
@@ -348,6 +360,25 @@ func take_hit() -> void:
 
 ## Ammo: without fire power a hit makes the boss drop a fire flower, tossed
 ## to the side of the arena away from it (one at a time).
+## World 7 (the phantom king): fades out, reappears on the far side of the
+## hero and breathes a fan of flames. Untouchable while phasing — no damage
+## either way.
+func _phase(p: Player) -> void:
+	_phase_t = PHASE * 2.0 + 0.3
+	_snd("ghost")
+	var mid := (arena_left + arena_right) * 0.5
+	var tx := randf_range(mid + 30.0, arena_right - 64.0) if p.global_position.x < mid \
+		else randf_range(arena_left + 80.0, mid - 30.0)
+	var tw := create_tween()
+	tw.tween_property(sprite, "modulate:a", 0.0, PHASE)
+	tw.tween_callback(func():
+		global_position.x = tx
+		_target_x = tx
+		facing = 1 if p.global_position.x > tx else -1
+		sprite.flip_h = facing < 0)
+	tw.tween_interval(0.3)
+	tw.tween_property(sprite, "modulate:a", 1.0, PHASE)
+
 func _drop_flower(_p: Player) -> void:
 	for it in get_tree().get_nodes_in_group("items"):
 		if it is PowerUp and it.kind == PowerUp.Kind.FLOWER and not it.is_queued_for_deletion() \

@@ -217,6 +217,18 @@ def sfx():
     # swim stroke: soft bubbly rising blip (no noise)
     n = seg(0.12)
     S["swim"] = osc("tri", 380, n, f_end=820) * env(n, 0.004, 0.04, 0.5, 0.05) * 0.8
+    # ghost house (v1.4; appended: earlier effects keep their noise)
+    n1, n2 = seg(0.42), seg(0.14)
+    S["door"] = cat(osc("pulse", 170, n1, 0.125, 250, vib=2.5, vib_rate=17, vib_delay=0) * env(n1, 0.02, 0.1, 0.6, 0.08) * 0.4,
+                    (osc("tri", 110, n2, f_end=55) * 0.9 + noise(n2, 1500) * 0.2) * decay_env(n2, 0.05))
+    n = seg(0.6)
+    S["ghost"] = osc("tri", 560, n, f_end=300, vib=1.2, vib_rate=6, vib_delay=0) * env(n, 0.08, 0.1, 0.7, 0.2) * 0.8
+    rattle = []
+    for k in range(6):
+        n = seg(0.022)
+        rattle.append(lowpass(noise(n, 9000 - k * 600), 7000) * decay_env(n, 0.008) * 0.9)
+        rattle.append(silence(0.028 + 0.004 * k))
+    S["bones"] = cat(*rattle)
     for k, x in S.items():
         write_wav(os.path.join(SND, k + ".wav"), norm(x, 0.85))
     print("  %d sound effects -> assets/sounds/" % len(S))
@@ -544,6 +556,32 @@ def castle():
     return s.render(loop=True)
 
 
+def ghost():
+    """'Haunted Waltz' — E minor waltz (3/4), 92 bpm, 16 bars: a wobbly
+    lead with long echo, chromatic turns, a thin eerie line an octave up
+    (ghost house, v1.4)."""
+    s = Song(92)
+    melody = bars(
+        "B4:3 E5:3 G5:3 F#5:3", "E5:6 B4:6", "C5:3 E5:3 A5:3 G5:3", "F#5:6 D#5:6",
+        "E5:3 G5:3 B5:3 A#5:3", "B5:6 G5:6", "E5:3 G5:3 C6:3 B5:3", "A5:6 F#5:3 D#5:3",
+        "C6:6 B5:3 A5:3", "G#5:6 A5:6", "B5:3 G5:3 E5:3 D#5:3", "E5:9 r:3",
+        "C6:6 A5:3 F#5:3", "D#5:6 F#5:3 A5:3", "G5:3 F#5:3 E5:3 D#5:3", "E5:12",
+    )
+    prog = ["Em", "Em", "Am", "B7", "Em", "Em", "C", "B7", "Am", "Am", "Em", "Em", "F#o", "B7", "Em", "Em"]
+    roots = {"Em": ("E2", "B2"), "Am": ("A1", "E2"), "B7": ("B1", "F#2"), "C": ("C2", "G2"), "F#o": ("F#2", "C3")}
+    pah = {"Em": ("G4", "B4"), "Am": ("A4", "C5"), "B7": ("D#4", "A4"), "C": ("E4", "G4"), "F#o": ("A4", "C5")}
+    bass = " ".join("%s:4 %s:4 %s:4" % (roots[c][0], roots[c][1], roots[c][1]) for c in prog)
+    pah_a = " ".join("r:4 %s:4 %s:4" % (pah[c][0], pah[c][0]) for c in prog)
+    pah_b = " ".join("r:4 %s:4 %s:4" % (pah[c][1], pah[c][1]) for c in prog)
+    s.track("pulse", melody, 0.28, duty=0.25, legato=0.9, vib=0.6, a=0.02, d=0.12, s=0.65, echo=0.45)
+    s.track("tri", melody, 0.07, legato=0.85, vib=0.9, s=0.6, octave=1)
+    s.track("pulse", pah_a, 0.07, duty=0.125, legato=0.5, d=0.04, s=0.4)
+    s.track("pulse", pah_b, 0.06, duty=0.125, legato=0.5, d=0.04, s=0.4)
+    s.track("tri", bass, 0.45, legato=0.7, s=0.9)
+    s.drums(("K...h...h..." * 16), 0.06)
+    return s.render(loop=True)
+
+
 def jingle_world():
     """world clear fanfare after the boss"""
     s = Song(150)
@@ -597,6 +635,7 @@ def music():
         "jingle_clear": jingle_clear,
         "jingle_death": jingle_death,
         "jingle_gameover": jingle_gameover,
+        "music_ghost": ghost,
     }
     for k, fn in pieces.items():
         reseed(k)

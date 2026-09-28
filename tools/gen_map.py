@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""World map (v1.1): one wide illustrated map with all six worlds side by side.
+"""World map (v1.1): one wide illustrated map with all worlds side by side
+(v1.4: seven — the ghost house joined on the right).
 
     python3 tools/gen_map.py [--preview]
 
@@ -28,11 +29,11 @@ GFX = os.path.join(ROOT, "assets", "graphics")
 PREVIEW = "--preview" in sys.argv
 PREVIEW_DIR = os.environ.get("PREVIEW_DIR", "/tmp")
 OUTLINE = "#1a1018"
-W, H = 1400, 270
+W, H = 1630, 270
 
 # region x ranges (left edges wobble a little, see region_at)
 REGIONS = [(0, 250, "grass"), (250, 480, "cave"), (480, 710, "sand"),
-           (710, 940, "snow"), (940, 1170, "sky"), (1170, 1400, "sea")]
+           (710, 940, "snow"), (940, 1170, "sky"), (1170, 1400, "sea"), (1400, 1630, "ghost")]
 # course markers in game.gd LEVELS order: 1-1 .. 1-4, 2-1 .. 2-3, ... 6-3
 NODES = [
     (48, 196), (104, 150), (160, 198), (218, 142),
@@ -41,11 +42,12 @@ NODES = [
     (748, 206), (816, 158), (884, 198),
     (984, 150), (1050, 106), (1116, 140),
     (1206, 204), (1276, 222), (1350, 168),
+    (1440, 198), (1514, 150), (1588, 192),
 ]
-CASTLES = {3, 6, 9, 12, 15, 18}
+CASTLES = {3, 6, 9, 12, 15, 18, 21}
 # bend of each road (perpendicular offset of the Bezier control point, px)
 BEND = {0: -14, 1: 16, 2: -16, 3: 18, 4: -12, 5: 16, 6: -18, 7: 14, 8: -14, 9: 16, 10: -12,
-        11: 14, 12: -26, 13: 14, 14: -12, 15: 26, 16: -10, 17: 14}
+        11: 14, 12: -26, 13: 14, 14: -12, 15: 26, 16: -10, 17: 14, 18: -12, 19: 16, 20: -14}
 
 PAL = {
     "grass": ((92, 188, 74), (142, 224, 112), (62, 160, 50)),
@@ -54,6 +56,7 @@ PAL = {
     "snow": ((232, 240, 252), (255, 255, 255), (192, 208, 234)),
     "sky": ((150, 208, 250), (206, 236, 255), (120, 186, 240)),
     "sea": ((42, 122, 200), (96, 178, 240), (30, 96, 170)),
+    "ghost": ((66, 58, 92), (92, 82, 124), (46, 40, 68)),
 }
 
 
@@ -252,6 +255,32 @@ def landscape(rds):
     paste(img, idx["palm"], 1300, 214)
     paste(img, idx["palm"], 1372, 152)
     paste(img, idx["palm"], 1190, 120)
+    # 7 ghost house (v1.4): a haunted mansion on a hill, graves, fog
+    blob(px, 1556, 92, 60, 26, (54, 46, 78, 255), (76, 66, 104, 255))
+    house, roof, lit = (26, 20, 40, 255), (16, 12, 28, 255), (232, 200, 96, 255)
+    for y in range(52, 84):
+        for x in range(1532, 1580):
+            px[x, y] = house
+    for i in range(18):
+        for x in range(1528 + i, 1584 - i):
+            px[x, 52 - i] = roof
+    for y in range(34, 56):
+        for x in range(1566, 1576):
+            px[x, y] = house
+    for i in range(7):
+        for x in range(1564 + i, 1578 - i):
+            px[x, 34 - i] = roof
+    for wx, wy in ((1538, 60), (1550, 60), (1562, 60), (1538, 72), (1562, 72), (1569, 40)):
+        if (wx + wy) % 3:
+            for y in range(wy, wy + 6):
+                for x in range(wx, wx + 4):
+                    px[x, y] = lit
+    for y in range(72, 84):
+        for x in range(1552, 1558):
+            px[x, y] = (10, 6, 16, 255)
+    for cx, cy in ((1420, 120), (1486, 230), (1612, 128), (1456, 60), (1604, 244)):
+        blob(px, cx, cy, 20, 5, (108, 100, 140, 255))                      # fog wisps
+    scatter(["dead_tree", "tomb", "cross", "pumpkin", "tomb"], 1404, 1626, 16, keep=16)
     return img
 
 

@@ -20,8 +20,9 @@ davon ist aus Nintendo-Spielen übernommen (Figuren nur „im Stil von“).
 - v1.1.0 Weltkarte, v1.2.0 Spielstand/Continue + Quit-Dialog mit
   Highscore-Eintrag, v1.2.1 Feinschliff (Highscore-Liste, Panzer-Limit,
   zehn eigene Bonusräume, Boss je Schwierigkeit), v1.3.0 Becken +
-  Strömungen, geflutete Burg 6-3. Letzte Erweiterungsrunde (Nutzer
-  2026-09-28): danach Welt 7 Geisterhaus, Welt 8 Vulkan.
+  Strömungen, geflutete Burg 6-3, v1.4.0 Welt 7 Geisterhaus (Türen,
+  Geister, Knochen-Schildkröten, Phantom-König). Letzte Erweiterungsrunde
+  (Nutzer 2026-09-28): danach noch Welt 8 Vulkan.
 
 ## Design-Entscheidungen
 
@@ -184,8 +185,8 @@ Dach, Schildkröten-Reihe auf einem Sims (Kombo), Stufenpyramide mit Tunnel.
 4-2 (Thema `snow_night`: Sterne + Mond, blaue Tönung): lange Eisbahn,
 Eisziegel-Türme, See mit Eisschollen, Eisbrücke über Wasser.
 Reihenfolge in `game.gd::LEVELS`: 1-1 … 1-4, 2-1 … 2-3, 3-1 … 3-3,
-4-1 … 4-3, 5-1 … 5-3, 6-1 … 6-3 (x-4/x-3 = Burg); nach 6-3
-Siegerbildschirm.
+4-1 … 4-3, 5-1 … 5-3, 6-1 … 6-3, 7-1 … 7-3 (x-4/x-3 = Burg); nach
+dem letzten Kurs (derzeit 7-3) Siegerbildschirm.
 
 ### 1-1 „Green Hills“ (312 Spalten, davon 262 Hauptlevel)
 Start-Wiese mit ?-Blöcken → Röhrenfeld (Warp-Röhre Spalte 53 → Münzhöhle,
@@ -401,7 +402,7 @@ Ducken und Absteigen auf Touch unmöglich.
 - Hilfeseite „Sky World“; Playtests `sky` (Platte, Planke, Kobold, Möwe,
   Blitze) und `selects` (Level-/Weltauswahl passen auf 270 px).
 
-## Welt 6 „Sea“ (v0.13) — letzte Welt
+## Welt 6 „Sea“ (v0.13)
 
 - 6-1 „Coral Reef“ (Thema `sea`), 6-2 „Deep Trench“ (`sea_deep`, dunkler),
   Burg 6-3 „Tide Fortress“ mit dem Endboss. Die Unterwasser-Bereiche enden
@@ -434,7 +435,7 @@ Ducken und Absteigen auf Touch unmöglich.
   `j` Qualle (`jellyfish.gd`: sinkt, stößt schräg zum Helden hoch);
   `z` Krabbe (`crab.gd`, `extends Shroom`, stampfbar); `i` Seeigel
   (`urchin.gd`, Hindernis, unbesiegbar, nicht in `enemies`).
-- Endboss Welt 6 (türkis, 5 HP): wählt jedes Mal Fächer / Eisbälle /
+- Boss Welt 6 „Tide King“ (türkis, 5 HP): wählt jedes Mal Fächer / Eisbälle /
   Blitze, bei jeder zweiten Landung Schockwellen.
 - Hilfeseite „Sea World“; Playtest `sea`.
 
@@ -465,6 +466,54 @@ Ducken und Absteigen auf Touch unmöglich.
 - 6-1/6-2: je eine helfende Strömung weit oben (über Riff bzw. Graben)
   und eine Gegenströmung (über den Gruben bzw. im niedrigen Tunnel).
 - Hilfeseite „Pools & Currents“; Playtest `water`.
+
+## Welt 7 „Ghost House“ (v1.4)
+
+- 7-1 „Haunted Hall“ (Thema `ghost`: Villa innen, Tapete + Vorhänge +
+  Ahnenbilder, Decke), 7-2 „Moonlit Graveyard“ (`ghost_yard`: Friedhof
+  bei Nacht, Villa am Horizont), Burg 7-3 „Phantom Keep“
+  (`fortress_ghost`, violett, Nebel). Musik `music_ghost` „Haunted Waltz“
+  (e-Moll, 92 bpm); Burg wie immer `music_castle`.
+- Biome: `ghost` (`#` = Dielenboden, Atlas-Reihe 12, `w` = violette
+  Ziegel), `grave` (Friedhofserde-Autotile Reihe 13, `w` = Gruftziegel
+  `CRYPT_BRICK`); Reihe 14 Extras (Holzvertäfelung `GHOST_PANEL`,
+  Innenvarianten). Deko `ghost`: `*` Kandelaber, `+` Sessel, `f` Kürbis,
+  `t` Kerze (flackert), `r` Knochen; `grave`: `*` toter Baum, `+`
+  Grabstein, `t` Grasbüschel, `r` Kreuz.
+- **Türen** (`H` im Raster = Bodenzelle VOR der Tür, `door.gd`, `Door`):
+  Paare über `WARPS` mit `kind`/`arrive_kind` „door“ (`make_levels.py`:
+  `L.door(c, r=None)` + `L.link(a, b, area_a, area_b, both=True)`).
+  `warp_zone.gd` Art „door“: **just_pressed** ↓ (oder `ui_up`) innerhalb
+  8 px — gehaltenes ↓ nach der Ankunft darf nicht sofort zurückführen.
+  `game.gd::enter_warp`/`_arrive`: Tür öffnet, Held blendet aus/ein
+  (`modulate:a`), Ton `door`. Im Biom `grave` sitzt die Tür in einer Gruft
+  (`crypt.png`, 48×44). Selbsttest: Tür-Einstieg = `H` auf festem Boden,
+  Ziel ebenfalls `H`.
+- 7-1: erste Wand (Tür davor/dahinter), Türraum mit drei Türen (die unter
+  den Münzen führt weiter, links zurück zur ersten Wand, rechts in eine
+  Münzkammer `closet`), einstürzender Boden (`D`-Bretter über einer
+  Grube; `L.ceiling` nach `pit()` erneut setzen — `pit()` räumt die ganze
+  Spalte), Hintertür in der Endwand → Friedhof `exit` mit Fahne.
+  7-2: offene Gräber, Grabhügel, eine zu breite Kluft, die nur die zwei
+  verbundenen Grüfte überbrücken, lose Grabplatten (`D`), geheime Gruft
+  zu einem Sims mit Münzen (219, 8).
+- Gegner: `l` Geist (`ghost.gd`: schwebt durch Wände auf den Helden zu,
+  solange der wegschaut; schaut er hin, erstarrt er halb durchsichtig
+  „schüchtern“; Feuer wirkungslos, Stern/Panzer/Zunge vertreiben ihn),
+  `O` Knochen-Schildkröte (`bone_turtle.gd`: läuft, dreht an Kanten;
+  Stampfen/Feuer → Knochenhaufen, nach 4 s (1 s Klappern) steht sie
+  wieder auf; nur Stern/Panzer/Zunge erledigen sie). Burg 7-3: Abschnitte
+  `_sec_haunt` (Geister-Halle, Knochen-Schildkröten auf zwei Simsen) +
+  `_sec_doors` (drei Türen vor einer Wand: die mittlere unter den Münzen
+  führt dahinter, die äußeren tauschen nur die Plätze), Gegner-Halle mit
+  Knochen-Schildkröten.
+- Boss Welt 7 „Phantom-König“ (blass violett, 5 HP): Fächer aus drei
+  Flammen wie Welt 2, dazu `_phase()` — blendet aus (0,4 s), taucht auf
+  der anderen Seite des Helden wieder auf und holt aus; währenddessen
+  unberührbar und harmlos (`_phase_t`).
+- Hilfeseite „Ghost House“; Playtest `ghost` (Geist schüchtern/jagt,
+  alle Türen in 7-1/7-2, Knochenhaufen steht wieder auf, Phasen des
+  Bosses ohne Feuer nach oben, Karte Region 7).
 
 ## Biom-Gegner (v0.9)
 
@@ -605,15 +654,17 @@ skaliert (NEAREST). Adaptive-Vordergrund bleibt im sichtbaren Kreis (~61 %).
   gespeichert (`[progress] level`), der Weg dorthin zeichnet sich (1,1 s)
   und der Held läuft von selbst hin. Tod = Neustart im Kurs wie bisher;
   Game Over → „Play Again“ = neuer Lauf auf der Karte an derselben Stelle.
-  Nach 6-3 Siegerbildschirm. Levelauswahl-Cheat/„Boss“ starten direkt
+  Nach dem letzten Kurs Siegerbildschirm. Levelauswahl-Cheat/„Boss“ starten direkt
   (`_start_game`) und landen danach ebenfalls auf der Karte;
   `_run_reach` = max(Fortschritt, gestarteter Kurs).
 - **Karte** `world_map.gd` (`WorldMap`, Kind von World, eigene Banner-
   CanvasLayer 9 mit Kursname + Hinweis): Bild + Daten aus
-  `tools/gen_map.py` — `assets/graphics/world_map.png` (1400×270, sechs
+  `tools/gen_map.py` — `assets/graphics/world_map.png` (1630×270, sieben
   Regionen nebeneinander: Wiese mit Teich, Höhle mit Bergkamm/Lava, Wüste
   mit Pyramide/Oase, Schnee mit Gipfeln/See, Himmel mit Wolkeninseln +
-  Regenbogen, Meer mit Strand/Inseln), `map_nodes.png` (offen gelb /
+  Regenbogen, Meer mit Strand/Inseln, Geisterhaus mit Villa/Gräbern/Nebel
+  — jede neue Welt hängt rechts eine Region an: `W`, `REGIONS`, `NODES`,
+  `CASTLES`, `BEND`, `PAL` in gen_map.py), `map_nodes.png` (offen gelb /
   geschafft grün mit Haken / gesperrt dunkel mit Schloss), `map_castles.png`
   (Mini-Burg, rote/grüne/graue Fahne), `world_map_data.gd` (`NODES` in
   LEVELS-Reihenfolge, `ROADS[i]` = Bezier-Polylinie von Kurs i nach i+1,

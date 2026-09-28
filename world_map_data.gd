@@ -4,11 +4,11 @@ class_name WorldMapData
 ## NODES: course markers in game.gd LEVELS order; ROADS[i]: polyline from
 ## course i to course i+1; ROAD_KIND[i]: its look (dirt / cloud / plank).
 
-const SIZE := Vector2i(1400, 270)
+const SIZE := Vector2i(1630, 270)
 const NODE_CELL := Vector2i(20, 13)
 const CASTLE_CELL := Vector2i(26, 26)
-const CASTLES := [3, 6, 9, 12, 15, 18]
-const REGIONS := [Vector2i(0, 250), Vector2i(250, 480), Vector2i(480, 710), Vector2i(710, 940), Vector2i(940, 1170), Vector2i(1170, 1400)]
+const CASTLES := [3, 6, 9, 12, 15, 18, 21]
+const REGIONS := [Vector2i(0, 250), Vector2i(250, 480), Vector2i(480, 710), Vector2i(710, 940), Vector2i(940, 1170), Vector2i(1170, 1400), Vector2i(1400, 1630)]
 const NODES := [
 	Vector2(48, 196),
 	Vector2(104, 150),
@@ -29,6 +29,9 @@ const NODES := [
 	Vector2(1206, 204),
 	Vector2(1276, 222),
 	Vector2(1350, 168),
+	Vector2(1440, 198),
+	Vector2(1514, 150),
+	Vector2(1588, 192),
 ]
 const ROADS := [
 	[Vector2(48, 196), Vector2(52, 189), Vector2(56, 183), Vector2(61, 178), Vector2(66, 172), Vector2(72, 168), Vector2(77, 163), Vector2(83, 159), Vector2(90, 156), Vector2(97, 153), Vector2(104, 150)],
@@ -49,5 +52,8 @@ const ROADS := [
 	[Vector2(1116, 140), Vector2(1122, 150), Vector2(1129, 160), Vector2(1137, 168), Vector2(1145, 176), Vector2(1153, 183), Vector2(1163, 189), Vector2(1173, 194), Vector2(1183, 198), Vector2(1194, 201), Vector2(1206, 204)],
 	[Vector2(1206, 204), Vector2(1213, 204), Vector2(1221, 205), Vector2(1228, 205), Vector2(1235, 207), Vector2(1242, 208), Vector2(1249, 210), Vector2(1256, 213), Vector2(1263, 215), Vector2(1269, 218), Vector2(1276, 222)],
 	[Vector2(1276, 222), Vector2(1285, 219), Vector2(1293, 215), Vector2(1302, 211), Vector2(1310, 206), Vector2(1317, 201), Vector2(1324, 195), Vector2(1331, 189), Vector2(1338, 182), Vector2(1344, 175), Vector2(1350, 168)],
+	[Vector2(1350, 168), Vector2(1360, 169), Vector2(1369, 170), Vector2(1379, 172), Vector2(1388, 175), Vector2(1397, 177), Vector2(1406, 181), Vector2(1415, 184), Vector2(1423, 188), Vector2(1432, 193), Vector2(1440, 198)],
+	[Vector2(1440, 198), Vector2(1449, 196), Vector2(1458, 193), Vector2(1466, 189), Vector2(1474, 185), Vector2(1481, 181), Vector2(1489, 176), Vector2(1495, 170), Vector2(1502, 164), Vector2(1508, 157), Vector2(1514, 150)],
+	[Vector2(1514, 150), Vector2(1523, 152), Vector2(1531, 155), Vector2(1539, 157), Vector2(1547, 161), Vector2(1554, 165), Vector2(1562, 169), Vector2(1569, 174), Vector2(1575, 180), Vector2(1582, 186), Vector2(1588, 192)],
 ]
-const ROAD_KIND := ["dirt", "dirt", "dirt", "dirt", "dirt", "dirt", "dirt", "dirt", "dirt", "dirt", "dirt", "dirt", "cloud", "cloud", "cloud", "cloud", "plank", "plank"]
+const ROAD_KIND := ["dirt", "dirt", "dirt", "dirt", "dirt", "dirt", "dirt", "dirt", "dirt", "dirt", "dirt", "dirt", "cloud", "cloud", "cloud", "cloud", "plank", "plank", "plank", "dirt", "dirt"]

@@ -1650,6 +1650,143 @@ func _run() -> void:
 			await _wait(1.0)
 			print("STREAM 6-1 (flows right): dx after 1 s = %.0f px" % (p.global_position.x - x0))
 			await shot("stream")
+		"ghost":
+			# v1.4 world 7: doors (door room, closet, crypt exit), ghosts shy
+			# when faced, bone turtles fall apart + stand up, phantom king
+			var go := func(lv: int) -> void:
+				game.menus.hide_all()
+				game._start_game(lv, true)
+				await _wait(Game.CARD_TIME + 0.4)
+			var vshot := func(label: String) -> void:
+				var keep: float = game.player.invuln_t
+				game.player.invuln_t = 0.0
+				await shot(label)
+				game.player.invuln_t = keep
+			var door := func(cell: Vector2i, label: String) -> void:
+				await teleport(cell)
+				await _wait(0.25)
+				Input.action_press("move_down")
+				await _frames(3)
+				Input.action_release("move_down")
+				await _wait(1.6)
+				print("DOOR %s from %s -> cell %s area=%s gstate=%d alpha=%.2f" % [label, cell,
+					Vector2i(int(game.player.global_position.x / 16.0), int(game.player.global_position.y / 16.0) - 1),
+					game.area, game.state, game.player.modulate.a])
+			await go.call(Game.first_level_of_world(7))
+			var p := game.player
+			await shot("hall_start")
+			# the ghost at (21,10) is in view to the right; the hero faces right
+			var gh: Ghost = null
+			for e in game.get_tree().get_nodes_in_group("enemies"):
+				if e is Ghost and (gh == null or e.global_position.x < gh.global_position.x):
+					gh = e
+			await teleport(Vector2i(12, 16))
+			p.facing = 1
+			var g0 := gh.global_position
+			await _wait(1.0)
+			print("GHOST faced: moved %.1f px shy=%s alpha=%.2f" % [gh.global_position.distance_to(g0), gh._shy, gh.sprite.modulate.a])
+			await shot("ghost_shy")
+			await hold("move_left", 0.08)
+			g0 = gh.global_position
+			var d0 := g0.distance_to(p.global_position)
+			await _wait(1.0)
+			print("GHOST back turned: moved %.1f px, distance %.0f -> %.0f shy=%s" % [
+				gh.global_position.distance_to(g0), d0, gh.global_position.distance_to(p.global_position), gh._shy])
+			await shot("ghost_chase")
+			p.invuln_t = 99.0
+			# doors
+			await door.call(Vector2i(42, 16), "first wall")
+			await vshot.call("behind_wall")
+			await door.call(Vector2i(48, 16), "back")
+			await door.call(Vector2i(99, 16), "right (closet)")
+			await vshot.call("closet")
+			await door.call(Vector2i(256, 16), "closet back")
+			await door.call(Vector2i(87, 16), "left (back to wall)")
+			await door.call(Vector2i(93, 16), "middle (on)")
+			await teleport(Vector2i(90, 16))
+			await vshot.call("door_room")
+			await door.call(Vector2i(232, 16), "back door")
+			await vshot.call("graveyard_exit")
+			# bone turtle: stomp -> pile, stands up again
+			await go.call(Game.first_level_of_world(7))
+			p = game.player
+			var bt: BoneTurtle = null
+			for e in game.get_tree().get_nodes_in_group("enemies"):
+				if e is BoneTurtle:
+					bt = e
+					break
+			await teleport(Vector2i(int(bt.global_position.x / 16.0) - 6, 16))
+			await _wait(0.4)
+			bt.active = true
+			p.invuln_t = 99.0
+			p.global_position = bt.global_position + Vector2(0, -40)
+			p.velocity = Vector2(0, 120)
+			await _wait(0.3)
+			print("BONES stomped: state=%s (PILE=%d) lives=%d score=%d" % [bt.state, BoneTurtle.State.PILE, game.lives, game.score])
+			await teleport(Vector2i(int(bt.global_position.x / 16.0) - 5, 16))
+			await vshot.call("bones_pile")
+			await _wait(4.4)
+			print("BONES after 4.4 s: state=%s dead=%s t=%.2f pos=%s" % [bt.state, bt.dead, bt._t, bt.global_position.round()])
+			# 7-2 chasm + secret crypt
+			await go.call(Game.first_level_of_world(7) + 1)
+			p = game.player
+			p.invuln_t = 99.0
+			await vshot.call("graveyard")
+			await door.call(Vector2i(92, 16), "chasm crypt")
+			await vshot.call("chasm_other_side")
+			await door.call(Vector2i(210, 16), "secret crypt")
+			await vshot.call("secret_ledge")
+			# castle 7-3 + the phantom king
+			await go.call(Game.castle_of_world(7))
+			await shot("keep")
+			game.menus.hide_all()
+			game._start_game(Game.castle_of_world(7), true, true)
+			await _wait(Game.CARD_TIME + 0.3)
+			p = game.player
+			Input.action_press("move_right")
+			await _wait(1.6)
+			Input.action_release("move_right")
+			await _wait(0.3)
+			var boss: Boss = game.get_tree().get_nodes_in_group("boss")[0]
+			p.invuln_t = 99.0
+			var phases := 0
+			var up := 0
+			var was := false
+			for i in 900:
+				await physics_frame
+				var ph := boss._phase_t > 0.0
+				if ph and not was:
+					phases += 1
+					print("BOSS phase %d at x=%.0f hero x=%.0f" % [phases, boss.global_position.x, p.global_position.x])
+					if phases == 1:
+						await _wait(0.3)
+						await vshot.call("boss_phase")
+				was = ph
+				for c in game.level.get_children():
+					if c is BossFlame and c.velocity.y < -1.0 and c.kind != "ice":
+						up += 1
+				p.invuln_t = 99.0
+			print("BOSS 15 s: phases=%d upward flame frames=%d hp=%d" % [phases, up, boss.hp])
+			await vshot.call("boss_after")
+			# world map: region 7 (settings.cfg is restored after the run)
+			var c := ConfigFile.new()
+			c.load(GameSettings.CFG_PATH)
+			c.set_value("progress", "level", "7-2")
+			c.set_value("progress", "world", 7)
+			c.save(GameSettings.CFG_PATH)
+			SaveGame.clear()
+			game._to_title()
+			await _wait(0.5)
+			game.menus.hide_all()
+			game.menus.play_pressed.emit(-1)
+			await _wait(1.0)
+			var m := game.world_map
+			print("MAP 7: reach=%d at=%d banner='%s' music=%s" % [m.reach, m.at, m._title.text, game._snd_call("current_music", "")])
+			await shot("map_7")
+			await _act("move_left")
+			await _wait(1.2)
+			print("MAP 7 left: at=%d banner='%s'" % [m.at, m._title.text])
+			await shot("map_6_7")
 	await _wait(0.3)
 	_restore_user_files()
 	quit()

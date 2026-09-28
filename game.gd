@@ -22,9 +22,10 @@ const THEME_MUSIC := {"cave": "music_cave", "cavern": "music_cave", "desert": "m
 	"desert_dusk": "music_desert", "snow": "music_snow", "snow_night": "music_snow", "fortress": "music_castle",
 	"sky": "music_sky", "sky_dusk": "music_sky", "sea": "music_sea", "sea_deep": "music_sea",
 	"fortress_magma": "music_castle", "fortress_sun": "music_castle", "fortress_ice": "music_castle",
-	"fortress_storm": "music_castle", "fortress_tide": "music_castle"}
+	"fortress_storm": "music_castle", "fortress_tide": "music_castle",
+	"ghost": "music_ghost", "ghost_yard": "music_ghost", "fortress_ghost": "music_castle"}
 const MAP_THEME := "map"
-const WORLD_NAMES := ["Meadows", "Caverns", "Desert", "Snow", "Sky", "Sea"]
+const WORLD_NAMES := ["Meadows", "Caverns", "Desert", "Snow", "Sky", "Sea", "Ghosts"]
 const LEVELS := [
 	preload("res://levels/level_1_1.gd"),
 	preload("res://levels/level_1_2.gd"),
@@ -45,6 +46,9 @@ const LEVELS := [
 	preload("res://levels/level_6_1.gd"),
 	preload("res://levels/level_6_2.gd"),
 	preload("res://levels/level_6_3.gd"),
+	preload("res://levels/level_7_1.gd"),
+	preload("res://levels/level_7_2.gd"),
+	preload("res://levels/level_7_3.gd"),
 ]
 const CHAIN := [100, 200, 400, 500, 800, 1000, 2000, 4000, 5000, 8000]
 const TIME_TICK := 0.4
@@ -796,8 +800,19 @@ func enter_warp(zone: WarpZone) -> void:
 	player.collision_mask = 0
 	player.z_index = -2
 	player.play_anim(&"ride" if player.riding else &"idle", player.facing < 0)
-	_snd_call("play", null, ["pipe"])
 	var tw := create_tween()
+	if zone.kind == "door":
+		# ghost house door (v1.4): it opens, the hero steps in and fades
+		player.global_position.x = zone.global_position.x
+		var door := level.door_at(w["entry"])
+		if door:
+			door.open(0.9)
+		_snd_call("play", null, ["door"])
+		tw.tween_property(player, "modulate:a", 0.0, 0.3)
+		tw.tween_interval(0.2)
+		tw.tween_callback(func(): _arrive(w))
+		return
+	_snd_call("play", null, ["pipe"])
 	if zone.kind == "down":
 		player.global_position.x = zone.global_position.x
 		tw.tween_property(player, "global_position:y", player.global_position.y + 34.0, 0.8)
@@ -821,6 +836,20 @@ func _arrive(w: Dictionary) -> void:
 		var tw := create_tween()
 		tw.tween_property(player, "global_position:y", pos.y, 0.8)
 		tw.tween_callback(_finish_warp)
+	elif w["arrive_kind"] == "door":
+		player.global_position = pos
+		player.z_index = 0                 # fades in in front of the open door
+		_cam_pos = pos + Vector2(0, -30)
+		_update_camera(0.0, true)
+		_play_area_music()
+		var door := level.door_at(w["arrive"])
+		if door:
+			door.open(0.7)
+		_snd_call("play", null, ["door"])
+		var tw := create_tween()
+		tw.tween_interval(0.15)
+		tw.tween_property(player, "modulate:a", 1.0, 0.3)
+		tw.tween_callback(_finish_warp)
 	else:
 		player.global_position = pos
 		_cam_pos = pos + Vector2(0, -30)
@@ -831,6 +860,7 @@ func _arrive(w: Dictionary) -> void:
 func _finish_warp() -> void:
 	if player == null:
 		return
+	player.modulate.a = 1.0
 	player.z_index = 0
 	player.collision_mask = 1
 	player.set_scripted(false)

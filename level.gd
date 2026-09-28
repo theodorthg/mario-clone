@@ -32,6 +32,11 @@ const CLOUD_BRIDGE_R := Vector2i(2, 10)
 const SKY_BRICK := Vector2i(3, 10)
 const CORAL_BRICK := Vector2i(6, 10)
 const ROW_REEF := 11
+const ROW_GHOST := 12                # v1.4 mansion floor boards
+const ROW_GRAVE := 13                # graveyard soil
+const ROW_GHOST_EXTRA := 14          # wall panel, plank + soil interiors, crypt stone
+const GHOST_PANEL := Vector2i(0, 14)
+const CRYPT_BRICK := Vector2i(8, 14)
 ## area themes that are underwater (the hero swims there, see player.gd)
 const WATER_THEMES := ["sea", "sea_deep"]
 const CASTLE_WALL := Vector2i(2, 8)
@@ -41,12 +46,14 @@ const LAVA := Vector2i(13, 6)
 const SANDSTONE := Vector2i(14, 6)
 const ICE_BRICK := Vector2i(15, 6)
 const BIOME_ROW := {"grass": ROW_GRASS, "cave": ROW_CAVE, "sand": ROW_SAND, "snow": ROW_SNOW,
-	"castle": ROW_CASTLE, "sky": ROW_CLOUD, "sea": ROW_REEF, "beach": ROW_SAND}
+	"castle": ROW_CASTLE, "sky": ROW_CLOUD, "sea": ROW_REEF, "beach": ROW_SAND,
+	"ghost": ROW_GHOST, "grave": ROW_GRAVE}
 ## area theme (AREAS in the level data) -> ground/decor biome of those columns
 const THEME_BIOME := {"cave": "cave", "cavern": "cave", "desert": "sand", "desert_dusk": "sand",
 	"snow": "snow", "snow_night": "snow", "fortress": "castle", "sky": "sky", "sky_dusk": "sky",
 	"sea": "sea", "sea_deep": "sea", "beach": "beach", "fortress_magma": "castle", "fortress_sun": "castle",
-	"fortress_ice": "castle", "fortress_storm": "castle", "fortress_tide": "castle"}
+	"fortress_ice": "castle", "fortress_storm": "castle", "fortress_tide": "castle",
+	"ghost": "ghost", "ghost_yard": "grave", "fortress_ghost": "castle"}
 const HARD := Vector2i(4, 1)
 const BRIDGE_L := Vector2i(5, 1)
 const BRIDGE_M := Vector2i(6, 1)
@@ -74,7 +81,11 @@ const DECOR_BIOME := {
 	"sky": {"*": "sky_bush_l", "+": "sky_bush_s", "f": "sky_flower", "t": "tuft_sky", "r": "rock_sky"},
 	"sea": {"*": "seaweed", "+": "coral", "f": "starfish", "t": "tuft_sea", "r": "rock_sea"},
 	"beach": {"*": "palm", "+": "palm", "f": "starfish", "t": "tuft_sand", "r": "rock_sand"},
+	"ghost": {"*": "candelabra", "+": "chair", "f": "pumpkin", "t": "candle", "r": "bones"},
+	"grave": {"*": "dead_tree", "+": "tomb", "f": "pumpkin", "t": "tuft_grave", "r": "cross"},
 }
+## decorations with a living flame
+const FLICKER := ["torch", "candle", "candelabra", "pumpkin"]
 const SWAYING := ["seaweed", "tuft_sea"]
 const FLOWERS := ["flower_a", "flower_b", "flower_c"]
 
@@ -98,6 +109,7 @@ var _col_biome := PackedStringArray()
 ## push a swimming hero — px rects from the level data (POOLS / CURRENTS)
 var pools: Array[Rect2] = []
 var currents: Array = []             # [{rect: Rect2, dir: int}]
+var doors := {}                      # Vector2i cell -> Door (v1.4 ghost house)
 
 static var _tileset_cache: TileSet
 
@@ -140,6 +152,9 @@ func at(c: int, r: int) -> String:
 
 func biome_at(c: int) -> String:
 	return _col_biome[clampi(c, 0, cols - 1)]
+
+func door_at(cell: Vector2i) -> Door:
+	return doors.get(cell)
 
 func is_ice(c: int, r: int) -> bool:
 	return at(c, r) == "I"
@@ -269,7 +284,7 @@ func _build_tiles() -> void:
 				"w":
 					tiles.set_cell(Vector2i(c, r), 0, {"sand": SANDSTONE, "snow": ICE_BRICK,
 						"castle": CASTLE_WALL, "sky": SKY_BRICK, "sea": CORAL_BRICK,
-						"beach": SANDSTONE}.get(biome_at(c), CAVE_BRICK))
+						"beach": SANDSTONE, "ghost": GHOST_PANEL, "grave": CRYPT_BRICK}.get(biome_at(c), CAVE_BRICK))
 				"=":
 					# log bridge; in the sky a one-way cloud strip
 					var l := at(c - 1, r) == "="
@@ -318,6 +333,12 @@ func _ground_tile(c: int, r: int, ch: String, row: int) -> Vector2i:
 	if m == 0 and row == ROW_CLOUD:
 		var hc := absi((c * 73856093) ^ (r * 19349663)) % 11
 		return Vector2i(4, ROW_SKY_EXTRA) if hc == 0 else (Vector2i(5, ROW_SKY_EXTRA) if hc == 1 else Vector2i(0, ROW_CLOUD))
+	if m == 0 and row == ROW_GHOST:
+		var hg := absi((c * 73856093) ^ (r * 19349663)) % 20
+		return Vector2i(0, ROW_GHOST) if hg < 14 else Vector2i(1 + hg % 3, ROW_GHOST_EXTRA)
+	if m == 0 and row == ROW_GRAVE:
+		var hy := absi((c * 73856093) ^ (r * 19349663)) % 20
+		return Vector2i(4 + (0 if hy < 13 else (1 if hy < 15 else (2 if hy < 18 else 3))), ROW_GHOST_EXTRA)
 	if m == 0 and (row == ROW_SAND or row == ROW_SNOW):
 		var hv := absi((c * 73856093) ^ (r * 19349663)) % 20
 		var k := 0 if hv < 13 else (1 if hv < 15 else (2 if hv < 18 else 3))
@@ -325,7 +346,8 @@ func _ground_tile(c: int, r: int, ch: String, row: int) -> Vector2i:
 	return Vector2i(m, row)
 
 func _pipe_free(ch: String) -> bool:
-	return ch in [".", "o", "g", "G", "k", "K", "J", "Z", "a", "p", "q", "~", "^", "D", "T", "u", "x", "y", "e", "E", "j", "z", "i"] \
+	return ch in [".", "o", "g", "G", "k", "K", "J", "Z", "a", "p", "q", "~", "^", "D", "T", "u", "x", "y", "e", "E", "j", "z", "i",
+			"l", "O"] \
 		or DECOR.has(ch)
 
 func _place_pipe(c: int, r: int) -> void:
@@ -472,6 +494,20 @@ func _build_entities() -> void:
 					var pg := Penguin.new()
 					pg.position = cell_feet(c, r)
 					add_child(pg)
+				"l":
+					var gh := Ghost.new()
+					gh.position = cell_feet(c, r)
+					add_child(gh)
+				"O":
+					var bt := BoneTurtle.new()
+					bt.position = cell_feet(c, r)
+					add_child(bt)
+				"H":
+					var door := Door.new()
+					door.crypt = biome_at(c) == "grave"
+					door.position = Vector2(c * T, (r + 1) * T)
+					add_child(door)
+					doors[Vector2i(c, r)] = door
 				"Q":
 					var ch_plant := Chomper.new()
 					ch_plant.pipe_top = Vector2((c + 1) * T, r * T)
@@ -509,7 +545,7 @@ func _add_decor(parent: Node, name: String, feet: Vector2) -> Sprite2D:
 		var t := 1.0 + randf() * 0.5
 		sw.tween_property(s, "skew", 0.16, t).set_trans(Tween.TRANS_SINE)
 		sw.tween_property(s, "skew", -0.16, t).set_trans(Tween.TRANS_SINE)
-	if name == "torch":
+	if name in FLICKER:
 		# flickering flame
 		var tw := s.create_tween().set_loops()
 		tw.tween_property(s, "self_modulate", Color(1.2, 1.05, 0.9), 0.12 + randf() * 0.1)
@@ -552,6 +588,8 @@ func _build_warps() -> void:
 		var e: Vector2i = w["entry"]
 		if z.kind == "down":
 			z.position = Vector2((e.x + 1) * T, e.y * T)          # pipe top center
+		elif z.kind == "door":
+			z.position = cell_feet(e.x, e.y)                      # in front of the door
 		else:
 			z.position = Vector2(e.x * T, (e.y + 2) * T)          # side mouth, floor level
 		z.warp = w

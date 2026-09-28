@@ -37,6 +37,9 @@ Grid legend (one char per 16x16 cell, row 0 = top):
   y  seagull (glides toward the hero)
   e  slow wavy fish   E  fast darting fish   j  jellyfish (pulses at you)
   z  crab (sea floor walker)   i  sea urchin (hazard, can't be defeated)
+  l  ghost (chases while you look away)   O  bone turtle (falls apart)
+  H  ghost house door (the floor cell in front of it; linked in pairs via
+     WARPS kind "door", see L.door() / L.link())
   Underwater areas (theme sea / sea_deep): the hero swims; put water
   surface tiles 'v' in row 2 (see add_surface()).
   Pools (v1.3, L.pools): rectangles of swimmable water inside a dry area
@@ -63,7 +66,7 @@ THEME_BIOME = {"cave": "cave", "cavern": "cave", "desert": "sand", "desert_dusk"
                "snow": "snow", "snow_night": "snow", "fortress": "castle", "sky": "sky", "sky_dusk": "sky",
                "sea": "sea", "sea_deep": "sea", "beach": "beach", "fortress_magma": "castle",
                "fortress_sun": "castle", "fortress_ice": "castle", "fortress_storm": "castle",
-               "fortress_tide": "castle"}
+               "fortress_tide": "castle", "ghost": "ghost", "ghost_yard": "grave", "fortress_ghost": "castle"}
 
 
 class Level:
@@ -183,6 +186,21 @@ class Level:
     def side_pipe(self, c, r):
         self.set(c, r, ">")
         return (c, r)
+
+    # ------------------------------------------------------ ghost house doors
+    def door(self, c, r=None):
+        """ghost house door standing on the floor at column c; returns its
+        cell (the floor cell in front of it — the cell above must be free)"""
+        if r is None:
+            r = self.surface(c) - 1
+        self.set(c, r, "H")
+        return (c, r)
+
+    def link(self, a, b, area_a="main", area_b="main", both=True):
+        """door a leads to door b (and back unless both=False)"""
+        self.warps.append({"entry": a, "kind": "door", "arrive": b, "arrive_kind": "door", "area": area_b})
+        if both:
+            self.warps.append({"entry": b, "kind": "door", "arrive": a, "arrive_kind": "door", "area": area_a})
 
     # ---------------------------------------------------------------- output
     def emit(self):
@@ -1751,11 +1769,199 @@ def level_6_2():
 
 
 # =========================================================================
+# 7-1  "Haunted Hall" — inside the mansion: doors through walls, a door
+#      room (only one door leads on), ghosts, bone turtles, a collapsing
+#      floor, a coin closet; out through the back door into the graveyard
+# =========================================================================
+def level_7_1():
+    L = Level("7-1", "HAUNTED HALL", 340, time=400)
+    MAIN_END = 250
+    L.ground(0, MAIN_END - 1)
+    L.ceiling(0, MAIN_END - 1, 3)
+    L.top = 3
+    # entrance hall: candles, the first power-up, the first ghost (in view,
+    # so it starts out shy)
+    for c, ch in ((2, "*"), (5, "t"), (13, "+"), (16, "f"), (22, "t")):
+        L.decor(c, ch)
+    L.blocks(8, 13, "?M?")
+    L.coins(17, 13, 4)
+    L.set(21, 10, "l")
+    # a gallery with a bone turtle, a high ledge, a bat under the ceiling
+    L.ledge(25, 31, 13, depth=1)
+    L.coins(25, 12, 3)
+    L.enemy(29, ch="O")
+    L.ledge(34, 38, 10, depth=1)
+    L.blocks(36, 6, "?")
+    L.bat(40)
+    # the first wall: the door in front of it leads behind it (and back)
+    L.fill(44, 45, 3, GROUND - 1, "w")
+    L.coins(41, 13, 2)
+    a = L.door(42)
+    b = L.door(48)
+    L.link(a, b)
+    L.decor(39, "*")
+    L.decor(51, "t")
+    # long hall: ghosts, bone turtles, a hole in the floor
+    L.set(57, 10, "l")
+    L.enemy(60, ch="O")
+    L.pit(64, 66)
+    L.ceiling(64, 66, 3)              # pit() clears the whole column
+    L.coin_arc(63, 11, 5)
+    L.blocks(70, 13, "B?B")
+    L.set(74, 12, "l")
+    L.enemy(77, ch="O")
+    L.decor(80, "+")
+    # the door room: three doors — the one under the coins leads on, the
+    # left one back to the first wall, the right one into a coin closet
+    L.fill(104, 105, 3, GROUND - 1, "w")
+    d1 = L.door(87)
+    d2 = L.door(93)
+    d3 = L.door(99)
+    L.coins(92, 12, 3)
+    L.coins(93, 11, 1)
+    d4 = L.door(108)
+    L.link(d2, d4)
+    L.link(d1, b, both=False)
+    L.decor(84, "*")
+    L.decor(102, "t")
+    L.checkpoints.append((112, GROUND - 1))
+    # stairs up to a long gallery: bone turtles, blocks, a ghost
+    L.stairs(116, 4, up=True)
+    L.ledge(120, 138, 13, depth=1)
+    L.coins(121, 12, 3)
+    L.enemy(127, 12, "O")
+    L.enemy(134, 12, "O")
+    L.blocks(124, 9, "?C?")
+    L.set(131, 8, "l")
+    L.stairs(139, 4, up=False)
+    L.decor(146, "*")
+    # the collapsing floor: a hole, loose boards that fall away
+    L.pit(150, 170)
+    L.ceiling(150, 170, 3)
+    for c0, r in ((151, 15), (157, 14), (163, 15), (168, 14)):
+        L.set(c0, r, "D")
+    L.coins(157, 11, 3)
+    L.set(161, 8, "l")
+    # last hall
+    L.enemy(176, ch="O")
+    L.blocks(180, 13, "?B?")
+    L.set(184, 9, "h")
+    L.set(189, 11, "l")
+    L.enemy(194, ch="O")
+    L.decor(198, "+")
+    L.decor(203, "*")
+    L.blocks(207, 13, "BMB")
+    L.set(215, 10, "l")
+    L.coins(219, 13, 5)
+    L.decor(228, "t")
+    # the back door in the end wall: out into the graveyard
+    L.fill(236, MAIN_END - 1, 3, GROUND - 1, "w")
+    ex = L.door(232)
+    # the coin closet behind the right door of the door room
+    CL0, CL1 = 252, 291
+    L.ground(CL0, CL1)
+    L.ceiling(CL0, CL1, 3)
+    L.fill(CL0, CL0 + 1, 3, GROUND - 1, "w")
+    L.fill(CL1 - 1, CL1, 3, GROUND - 1, "w")
+    cd = L.door(CL0 + 4)
+    L.link(d3, cd, "main", "closet")
+    for r in (9, 11, 13):
+        L.coins(CL0 + 9, r, 20)
+    L.blocks(CL0 + 32, 13, "U")
+    L.decor(CL0 + 7, "*")
+    L.decor(CL1 - 4, "*")
+    # outside: the graveyard behind the mansion, flag pole and castle
+    E0, E1 = 294, 339
+    L.ground(E0, E1)
+    ea = L.door(E0 + 4)                # a crypt: the mansion's back door
+    L.link(ex, ea, "main", "exit", both=False)
+    finale(L, E0 + 10, E0 + 26, E0 + 30)
+    for c, ch in ((E0 + 7, "+"), (E0 + 21, "r"), (E0 + 24, "*"), (E0 + 38, "+")):
+        L.decor(c, ch)
+    L.areas = {"main": (0, MAIN_END - 1, "ghost"), "closet": (CL0, CL1, "ghost"), "exit": (E0, E1, "ghost_yard")}
+    return L
+
+
+# =========================================================================
+# 7-2  "Moonlit Graveyard" — open graves, bone turtles on grave hills,
+#      ghosts; a chasm only the crypt doors cross; loose grave slabs; a
+#      crypt door to a secret ledge
+# =========================================================================
+def level_7_2():
+    L = Level("7-2", "MOONLIT GRAVEYARD", 290, time=400)
+    L.ground(0, 289)
+    for c, ch in ((2, "*"), (7, "+"), (12, "r"), (15, "t"), (19, "f")):
+        L.decor(c, ch)
+    L.blocks(9, 13, "?M?")
+    L.enemy(22, ch="O")
+    # three open graves
+    for c0 in (27, 33, 39):
+        L.pit(c0, c0 + 1)
+        L.coins(c0, 12, 2)
+    L.set(36, 9, "l")
+    L.decor(31, "+")
+    L.decor(37, "+")
+    L.decor(43, "r")
+    # a grave hill with a crypt wall on top
+    L.fill(47, 60, 14, GROUND - 1, "#")
+    L.fill(51, 54, 10, 13, "w")
+    L.coins(51, 9, 4)
+    L.enemy(57, 13, "O")
+    L.decor(48, "t")
+    L.set(64, 10, "l")
+    L.blocks(68, 13, "?B?")
+    L.enemy(72, ch="O")
+    L.decor(76, "*")
+    # the chasm: too wide to jump — the crypt doors on both rims are linked
+    L.coins(86, 13, 5)
+    ca = L.door(92)
+    L.pit(96, 117)
+    cb = L.door(121)
+    L.link(ca, cb)
+    L.decor(125, "+")
+    L.checkpoints.append((127, GROUND - 1))
+    # rolling grave hills with bone turtles and ghosts
+    L.fill(131, 140, 15, GROUND - 1, "#")
+    L.fill(134, 138, 13, 14, "#")
+    L.enemy(136, 12, "O")
+    L.fill(146, 156, 14, GROUND - 1, "#")
+    L.enemy(151, 13, "O")
+    L.blocks(142, 11, "?C?")
+    L.set(144, 7, "l")
+    L.set(160, 11, "l")
+    L.decor(162, "*")
+    L.decor(166, "r")
+    # loose grave slabs over a mass grave
+    L.pit(174, 196)
+    for c0, r in ((175, 15), (181, 14), (187, 15), (193, 14)):
+        L.set(c0, r, "D")
+    L.coins(181, 11, 3)
+    L.coins(193, 11, 3)
+    L.set(184, 8, "l")
+    # a crypt door that leads up onto a secret ledge (and back down)
+    L.enemy(202, ch="O")
+    cs = L.door(210)
+    L.ledge(218, 227, 9, depth=1, ch="w")
+    ct = L.door(219, 8)
+    L.link(cs, ct)
+    L.coins(221, 8, 6)
+    L.blocks(224, 5, "U")
+    L.set(214, 11, "l")
+    L.enemy(232, ch="O")
+    L.decor(236, "+")
+    L.decor(240, "f")
+    finale(L, 246, 262, 266)
+    L.decor(244, "*")
+    L.areas = {"main": (0, 289, "ghost_yard")}
+    return L
+
+
+# =========================================================================
 # castles — the last course of every world: fire bars, lava bubbles,
 # a power-up before the arena and the boss. Harder with every world.
 # =========================================================================
 CASTLE_NAMES = {1: "STONE KEEP", 2: "MAGMA FORT", 3: "SUN CITADEL", 4: "FROST BASTION", 5: "STORM CITADEL",
-                6: "TIDE FORTRESS"}
+                6: "TIDE FORTRESS", 7: "PHANTOM KEEP"}
 
 
 # Castle sections. v0.14: every castle its own mix (3-3 and 4-3 had been
@@ -1895,7 +2101,8 @@ def _sec_gallery(L, c, world):
     L.decor(c + 14, "*", 3)
     L.blocks(c + 3, 13, "?B?")
     L.coins(c + 9, 12, 4)
-    walkers = {1: ("g", "g"), 2: ("k", "k"), 3: ("p", "g"), 4: ("q", "q"), 5: ("x", "k"), 6: ("z", "z")}[world]
+    walkers = {1: ("g", "g"), 2: ("k", "k"), 3: ("p", "g"), 4: ("q", "q"), 5: ("x", "k"), 6: ("z", "z"),
+               7: ("O", "O"), 8: ("O", "k")}[world]
     for d, ch in zip((9, 13), walkers):
         L.enemy(c + d, ch=ch)
     if world == 4:
@@ -1958,10 +2165,38 @@ def _sec_tank(L, c, world):
     L.set(c + 18, GROUND + 1, "i")
 
 
+def _sec_doors(L, c, world):
+    """three doors in front of a wall (ghost house, v1.4): the middle one,
+    under the coins, leads behind the wall; the outer two just swap places"""
+    L.fill(c + 12, c + 13, 3, GROUND - 1, "w")
+    d1 = L.door(c + 3, GROUND - 1)
+    d2 = L.door(c + 6, GROUND - 1)
+    d3 = L.door(c + 9, GROUND - 1)
+    d4 = L.door(c + 16, GROUND - 1)
+    L.coins(c + 5, 12, 3)
+    L.link(d2, d4)
+    L.link(d1, d3)
+    L.decor(c + 1, "*", 3)
+    L.decor(c + 15, "+", 12)
+
+
+def _sec_haunt(L, c, world):
+    """a haunted hall (v1.4): ghosts drift in, bone turtles on two ledges"""
+    L.ledge(c + 3, c + 7, 13, depth=1)
+    L.ledge(c + 10, c + 14, 11, depth=1)
+    L.enemy(c + 5, 12, "O")
+    L.enemy(c + 12, 10, "O")
+    L.set(c + 8, 8, "l")
+    L.set(c + 16, 12, "l")
+    L.coins(c + 10, 9, 5)
+    L.decor(c + 1, "+", 12)
+    L.blocks(c + 16, 9, "?")
+
+
 SECTION_WIDTH = {_sec_pillars: 12, _sec_steps: 13, _sec_walkway: 20, _sec_bridge: 20, _sec_lifts: 20,
                  _sec_low: 15, _sec_slabs: 15, _sec_tips: 15, _sec_lake: 23, _sec_bubbles: 23,
                  _sec_vlifts: 23, _sec_gallery: 16, _sec_tower: 17, _sec_maze: 17,
-                 _sec_moat: 22, _sec_tank: 30}
+                 _sec_moat: 22, _sec_tank: 30, _sec_doors: 18, _sec_haunt: 18}
 
 CASTLE_PLAN = {
     # world: (sections in order, area theme)
@@ -1972,6 +2207,8 @@ CASTLE_PLAN = {
     5: ([_sec_tips, _sec_maze, _sec_vlifts, _sec_bridge, _sec_steps], "fortress_storm"),
     # the tide fortress is partly flooded (v1.3): a moat and a tank to swim
     6: ([_sec_tower, _sec_moat, _sec_gallery, _sec_tank, _sec_maze, _sec_vlifts], "fortress_tide"),
+    # the phantom keep (v1.4): ghosts, door riddles, bone turtles
+    7: ([_sec_haunt, _sec_bridge, _sec_doors, _sec_gallery, _sec_maze, _sec_lake], "fortress_ghost"),
 }
 SEC_GAP = 3
 
@@ -2057,6 +2294,10 @@ def render_preview(L, path):
     jelly_im = Image.open(os.path.join(gfx, "enemy_jelly.png")).convert("RGBA").crop((0, 0, 16, 15))
     crab_im = Image.open(os.path.join(gfx, "enemy_crab.png")).convert("RGBA").crop((0, 0, 14, 13))
     urch_im = Image.open(os.path.join(gfx, "enemy_urchin.png")).convert("RGBA").crop((0, 0, 18, 18))
+    ghost_im = Image.open(os.path.join(gfx, "enemy_ghost.png")).convert("RGBA").crop((0, 0, 18, 18))
+    bones_im = Image.open(os.path.join(gfx, "enemy_bones.png")).convert("RGBA").crop((0, 0, 28, 26))
+    door_im = Image.open(os.path.join(gfx, "door.png")).convert("RGBA").crop((0, 0, 16, 32))
+    crypt_im = Image.open(os.path.join(gfx, "crypt.png")).convert("RGBA").crop((0, 0, 48, 44))
     import re
     idx = {}
     for line in open(os.path.join(ROOT, "decor_index.gd")):
@@ -2090,6 +2331,8 @@ def render_preview(L, path):
         "sky": {"*": "sky_bush_l", "+": "sky_bush_s", "f": "sky_flower", "t": "tuft_sky", "r": "rock_sky"},
         "sea": {"*": "seaweed", "+": "coral", "f": "starfish", "t": "tuft_sea", "r": "rock_sea"},
         "beach": {"*": "palm", "+": "palm", "f": "starfish", "t": "tuft_sand", "r": "rock_sand"},
+        "ghost": {"*": "candelabra", "+": "chair", "f": "pumpkin", "t": "candle", "r": "bones"},
+        "grave": {"*": "dead_tree", "+": "tomb", "f": "pumpkin", "t": "tuft_grave", "r": "cross"},
     }
     col_biome = ["grass"] * L.cols
     for c0, c1, theme in L.areas.values():
@@ -2112,7 +2355,7 @@ def render_preview(L, path):
                 if not solid_ground(c + 1, r, ch):
                     m |= 8
                 row = {"grass": 0, "cave": 3, "sand": 4, "snow": 5, "castle": 7, "sky": 9, "sea": 11,
-                       "beach": 4}[bio] if ch == "#" else 3
+                       "beach": 4, "ghost": 12, "grave": 13}[bio] if ch == "#" else 3
                 img.alpha_composite(tile(m, row), (x, y))
             elif ch == "I":
                 img.alpha_composite(tile(8, 6), (x, y))
@@ -2147,6 +2390,15 @@ def render_preview(L, path):
                 later.append((urch_im, x - 1, y - 2))
             elif ch == "a":
                 later.append((bat_im, x - 1, y))
+            elif ch == "l":
+                later.append((ghost_im, x - 1, y - 2))
+            elif ch == "O":
+                later.append((bones_im, x - 6, y - 10))
+            elif ch == "H":
+                if bio == "grave":
+                    later.append((crypt_im, x - 16, y + 16 - 44))
+                else:
+                    later.append((door_im, x, y - 16))
             elif ch == "q":
                 later.append((pen_im, x - 1, y - 2))
             elif ch == "p":
@@ -2165,6 +2417,10 @@ def render_preview(L, path):
                     img.alpha_composite(tile(6, 10), (x, y))
                 elif bio == "beach":
                     img.alpha_composite(tile(14, 6), (x, y))
+                elif bio == "ghost":
+                    img.alpha_composite(tile(0, 14), (x, y))
+                elif bio == "grave":
+                    img.alpha_composite(tile(8, 14), (x, y))
                 else:
                     img.alpha_composite(blk(6), (x, y))
             elif ch == "=":
@@ -2262,3 +2518,6 @@ if __name__ == "__main__":
     level_6_1().emit()
     level_6_2().emit()
     castle_level(6, "6-3").emit()
+    level_7_1().emit()
+    level_7_2().emit()
+    castle_level(7, "7-3").emit()

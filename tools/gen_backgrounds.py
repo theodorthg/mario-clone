@@ -595,6 +595,234 @@ def palms_band():
     return img
 
 
+# ------------------------------------------------------ ghost house (v1.4) --
+def ghost_hall():
+    """mansion wall, full height: striped wallpaper, wainscoting, tall windows
+    (transparent -> the moonlit night sky shows through), portraits, sconces"""
+    h = 270
+    img = Image.new("RGBA", (BG_W, h), TRANSPARENT)
+    px = img.load()
+    paper, paper_d, stripe = hex_rgba("#2e2240"), hex_rgba("#271c38"), hex_rgba("#3a2c50")
+    wood, wood_l, wood_d = hex_rgba("#3a2630"), hex_rgba("#4e3440"), hex_rgba("#221418")
+    for y in range(h):
+        for x in range(BG_W):
+            if y >= 196:                                   # wainscoting
+                c = wood if (x % 32) not in (0, 31) else wood_d
+                if y in (196, 197):
+                    c = wood_l
+                elif (y - 204) % 30 == 0 or ((x % 32) in (4, 27) and 206 < y < 262):
+                    c = wood_d
+            else:
+                c = stripe if x % 12 < 3 else (paper if (x // 6 + y // 9) % 5 else paper_d)
+                if (x % 12 == 7) and (y % 18) in (4, 5) :
+                    c = stripe                              # tiny fleur dots
+            px[x, y] = c
+    frame, frame_d = hex_rgba("#4a3a5a"), hex_rgba("#1c1428")
+    for cx in range(48, BG_W, 160):                        # tall arched windows
+        top, bot, hw = 60, 170, 16
+        for y in range(top - 20, bot + 4):
+            for x in range(cx - hw - 4, cx + hw + 5):
+                dx = x - cx
+                if y < top:
+                    inside = dx * dx + (y - top) ** 2 <= hw * hw
+                    rim = dx * dx + (y - top) ** 2 <= (hw + 4) ** 2
+                else:
+                    inside = abs(dx) <= hw and y <= bot
+                    rim = abs(dx) <= hw + 4
+                if inside:
+                    px[x % BG_W, y] = TRANSPARENT
+                elif rim:
+                    px[x % BG_W, y] = frame if abs(dx) < hw + 3 and y < bot + 3 else frame_d
+        for y in range(top - 14, bot):                     # window cross
+            px[cx % BG_W, y] = frame_d
+        for x in range(cx - hw, cx + hw + 1):
+            px[x % BG_W, top + 30] = frame_d
+    gold, gold_d, canvas = hex_rgba("#b8903a"), hex_rgba("#7a5a1a"), hex_rgba("#1e1a26")
+    face = hex_rgba("#3a3448")
+    for cx in range(128, BG_W, 160):                       # portraits
+        x0, x1, y0, y1 = cx - 18, cx + 18, 70, 122
+        for y in range(y0, y1 + 1):
+            for x in range(x0, x1 + 1):
+                edge = min(x - x0, x1 - x, y - y0, y1 - y)
+                c = gold if edge < 2 else (gold_d if edge < 3 else canvas)
+                dx, dy = x - cx, y - 90
+                if edge >= 3 and (dx * dx / 90.0 + dy * dy / 150.0 <= 1 or (y > 104 and abs(dx) < 13 - (y - 104) // 3 * -1 and abs(dx) < 14)):
+                    c = face
+                if edge >= 3 and y in (86, 87) and dx in (-4, -3, 3, 4):
+                    c = hex_rgba("#c8c060")                 # the eyes glow a little
+                px[x % BG_W, y] = c
+    flame, flame_c, brass = hex_rgba("#ff9a2a"), hex_rgba("#fff6a0"), hex_rgba("#8a6a2a")
+    for cx in range(88, BG_W, 160):                        # wall sconces
+        for y in range(128, 146):
+            px[cx % BG_W, y] = brass
+        for dx in range(-4, 5):
+            px[(cx + dx) % BG_W, 146] = brass
+        for dy in range(6):
+            for dx in (-1, 0, 1):
+                if abs(dx) + dy // 2 < 3:
+                    px[(cx + dx) % BG_W, 121 + dy] = flame_c if dx == 0 and dy > 2 else flame
+    return img
+
+
+def ghost_curtains():
+    """near layer: dark posts with torn curtains and cobwebs"""
+    h = 200
+    img = Image.new("RGBA", (BG_W, h), TRANSPARENT)
+    px = img.load()
+    post, post_l, line = hex_rgba("#2a1c26"), hex_rgba("#3e2a38"), hex_rgba("#120a10")
+    cloth, cloth_d = hex_rgba("#5a1e3a"), hex_rgba("#3e1228")
+    web = hex_rgba("#8a86a0")
+    for cx in range(80, BG_W, 213 if False else 160):
+        for y in range(h):
+            for dx in range(-7, 8):
+                c = post_l if dx < -3 else post
+                if abs(dx) == 7:
+                    c = line
+                px[(cx + dx) % BG_W, y] = c
+        for side in (-1, 1):                               # curtain on both sides
+            for y in range(0, 120):
+                width = 26 - y // 8 + int(3 * math.sin(y / 7.0 + side))
+                for k in range(max(width, 4)):
+                    x = cx + side * (8 + k)
+                    tear = y > 90 and (k * 7 + y) % 11 < 3
+                    if tear:
+                        continue
+                    c = cloth if (k // 4) % 2 else cloth_d
+                    px[x % BG_W, y] = c
+        # cobweb in the upper corner right of the post
+        for r in range(4, 30, 7):
+            for a in range(0, 90, 3):
+                x = cx + 8 + int(r * math.cos(math.radians(a)))
+                y = int(r * math.sin(math.radians(a)))
+                if y < h:
+                    px[x % BG_W, y] = web
+        for a in (15, 45, 75):
+            for r in range(0, 30):
+                x = cx + 8 + int(r * math.cos(math.radians(a)))
+                y = int(r * math.sin(math.radians(a)))
+                px[x % BG_W, y] = web
+    return img
+
+
+def haunted_manor():
+    """far layer: a crooked mansion on a hill with lit windows, dead trees"""
+    h = 130
+    img = Image.new("RGBA", (BG_W, h), TRANSPARENT)
+    px = img.load()
+    hill, hill_l = hex_rgba("#241c36"), hex_rgba("#302644")
+    for x in range(BG_W):
+        top = int(92 - periodic(x, [(10, 1, 0.3), (5, 3, 1.4), (2, 9, 0.8)]))
+        for y in range(top, h):
+            px[x, y] = hill_l if y - top < 2 else hill
+    wall, roof, lit = hex_rgba("#1a1428"), hex_rgba("#120e1c"), hex_rgba("#e8c860")
+    cx = 200
+    base = 92 - int(periodic(cx, [(10, 1, 0.3), (5, 3, 1.4), (2, 9, 0.8)]))
+    def rect(x0, y0, x1, y1, c):
+        for y in range(y0, y1):
+            for x in range(x0, x1):
+                if 0 <= y < h:
+                    px[x % BG_W, y] = c
+    rect(cx - 40, base - 44, cx + 40, base + 2, wall)          # main house
+    rect(cx + 18, base - 70, cx + 36, base - 40, wall)         # tower
+    rect(cx - 30, base - 58, cx - 20, base - 44, wall)         # chimney
+    for i in range(24):                                         # crooked roofs
+        rect(cx - 44 + i, base - 44 - i, cx + 44 - i, base - 43 - i, roof)
+    for i in range(12):
+        rect(cx + 15 + i, base - 70 - i, cx + 39 - i, base - 69 - i, roof)
+    for wx, wy in ((-28, -34), (-12, -34), (4, -34), (-28, -18), (4, -18), (24, -60)):
+        if (wx * 3 + wy) % 5:                                   # some windows lit
+            rect(cx + wx, base + wy, cx + wx + 6, base + wy + 8, lit)
+    rect(cx - 6, base - 16, cx + 2, base + 2, hex_rgba("#0a0610"))  # door
+    branch = hex_rgba("#1a1424")
+    for tx in (60, 330, 470, 560):                              # dead trees on the ridge
+        ty = 92 - int(periodic(tx, [(10, 1, 0.3), (5, 3, 1.4), (2, 9, 0.8)]))
+        for y in range(ty - 30, ty + 1):
+            px[tx % BG_W, y] = branch
+            px[(tx + 1) % BG_W, y] = branch
+        for k in range(12):
+            px[(tx - k) % BG_W, ty - 22 - k // 2] = branch
+            px[(tx + 2 + k) % BG_W, ty - 16 - k // 2] = branch
+            px[(tx - k // 2) % BG_W, ty - 30 - k // 3] = branch
+    return img
+
+
+def graves_band():
+    """mid layer: dark rolling ground with tombstones, crosses and a fence"""
+    h = 110
+    img = Image.new("RGBA", (BG_W, h), TRANSPARENT)
+    px = img.load()
+    ground, ground_l = hex_rgba("#2e2640"), hex_rgba("#3e3454")
+    stone, stone_l = hex_rgba("#4a4660"), hex_rgba("#62607a")
+    tops = [int(50 - periodic(x, [(8, 2, 0.6), (4, 5, 2.0), (2, 13, 0.1)])) for x in range(BG_W)]
+    for x in range(BG_W):
+        for y in range(tops[x], h):
+            px[x, y] = ground_l if y - tops[x] < 2 else ground
+    rng = random.Random(71)
+    x = 10
+    while x < BG_W - 10:
+        t = tops[x]
+        kind = rng.randint(0, 2)
+        if kind == 0:                                            # rounded stone
+            for y in range(t - 14, t + 2):
+                for dx in range(-5, 6):
+                    if y < t - 9 and dx * dx + (y - (t - 9)) ** 2 > 25:
+                        continue
+                    px[(x + dx) % BG_W, y] = stone_l if dx < -2 else stone
+        elif kind == 1:                                          # cross
+            for y in range(t - 16, t + 1):
+                px[x % BG_W, y] = stone
+                px[(x + 1) % BG_W, y] = stone
+            for dx in range(-4, 6):
+                px[(x + dx) % BG_W, t - 12] = stone
+                px[(x + dx) % BG_W, t - 11] = stone
+        else:                                                    # fence piece
+            for k in range(5):
+                fx = x + k * 4
+                for y in range(tops[fx % BG_W] - 12, tops[fx % BG_W] + 1):
+                    px[fx % BG_W, y] = stone
+            for k in range(18):
+                fx = x + k
+                px[fx % BG_W, tops[x] - 9] = stone
+        x += rng.randint(24, 46)
+    return img
+
+
+def dead_trees():
+    """near layer: big twisted dead trees + a low fog bank"""
+    h = 120
+    img = Image.new("RGBA", (BG_W, h), TRANSPARENT)
+    px = img.load()
+    bark, bark_l = hex_rgba("#1c1622"), hex_rgba("#2a2232")
+    rng = random.Random(83)
+
+    def branch(x, y, ang, length, width):
+        for i in range(length):
+            xx = x + math.cos(ang) * i
+            yy = y - math.sin(ang) * i
+            for w in range(-width, width + 1):
+                X, Y = int(xx + w * 0.5) % BG_W, int(yy)
+                if 0 <= Y < h:
+                    px[X, Y] = bark_l if w < 0 else bark
+            ang += rng.uniform(-0.08, 0.08)
+        return int(x + math.cos(ang) * length), int(y - math.sin(ang) * length)
+
+    for tx in range(60, BG_W, 213):
+        top = branch(tx, h - 1, math.pi / 2 + rng.uniform(-0.1, 0.1), 78, 7)
+        for a, l, off in ((2.4, 40, 10), (0.7, 36, 18), (2.0, 26, 30), (1.0, 30, 38), (1.6, 20, 0)):
+            bx, by = branch(top[0], top[1] + off, a, l, 3)
+            for k in range(2):
+                cx_, cy_ = branch(bx, by, a + rng.uniform(-0.7, 0.7), l // 2, 1)
+                branch(cx_, cy_, a + rng.uniform(-0.9, 0.9), l // 4, 0)
+    fog = (190, 190, 230)
+    for y in range(80, h):
+        for x in range(BG_W):
+            t = (y - 80) / 40.0
+            wav = 0.5 + 0.5 * math.sin(2 * math.pi * 3 * x / BG_W + y * 0.2)
+            if dither(x, y, t * 0.6 * wav) and px[x, y][3] == 0:
+                px[x, y] = (fog[0], fog[1], fog[2], 70)
+    return img
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     layers = {
@@ -635,6 +863,12 @@ def main():
                              [(12, 3, 1.4), (7, 7, 0.6), (3, 17, 2.2)], 44, seed=13),
         "bg_beach_sea": beach_sea(),
         "bg_palms": palms_band(),
+        # ghost house (v1.4)
+        "bg_ghost_hall": ghost_hall(),
+        "bg_ghost_curtains": ghost_curtains(),
+        "bg_ghost_manor": haunted_manor(),
+        "bg_ghost_graves": graves_band(),
+        "bg_ghost_trees": dead_trees(),
     }
     for name, im in layers.items():
         im.save(os.path.join(OUT, name + ".png"))

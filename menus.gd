@@ -39,6 +39,7 @@ const HELP_DESKTOP := [
 	{"file": "sky", "h": "Sky World"},
 	{"file": "sea", "h": "Sea World"},
 	{"file": "water", "h": "Pools & Currents"},
+	{"file": "ghost", "h": "Ghost House"},
 	{"file": "castles", "h": "Castles & Secrets"},
 ]
 const HELP_TOUCH := [
@@ -51,6 +52,7 @@ const HELP_TOUCH := [
 	{"file": "sky", "h": "Sky World"},
 	{"file": "sea", "h": "Sea World"},
 	{"file": "water", "h": "Pools & Currents"},
+	{"file": "ghost", "h": "Ghost House"},
 	{"file": "castles", "h": "Castles & Secrets"},
 ]
 const HELP_FALLBACK := {
@@ -63,6 +65,7 @@ const HELP_FALLBACK := {
 	"sky": "Falling slabs shake, then drop: jump off in time.\nTipping planks tip toward your side: keep moving.\nJump up through the clouds.\nThe cloud imp throws spikies: stomp it from up high.\nSpikies can't be stomped: fire, shells or a star.\nGulls glide at you. The storm boss's lightning flashes first.",
 	"sea": "Underwater you swim: every jump press is one stroke up.\nThe side pipe at the end leads to the beach.\nFish can't be stomped while swimming: dodge or use fire.\nJellyfish pulse toward you, crabs can be stomped.\nSea urchins can't be beaten: swim around them.",
 	"water": "Castle pools: you swim in them. Press jump at\nthe surface to leap out onto the rim.\nStone teeth reach into the water: dive under them.\nCurrents (moving streaks) push you: hold run and\nswim hard against them, or let one carry you along.\nThe dragon can't swim - it waits on dry land.",
+	"ghost": "Doors: press down (or up) in front of one to go through.\nThey lead past walls - coins mark the right one.\nGhosts come closer while you look away and freeze\nwhen you face them; fire can't hurt them, a star can.\nBone turtles fall apart when stomped and rise again.\nThe phantom king fades out and appears elsewhere.",
 	"map": "Play opens the world map. Walk with left / right,\nA or Space plays the course you stand on.\nTouch: tap a course to walk there, tap it again to play.\nA check = cleared, a lock = not reached yet.\nAfter a course the road to the next one opens.\nYour run is saved all along: quit any time,\nthen Continue on the title screen.",
 	"goal": "Stomp enemies from above.\nCoins: points, 100 coins = extra life.\nPipes marked by coins lead to bonus rooms.\nGrab the flag pole as high as you can!\nExtra lives for points: Settings > 1-UP points.",
 }
@@ -596,6 +599,12 @@ func _build_levels() -> void:
 	_panel.custom_minimum_size = Vector2(300, 0)
 	_vbox.add_child(_heading("LEVEL SELECT"))
 	var reached := Game.reached_level_index()
+	# more worlds than fit the 270-px canvas (v1.4): the rows scroll along
+	# with the focus, hint + Back stay below
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, 148)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = true
 	var grid := GridContainer.new()
 	grid.columns = 5
 	grid.add_theme_constant_override("h_separation", 4)
@@ -631,7 +640,8 @@ func _build_levels() -> void:
 		if ci > reached:
 			bb.add_theme_color_override("font_color", Color(1.0, 0.75, 0.5))
 		grid.add_child(bb)
-	_vbox.add_child(grid)
+	scroll.add_child(grid)
+	_vbox.add_child(scroll)
 	var h := _hint("* = castle   Boss = boss arena   orange = not reached\nPractice runs: not saved, no high score entry.")
 	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_vbox.add_child(h)

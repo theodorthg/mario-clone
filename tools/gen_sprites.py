@@ -1260,6 +1260,97 @@ def urchin(f):
     return ["".join(r) for r in g]
 
 
+# =========================================================================
+# GHOST HOUSE (v1.4) — ghost (chases while you look away, shy when you face
+# it) and the bone turtle (a skeleton koopa that falls apart when stomped)
+# =========================================================================
+GHOST_PAL = {"w": "#ffffff", "S": "#c8c0e8", "k": "#1b1030", "r": "#e84868", "h": "#cfc6f2",
+             "p": "#ffa8c4"}
+GHOST_TAIL = [
+    "wwwwwwwwwwwwwwSS",
+    "wwwwwwwwwwwwwSS.",
+    "wwSwwwwSwwwwSS..",
+    "wS.SwwS.SwwSS...",
+    "S...SS...SS.....",
+]
+GHOST_TAIL2 = [
+    "wwwwwwwwwwwwwwSS",
+    "wwwwwwwwwwwwwwS.",
+    ".wwSwwwwSwwwwSS.",
+    ".SS.SwwS.SwwS...",
+    "......SS...SS...",
+]
+GHOST_HEAD = [
+    ".....wwwwww.....",
+    "...wwwwwwwwww...",
+    "..wwwwwwwwwwwww.",
+]
+GHOST = {
+    "chase1": GHOST_HEAD + [
+        ".wwkkwwwwwkkwww.",
+        ".wwkkwwwwwkkwwwS",
+        "wwwwwwwwwwwwwwwS",
+        "wwwwkkkkkkwwwwwS",
+        "wwwkrrrrrrkwwwwS",
+        "wwwkrrrrrrkwwwwS",
+        "wwwwkrrrrkwwwwSS",
+        "wwwwwkkkkwwwwwSS",
+    ] + GHOST_TAIL,
+    "chase2": GHOST_HEAD + [
+        ".wwkkwwwwwkkwww.",
+        ".wwkkwwwwwkkwwwS",
+        "wwwwwwwwwwwwwwwS",
+        "wwwwkkkkkkwwwwwS",
+        "wwwkrrrrrrkwwwwS",
+        "wwwwkrrrrkwwwwwS",
+        "wwwwwkkkkwwwwwSS",
+        "wwwwwwwwwwwwwwSS",
+    ] + GHOST_TAIL2,
+    "shy": GHOST_HEAD + [
+        ".wwhhhwwwwhhhww.",
+        ".whhhhhwwhhhhhwS",
+        "wwhhhhhwwhhhhhwS",
+        "wwwhhhwwwwhhhwwS",
+        "wwwpwwwwwwwwpwwS",
+        "wwwwwwwkkwwwwwwS",
+        "wwwwwwwwwwwwwwSS",
+        "wwwwwwwwwwwwwwSS",
+    ] + GHOST_TAIL,
+}
+BONES_SWAP = {
+    "#ffd84a": "#ece4d4", "#d49a1c": "#b8ae98", "#8a4a10": "#6a6058",     # skin -> bone
+    "#ffffff": "#1b1030", "#1b1030": "#ff5a4a",                            # hollow eyes, red glint
+    "#3cc43c": "#5e5e6e", "#1f8a2c": "#34343e", "#9af07e": "#8e8e9e",    # shell -> dark stone
+    "#fff4d8": "#d8d0bc", "#d8c090": "#9a9080",                            # belly
+    "#f07830": "#d8d0bc", "#b04818": "#9a9080",                            # feet
+}
+BONES_PAL = {"w": "#ece4d4", "W": "#b8ae98", "k": "#1b1030", "s": "#5e5e6e", "S": "#34343e", "r": "#ff5a4a"}
+BONES_PILE = [
+    "....wwww........",
+    "...wwwwww.......",
+    "...wkwwkw.......",
+    "...wwwwww.......",
+    "....wkkw...sss..",
+    "..w..ww...sSSss.",
+    ".wWw.w..wwsssSs.",
+    "..wwwwwwwwwwwww.",
+    ".w.wWw.wWw.wW.w.",
+    "wWwwwwwwwwwwwwWw",
+]
+
+
+def ghost_house_enemies():
+    gh = [(n, ol(parse(GHOST[n], GHOST_PAL, "ghost." + n))) for n in ["chase1", "chase2", "shy"]]
+    save_set("enemy_ghost", gh, 18, 18, {"chase": (["chase1", "chase2"], 4, True), "shy": (["shy"], 1, False),
+                                         "flipped": (["shy"], 1, False)})
+    frames = []
+    for n in ["walk1", "walk2"]:
+        frames.append((n, ol(recolor(parse(TURTLE_TOP + TURTLE_LEGS[n], TURTLE_PAL, "bones"), BONES_SWAP))))
+    frames.append(("pile", ol(parse(BONES_PILE, BONES_PAL, "bones.pile"))))
+    save_set("enemy_bones", frames, 28, 26, {"walk": (["walk1", "walk2"], 5, True), "pile": (["pile"], 1, False),
+                                             "flipped": (["walk1"], 1, False)})
+
+
 def sea_enemies():
     fish = [(n, ol(parse(FISH[n], FISH_PAL, "fish." + n))) for n in ["swim1", "swim2"]]
     anims = {"swim": (["swim1", "swim2"], 6, True), "flipped": (["swim1"], 1, False)}
@@ -1293,6 +1384,9 @@ BOSS_WORLD_SWAP = {
     4: {"#8a4ac0": "#3a78c8", "#5a2a88": "#1e4488", "#b27ae0": "#7ab4f0"},   # blue
     5: {"#8a4ac0": "#d8a820", "#5a2a88": "#8a6410", "#b27ae0": "#fff08a"},   # gold (sky)
     6: {"#8a4ac0": "#2aa8a0", "#5a2a88": "#146860", "#b27ae0": "#7ae8d8"},   # teal (sea)
+    7: {"#8a4ac0": "#9a92c0", "#5a2a88": "#5a5480", "#b27ae0": "#d8d2f4"},   # pale (ghost house)
+    8: {"#8a4ac0": "#c02818", "#5a2a88": "#5a0e0a", "#b27ae0": "#ff7a3a",    # lava (volcano)
+        "#ffd83c": "#ff9a1a", "#d09018": "#b04a0a"},
 }
 BW, BH = 30, 32
 
@@ -1655,5 +1749,6 @@ if __name__ == "__main__":
     biome_enemies()
     sky_enemies()
     sea_enemies()
+    ghost_house_enemies()
     boss()
     items()

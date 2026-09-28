@@ -829,6 +829,284 @@ def palm():
     return outline(img, color=OUTLINE, selective=False)
 
 
+# ------------------------------------------------------ ghost house (v1.4) --
+# haunted mansion: dark wooden floor boards, purple wall panels; graveyard:
+# dark soil with dead grass, mossy crypt stone
+PLANK_PAL = {"k": OUTLINE, "L": "#b08a78", "l": "#8a6a5a", "b": "#6a4a44", "B": "#54383a",
+             "m": "#2e1e24", "n": "#c8b8a0"}
+PLANK = [
+    "llllllllllllllll",
+    "bbbbbbbbbbbmbbbb",
+    "bbBbbbbbbbbmbBbb",
+    "mmmmmmmmmmmmmmmm",
+    "lllllmllllllllll",
+    "bbbbbmbbbbbbBbbb",
+    "bBbbbmbbbbbbbbbb",
+    "mmmmmmmmmmmmmmmm",
+    "llllllllllllmlll",
+    "bbbbbbBbbbbbmbbb",
+    "bbbbbbbbbbbbmbbB",
+    "mmmmmmmmmmmmmmmm",
+    "lllmllllllllllll",
+    "bbbmbbbbbbBbbbbb",
+    "bbbmbbBbbbbbbbbb",
+    "mmmmmmmmmmmmmmmm",
+]
+GRAVE = {
+    "a": "#54465a", "b": "#483c4e", "c": "#3a3040", "d": "#282030",
+    "e": "#6e6076", "s": "#6a6272", "S": "#3c3444", "T": "#8e86a0", "r": "#322838",
+}
+GRAVE_TOP = {
+    "L": "#c8c8a0", "g": "#9a9a72", "G": "#76764e", "H": "#565636",
+    "D": "#2a2a1a", "d": "#282030",
+}
+GHOST_PANEL_PAL = {"k": OUTLINE, "L": "#8a6a9a", "p": "#4e3460", "q": "#5e4272", "D": "#2a1a36"}
+GHOST_PANEL = [
+    "kkkkkkkkkkkkkkkk",
+    "kLLLLLLLLLLLLLLk",
+    "kLpppppppppppDDk",
+    "kLpqpppqpppqpDDk",
+    "kLppqpqpqpqppDDk",
+    "kLpppqpppqpppDDk",
+    "kLppqpqpqpqppDDk",
+    "kLpqpppqpppqpDDk",
+    "kLppqpqpqpqppDDk",
+    "kLpppqpppqpppDDk",
+    "kLppqpqpqpqppDDk",
+    "kLpqpppqpppqpDDk",
+    "kLpppppppppppDDk",
+    "kLDDDDDDDDDDDDDk",
+    "kDDDDDDDDDDDDDDk",
+    "kkkkkkkkkkkkkkkk",
+]
+CRYPT_PAL = {"k": OUTLINE, "l": "#8e968a", "b": "#6a7268", "B": "#4a5048", "m": "#262a26"}
+
+
+def plank_tile(mask, variant=0):
+    img = parse(PLANK, PLANK_PAL)
+    px = img.load()
+    ol_ = hex_rgba(OUTLINE)
+    hi = hex_rgba(PLANK_PAL["L"])
+    dk = hex_rgba(PLANK_PAL["m"])
+    if variant == 1:                       # a knot
+        for x, y in ((6, 9), (7, 9), (6, 10)):
+            px[x, y] = hex_rgba(PLANK_PAL["m"])
+    elif variant == 2:                     # nails at the joints
+        for x, y in ((12, 9), (4, 5), (4, 13)):
+            px[x, y] = hex_rgba(PLANK_PAL["n"])
+    elif variant == 3:                     # a crack
+        for x, y in ((9, 1), (10, 2), (10, 5), (11, 6)):
+            px[x, y] = hex_rgba(PLANK_PAL["m"])
+    if mask & 1:
+        for x in range(T):
+            px[x, 0] = ol_
+            px[x, 1] = hi
+    if mask & 2:
+        for x in range(T):
+            px[x, T - 1] = ol_
+            px[x, T - 2] = dk
+    if mask & 4:
+        for y in range(T):
+            px[0, y] = ol_
+            if not (mask & 1 and y < 2):
+                px[1, y] = hi
+    if mask & 8:
+        for y in range(T):
+            px[T - 1, y] = ol_
+            px[T - 2, y] = dk if not (mask & 1 and y < 2) else px[T - 2, y]
+    return img
+
+
+CANDELABRA = [
+    "..y.....y.....y..",
+    ".yfy...yfy...yfy.",
+    ".yfy...yfy...yfy.",
+    "..w.....w.....w..",
+    "..w.....w.....w..",
+    "..W.....W.....W..",
+    ".gGg...gGg...gGg.",
+    "..g.....g.....g..",
+    "..gg....g....gg..",
+    "...ggg..g..ggg...",
+    ".....ggggggg.....",
+    "........g........",
+    "........g........",
+    ".......gGg.......",
+    "........g........",
+    "........g........",
+    "........g........",
+    ".......gGg.......",
+    "......ggggg......",
+    ".....gGGGGGg.....",
+]
+CANDLE_PAL = {"y": "#ff9a2a", "f": "#fff6a0", "w": "#f0ead8", "W": "#c8bca8", "g": "#c8a038", "G": "#7a5a18",
+              "b": "#6a4a3a", "B": "#4a3028"}
+CANDLE = ["..y..", ".yfy.", "..f..", ".www.", ".wWw.", ".wWw.", ".wWw.", "bbbbb", ".bBb."]
+CHAIR = [
+    "..rRRRRRRr..",
+    ".rRRrRRrRRr.",
+    ".rR.rRRr.Rr.",
+    ".rR..rr..Rr.",
+    ".rR.rRRr.Rr.",
+    ".rRRRRRRRRr.",
+    ".rRRRRRRRRr.",
+    ".rR......Rr.",
+    ".rR......Rr.",
+    ".rR......Rr.",
+    "pPPPPPPPPPPp",
+    "pppppppppppp",
+    ".w........w.",
+    ".w........w.",
+    ".w........w.",
+    ".w........w.",
+    "ww........ww",
+]
+CHAIR_PAL = {"R": "#9a2240", "r": "#5a1028", "p": "#6a4a3a", "P": "#8a6a54", "w": "#4a3028"}
+PUMPKIN = [
+    ".....gg.....",
+    "......g.....",
+    "..oOOoOOOo..",
+    ".oOOOoOOOOo.",
+    "oOyyOoOOyyOo",
+    "oOyyOoOOyyOo",
+    "oOOOOoOOOOOo",
+    "oOyOyyyyOyOo",
+    ".oOyyyyyyOo.",
+    ".oOOOoOOOOo.",
+    "..ooooooooo.",
+]
+PUMPKIN_PAL = {"o": "#b8481a", "O": "#f08a2a", "y": "#ffe070", "g": "#4a7a2a"}
+BONES_DECOR = [
+    "......www...",
+    ".....wkwkw..",
+    ".....wwwww..",
+    "..w...wkw.w.",
+    ".wWw.wwwwwWw",
+    "wwwwwwwwwwww",
+]
+BONES_PAL = {"w": "#ece4d4", "W": "#b8ae98", "k": "#2a2030"}
+DEAD_TREE = [
+    "b..............b..",
+    ".b.....b......b...",
+    "..b...b.....b..b..",
+    "..bb.b.....bb.b...",
+    "...bbb....bb.b....",
+    "....bb...bb.b.....",
+    ".....bb.bbbb......",
+    "......bbbb........",
+    ".......bbb........",
+    "b......bbb........",
+    ".bb...bbb.........",
+    "...bbbbbb.........",
+    "......bbb.........",
+    "......bbbb........",
+    "......bbbb........",
+    ".....bbbbb........",
+    ".....bbBbb........",
+    ".....bbBbb........",
+    "....bbbBbbb.......",
+    "...bbbbBbbbb......",
+]
+DEAD_TREE_PAL = {"b": "#4a3a48", "B": "#2e2230"}
+TOMB = [
+    "...ssssss...",
+    "..sTTTTTTs..",
+    ".sTssssssTs.",
+    ".sTssSSssTs.",
+    ".sTsSSSSsTs.",
+    ".sTssSSssTs.",
+    ".sTssSSssTs.",
+    ".sTssssssTs.",
+    ".sTssssssSs.",
+    ".ssssssssSS.",
+    "gGgssssssgGg",
+    "GgGgGgGgGgGg",
+]
+TOMB_PAL = {"s": "#8a8c98", "T": "#b4b6c4", "S": "#5a5c68", "g": "#6a8a4a", "G": "#3a5a30"}
+CROSS = [
+    "....wW....",
+    "....wW....",
+    "wwwwwWwwww",
+    "WWWWWWWWWW",
+    "....wW....",
+    "....wW....",
+    "....wW....",
+    "....wW....",
+    "....wW....",
+    "...gwWg...",
+    "..gGgGgG..",
+]
+CROSS_PAL = {"w": "#8a6a4a", "W": "#5a4030", "g": "#6a8a4a", "G": "#3a5a30"}
+
+
+def door_frames():
+    """16x32 mansion door (v1.4): closed / open (dark doorway)."""
+    from PIL import ImageDraw
+    frames = []
+    for is_open in (False, True):
+        im = Image.new("RGBA", (16, 32), TRANSPARENT)
+        d = ImageDraw.Draw(im)
+        frame, frame_d = hex_rgba("#6a5a70"), hex_rgba("#3a2e44")
+        d.rectangle((0, 6, 15, 31), fill=frame)
+        d.ellipse((0, 0, 15, 14), fill=frame)
+        d.rectangle((1, 7, 14, 31), fill=frame_d)
+        d.ellipse((1, 1, 14, 13), fill=frame_d)
+        if is_open:
+            d.rectangle((2, 7, 13, 31), fill=hex_rgba("#0a0610"))
+            d.ellipse((2, 2, 13, 12), fill=hex_rgba("#0a0610"))
+            d.rectangle((2, 8, 3, 31), fill=hex_rgba("#8a5436"))      # the leaf, swung open
+        else:
+            leaf, line = hex_rgba("#8a5436"), hex_rgba("#5a3422")
+            d.rectangle((2, 7, 13, 31), fill=leaf)
+            d.ellipse((2, 2, 13, 12), fill=leaf)
+            for x in (5, 8, 11):
+                d.line((x, 4 if x == 8 else 6, x, 31), fill=line)
+            for y in (12, 25):
+                d.line((2, y, 13, y), fill=hex_rgba("#3a3a44"))
+            d.rectangle((11, 18, 12, 19), fill=hex_rgba("#ffd84a"))
+        frames.append(outline(im, color=OUTLINE, selective=False))
+    return frames
+
+
+def crypt_frames():
+    """48x44 graveyard crypt around a door (v1.4): the door is 16 wide at
+    x 16..31, its bottom on the last row; closed / open."""
+    from PIL import ImageDraw
+    frames = []
+    stone, stone_l, stone_d = hex_rgba("#6e6c80"), hex_rgba("#8e8ca2"), hex_rgba("#4a485c")
+    for is_open in (False, True):
+        im = Image.new("RGBA", (48, 44), TRANSPARENT)
+        d = ImageDraw.Draw(im)
+        d.polygon([(3, 15), (24, 4), (44, 15)], fill=stone_d)             # roof
+        d.polygon([(6, 14), (24, 6), (41, 14)], fill=stone)
+        d.rectangle((23, 0, 24, 6), fill=stone_l)                          # cross
+        d.rectangle((21, 2, 26, 3), fill=stone_l)
+        d.rectangle((6, 15, 41, 41), fill=stone)                           # body
+        for y in range(19, 41, 6):                                         # block lines
+            d.line((6, y, 41, y), fill=stone_d)
+        for x0 in (7, 36):                                                 # columns
+            d.rectangle((x0, 15, x0 + 4, 41), fill=stone_l)
+            d.line((x0 + 4, 15, x0 + 4, 41), fill=stone_d)
+        d.rectangle((2, 41, 45, 43), fill=stone_d)                         # step
+        d.rectangle((15, 16, 32, 43), fill=stone_d)                        # door frame
+        d.ellipse((15, 12, 32, 26), fill=stone_d)
+        if is_open:
+            d.rectangle((16, 19, 31, 43), fill=hex_rgba("#0a0610"))
+            d.ellipse((16, 14, 31, 26), fill=hex_rgba("#0a0610"))
+            d.rectangle((16, 20, 17, 43), fill=hex_rgba("#3a3a48"))
+        else:
+            iron, bar = hex_rgba("#3a3a48"), hex_rgba("#22222c")
+            d.rectangle((16, 19, 31, 43), fill=iron)
+            d.ellipse((16, 14, 31, 26), fill=iron)
+            for x in (19, 23, 27):
+                d.line((x, 17, x, 43), fill=bar)
+            for y in (26, 36):
+                d.line((16, y, 31, y), fill=bar)
+            d.rectangle((28, 31, 29, 32), fill=hex_rgba("#c8a040"))
+        frames.append(outline(im, color=OUTLINE, selective=False))
+    return frames
+
+
 def biome_decor():
     ol_ = lambda im: outline(im, color=OUTLINE, selective=False)  # noqa: E731
     small_bush = [r[:18] for r in BUSH_L[1:]]
@@ -865,6 +1143,16 @@ def biome_decor():
         ("tuft_sea", seaweed(10, 4)),
         ("rock_sea", ol_(recolored(ROCK, s="#7a8cae", T="#a4b4d4", S="#4e5e80"))),
         ("palm", palm()),
+        # ghost house (v1.4): mansion inside + graveyard outside
+        ("candelabra", ol_(parse(CANDELABRA, CANDLE_PAL))),
+        ("chair", ol_(parse(CHAIR, CHAIR_PAL))),
+        ("pumpkin", ol_(parse(PUMPKIN, PUMPKIN_PAL))),
+        ("candle", ol_(parse(CANDLE, CANDLE_PAL))),
+        ("bones", ol_(parse(BONES_DECOR, BONES_PAL))),
+        ("dead_tree", ol_(parse(DEAD_TREE, DEAD_TREE_PAL))),
+        ("tomb", ol_(parse(TOMB, TOMB_PAL))),
+        ("tuft_grave", recolored(TUFT, L="#c8c8a0", g="#8a8a62", G="#5a5a3a")),
+        ("cross", ol_(parse(CROSS, CROSS_PAL))),
     ]
 
 
@@ -1037,7 +1325,7 @@ def water_body():
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    atlas = Image.new("RGBA", (16 * T, 12 * T), TRANSPARENT)
+    atlas = Image.new("RGBA", (16 * T, 15 * T), TRANSPARENT)
     for m in range(16):
         atlas.paste(edge_tile(m, DIRT, GRASS), (m * T, 0))
         atlas.paste(edge_tile(m, CAVE, CAVE_TOP), (m * T, 3 * T))
@@ -1046,6 +1334,16 @@ def main():
         atlas.paste(castle_tile(m), (m * T, 7 * T))
         atlas.paste(cloud_tile(m), (m * T, 9 * T))
         atlas.paste(edge_tile(m, REEF, CORAL_TOP), (m * T, 11 * T))
+        atlas.paste(plank_tile(m), (m * T, 12 * T))             # v1.4 ghost house floor
+        atlas.paste(edge_tile(m, GRAVE, GRAVE_TOP), (m * T, 13 * T))  # graveyard soil
+    # row 14: ghost wall panel 0, plank interiors 1-3, grave interiors 4-7,
+    # crypt stone brick 8
+    atlas.paste(parse(GHOST_PANEL, GHOST_PANEL_PAL), (0, 14 * T))
+    for i in range(1, 4):
+        atlas.paste(plank_tile(0, i), (i * T, 14 * T))
+    for i in range(4):
+        atlas.paste(dirt_variant(i, GRAVE), ((4 + i) * T, 14 * T))
+    atlas.paste(parse(BRICK, CRYPT_PAL), (8 * T, 14 * T))
     atlas.paste(parse(BRICK, CORAL_BRICK_PAL), (6 * T, 10 * T))
     for i in range(1, 4):
         atlas.paste(dirt_variant(i, REEF), ((6 + i) * T, 10 * T))
@@ -1162,6 +1460,12 @@ def main():
     tip_pal = {"L": "#f8d8a0", "b": "#d8964e", "B": "#a86a30", "D": "#6e4018", "y": "#ffd83c",
                "Y": "#c89018", "w": "#fff8c8"}
     outline(parse(tip_rows, tip_pal), color=OUTLINE, selective=False).save(os.path.join(OUT, "tipper.png"))
+
+    # mansion door (v1.4): closed / open
+    dsheet_, _, _ = strip(door_frames(), 16, 32)
+    dsheet_.save(os.path.join(OUT, "door.png"))
+    csheet_, _, _ = strip(crypt_frames(), 48, 44)
+    csheet_.save(os.path.join(OUT, "crypt.png"))
 
     # brick shards (4 frames rotating)
     shard = parse(["lbb.", "bbbB", "bbBB", ".BB."], BRICK_PAL)

@@ -430,7 +430,7 @@ def page_sea():
     text(d, (200, 122), "Crabs: stomp them.")
     img.alpha_composite(urch, (8, 134))
     text(d, (30, 138), "Sea urchins can't be beaten: swim around them!")
-    text(d, (8, 157), "The last boss knows every trick. Good luck!", fill=GOLD)
+    text(d, (8, 157), "The tide king knows every trick. Good luck!", fill=GOLD)
     return img
 
 
@@ -488,6 +488,42 @@ def page_water():
     text(d, (130, 118), "Hold run and swim hard against them,", fill=GOLD)
     text(d, (130, 128), "or let one carry you along!", fill=GOLD)
     text(d, (8, 152), "Tip: the dragon can't swim - it waits on dry land.", fill=DIM)
+    return img
+
+
+def page_ghost():
+    """v1.4: doors, ghosts, bone turtles, the phantom king"""
+    img, d = new_page()
+    text(d, (8, 6), "GHOST HOUSE", f8, GOLD)
+    door = Image.open(os.path.join(GFX, "door.png")).convert("RGBA")
+    closed, opened = door.crop((0, 0, 16, 32)), door.crop((16, 0, 32, 32))
+    img.alpha_composite(closed, (10, 20))
+    img.alpha_composite(opened, (32, 20))
+    hero = trim(sheet_frame("hero_small", 20, 20, 0))
+    img.alpha_composite(hero, (33, 52 - hero.height))
+    arrow_key(d, 56, 36, "down")
+    text(d, (76, 24), "Doors: press down in front of one")
+    text(d, (76, 34), "(or up) to go through. Doors lead")
+    text(d, (76, 44), "past walls - try another if you", fill=DIM)
+    text(d, (76, 54), "end up where you were. Coins mark", fill=DIM)
+    text(d, (76, 64), "the right one. Crypts work the same.", fill=DIM)
+    d.line((8, 78, 332, 78), fill=(60, 70, 110, 255))
+    gh = Image.open(os.path.join(GFX, "enemy_ghost.png")).convert("RGBA")
+    chase, shy = trim(gh.crop((0, 0, 18, 18))), trim(gh.crop((36, 0, 54, 18)))
+    img.alpha_composite(chase, (10, 86))
+    shy2 = shy.copy()
+    shy2.putalpha(shy2.getchannel("A").point(lambda v: v * 6 // 10))
+    img.alpha_composite(shy2, (32, 86))
+    text(d, (56, 84), "Ghosts come closer while you look away")
+    text(d, (56, 94), "and freeze, shy, when you face them. Fire", fill=DIM)
+    text(d, (56, 104), "can't hurt them - a star or a shell can.", fill=DIM)
+    bones = Image.open(os.path.join(GFX, "enemy_bones.png")).convert("RGBA")
+    walk, pile = trim(bones.crop((0, 0, 28, 26))), trim(bones.crop((56, 0, 84, 26)))
+    img.alpha_composite(walk, (10, 142 - walk.height))
+    img.alpha_composite(pile, (30, 142 - pile.height))
+    text(d, (56, 120), "Bone turtles fall apart when stomped (or")
+    text(d, (56, 130), "hit by fire) - and stand up again soon.", fill=DIM)
+    text(d, (8, 152), "The phantom king fades out and appears elsewhere.", fill=GOLD)
     return img
 
 
@@ -570,7 +606,7 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     pages = {"controls": page_controls, "touch": page_touch, "map": page_map, "items": page_items,
              "dragon": page_dragon, "goal": page_goal, "worlds": page_worlds,
-             "sky": page_sky, "sea": page_sea, "water": page_water, "castles": page_castles}
+             "sky": page_sky, "sea": page_sea, "water": page_water, "ghost": page_ghost, "castles": page_castles}
     for n, fn in pages.items():
         fn().save(os.path.join(OUT, n + ".png"))
     print("  help pages:", ", ".join(pages))

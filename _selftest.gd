@@ -61,7 +61,13 @@ func _init() -> void:
 		fails += _expect(grid[lv.START.y + 1][lv.START.x] == "#", "%s start cell is on ground" % lv.ID)
 		for wp in lv.WARPS:
 			var e: Vector2i = wp["entry"]
-			fails += _expect(grid[e.y][e.x] in ["W", ">"], "%s warp entry %s is a W/> cell" % [lv.ID, e])
+			if wp.get("kind", "") == "door":
+				# a door stands on the floor: 'H' cell with solid ground below
+				fails += _expect(grid[e.y][e.x] == "H" and grid[e.y + 1][e.x] in ["#", "w", "X", "B"], "%s door %s is an H cell on the floor" % [lv.ID, e])
+				var a: Vector2i = wp["arrive"]
+				fails += _expect(wp.get("arrive_kind", "") != "door" or grid[a.y][a.x] == "H", "%s door %s leads to a door" % [lv.ID, e])
+			else:
+				fails += _expect(grid[e.y][e.x] in ["W", ">"], "%s warp entry %s is a W/> cell" % [lv.ID, e])
 		for a in lv.AREAS.values():
 			fails += _expect(int(a["to"]) - int(a["from"]) + 1 >= 38, "%s area wide enough for 2.2:1 screens" % lv.ID)
 			fails += _expect(Backdrop.THEMES.has(a["theme"]), "%s theme %s exists" % [lv.ID, a["theme"]])

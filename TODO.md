@@ -13,12 +13,15 @@ Version inkl. itch.io-Upload:
 - [x] v1.3.0 Wasser: Schwimmbecken mitten im Level, Strömungen, Burg 6-3
       mit gefluteten Abschnitten (Graben + Tank), Strömungen in 6-1/6-2,
       Hilfeseite „Pools & Currents“.
-- [ ] v1.4.0 Welt 7 „Geisterhaus“: Türen als Durchgänge, Geister (kommen
-      nur, wenn man wegschaut), Knochen-Schildkröte, Boss.
+- [x] v1.4.0 Welt 7 „Geisterhaus“ (2026-09-28): 7-1 Haunted Hall,
+      7-2 Moonlit Graveyard, Burg 7-3 Phantom Keep; Türen/Grüfte als
+      Durchgänge, Geister (kommen nur, wenn man wegschaut), Knochen-
+      Schildkröte, Phantom-König (blendet sich weg), Musik „Haunted
+      Waltz“, Karten-Region, Hilfeseite „Ghost House“.
 - [ ] v1.5.0 Welt 8 „Vulkan“ (letzte Welt, Endboss).
-- [ ] itch.io-Upload: das Chrome-Werkzeug schafft nur 10 MB je Datei —
-      beim ersten Release Umweg testen (lokaler Server + Browser), sonst
-      mit dem Nutzer klären (butler oder Dateien bereitlegen).
+- [x] itch.io-Upload geklärt (2026-09-28): Claude in Chrome + lokaler
+      Mini-Server (`projects/itch_upload_server.py`), Ablauf in der
+      Wurzel-CLAUDE.md; v1.3.0 hochgeladen.
 
 ## Erledigt
 

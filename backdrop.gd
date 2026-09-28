@@ -208,6 +208,36 @@ const THEMES := {
 		],
 		"world": Color.WHITE,
 	},
+	# ghost house (v1.4): mansion inside (moon through the windows), the
+	# graveyard outside, the phantom keep
+	"ghost": {
+		"sky": [Color("050410"), Color("141030"), Color("2a2050"), 0.5, 1.0, 1.0],
+		"layers": [
+			["res://assets/graphics/bg_ghost_hall.png", 0.0, 0.15, 0.15, 0.0, Color.WHITE],
+			["res://assets/graphics/bg_ghost_curtains.png", 84.0, 0.42, 0.8, 0.0, Color(0.85, 0.8, 0.9)],
+		],
+		"world": Color(0.86, 0.82, 1.0),
+		"fx": "motes",
+	},
+	"ghost_yard": {
+		"sky": [Color("05040f"), Color("1c1238"), Color("3a2a5a"), 0.5, 1.0, 1.0],
+		"layers": [
+			["res://assets/graphics/bg_ghost_manor.png", 70.0, 0.14, 0.3, 0.0, Color.WHITE],
+			["res://assets/graphics/bg_ghost_graves.png", 150.0, 0.3, 0.6, 0.0, Color.WHITE],
+			["res://assets/graphics/bg_ghost_trees.png", 160.0, 0.55, 0.85, 0.0, Color.WHITE],
+		],
+		"world": Color(0.74, 0.72, 0.94),
+		"fx": "fog",
+	},
+	"fortress_ghost": {
+		"sky": [Color("06040e"), Color("1e1432"), Color("3e2a5e"), 0.5, 1.0, 1.0],
+		"layers": [
+			["res://assets/graphics/bg_castle_wall.png", 50.0, 0.15, 0.15, 0.0, Color(0.72, 0.68, 0.86)],
+			["res://assets/graphics/bg_castle_pillars.png", 84.0, 0.42, 0.8, 0.0, Color(0.62, 0.6, 0.78)],
+		],
+		"world": Color(0.84, 0.82, 1.0),
+		"fx": "fog",
+	},
 	"snow_night": {
 		"sky": [Color("050a20"), Color("16285a"), Color("3a4f8a"), 0.55, 1.0, 1.0],
 		"layers": [
@@ -391,6 +421,29 @@ func _set_fx(kind: String) -> void:
 			p.scale_amount_min = 0.6
 			p.scale_amount_max = 1.0
 			p.color = Color(0.85, 0.95, 1.0, 0.7)
+		"fog":
+			# big soft wisps drifting slowly sideways (ghost house)
+			p.amount = 16
+			p.lifetime = 14.0
+			p.direction = Vector2(1.0, 0.0)
+			p.spread = 8.0
+			p.initial_velocity_min = 6.0
+			p.initial_velocity_max = 14.0
+			p.gravity = Vector2.ZERO
+			var fi := Image.create_empty(32, 12, false, Image.FORMAT_RGBA8)
+			for fy in 12:
+				for fx in 32:
+					var d := Vector2((fx - 15.5) / 16.0, (fy - 5.5) / 6.0).length()
+					fi.set_pixel(fx, fy, Color(1, 1, 1, clampf(1.0 - d, 0.0, 1.0) * 0.5))
+			p.texture = ImageTexture.create_from_image(fi)
+			p.scale_amount_min = 1.0
+			p.scale_amount_max = 2.2
+			var gf := Gradient.new()
+			gf.set_color(0, Color(0.8, 0.8, 1.0, 0.0))
+			gf.set_color(1, Color(0.8, 0.8, 1.0, 0.0))
+			gf.add_point(0.3, Color(0.82, 0.8, 1.0, 0.22))
+			gf.add_point(0.7, Color(0.82, 0.8, 1.0, 0.22))
+			p.color_ramp = gf
 	p.preprocess = p.lifetime
 	_fx = p
 	_fx_size = Vector2.ZERO
