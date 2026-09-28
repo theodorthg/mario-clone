@@ -19,9 +19,10 @@ Version inkl. itch.io-Upload:
       Schildkröte, Phantom-König (blendet sich weg), Musik „Haunted
       Waltz“, Karten-Region, Hilfeseite „Ghost House“.
 - [ ] v1.5.0 Welt 8 „Vulkan“ (letzte Welt, Endboss).
-- [x] itch.io-Upload geklärt (2026-09-28): Claude in Chrome + lokaler
-      Mini-Server (`projects/itch_upload_server.py`), Ablauf in der
-      Wurzel-CLAUDE.md; v1.3.0 hochgeladen.
+- [x] itch.io-Upload per `butler` (2026-09-28, Nutzer hat Channels
+      linux/android/windows/web angelegt): v1.4.0 gepusht. Ablauf in der
+      Wurzel-CLAUDE.md; Chrome + `projects/itch_upload_server.py` nur noch
+      als Fallback (so kam v1.3.0 zuerst hoch).
 
 ## Erledigt
 
