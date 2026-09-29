@@ -30,6 +30,11 @@ Version inkl. itch.io-Upload:
 
 ## Erledigt
 
+- [x] v1.5.1 (Nutzer 2026-09-29): Held hüpfte am Anfang jedes Kurses, wenn
+      man ihn per A betrat (A = Betreten + Springen) — behoben; eigene
+      Einstellung „Boss fight“ (As game / Easy / Normal / Hard) unabhängig
+      von der Schwierigkeit der Level; Hilfe „3-6 Treffer“.
+
 - [x] v1.2.1 Feinschliff (Nutzer 2026-09-28, nach RG552-Test):
       1. Highscore-Liste müllt nicht mehr zu: Levelauswahl-Läufe ohne
          Eintrag, Name wird pro Lauf nur einmal gefragt, „Clear list“.

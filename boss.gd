@@ -71,7 +71,7 @@ func _ready() -> void:
 	collision_mask = 1
 	add_to_group("boss")
 	if Game.instance:
-		difficulty = clampi(int(Game.instance.cfg.get("difficulty", 1)), 0, 2)
+		difficulty = GameSettings.boss_difficulty(Game.instance.cfg)
 	max_hp = 3 + (1 if world >= 3 else 0) + (1 if world >= 6 else 0) + (1 if world >= 8 else 0)
 	hp = max_hp
 	sprite = AnimatedSprite2D.new()

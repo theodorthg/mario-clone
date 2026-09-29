@@ -88,6 +88,9 @@ func _init() -> void:
 	# scoring tables
 	fails += _expect(Flagpole.points_for_height(200) == 5000, "top of pole = 5000")
 	fails += _expect(Flagpole.points_for_height(0) == 100, "bottom of pole = 100")
+	fails += _expect(GameSettings.boss_difficulty({"difficulty": 2, "boss_difficulty": 0}) == 2, "boss difficulty 'As game' follows Difficulty")
+	fails += _expect(GameSettings.boss_difficulty({"difficulty": 2, "boss_difficulty": 1}) == 0, "boss difficulty Easy despite a Hard game")
+	fails += _expect(GameSettings.boss_difficulty({"difficulty": 0}) == 0, "boss difficulty missing in old settings -> as game")
 	fails += _expect(GameSettings.level_time({"time_limit": 0, "difficulty": 1}, 400) == 0, "timer off -> 0")
 	fails += _expect(GameSettings.level_time({"time_limit": 1, "difficulty": 1}, 400) == 400, "timer normal -> level value")
 

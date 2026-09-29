@@ -9,6 +9,7 @@ const CFG_PATH := "user://settings.cfg"
 const DEF := {
 	"lives": 3,             # LIVES_MIN..LIVES_MAX (total, active one included)
 	"difficulty": 1,        # 0 easy, 1 normal, 2 hard — enemy speed + time
+	"boss_difficulty": 0,   # index into BOSS_DIFF_NAMES: 0 = as the game (v1.5.1)
 	"time_limit": 1,        # index into TIME_NAMES
 	"coin_points": 200,     # points per coin
 	"coins_per_life": 100,  # 0 = off
@@ -21,6 +22,9 @@ const DEF := {
 const LIVES_MIN := 1
 const LIVES_MAX := 9
 const DIFF_NAMES := ["Easy", "Normal", "Hard"]
+## boss fights on their own difficulty (v1.5.1, player: "more flexible"):
+## "As game" follows Difficulty, otherwise Easy / Normal / Hard
+const BOSS_DIFF_NAMES := ["As game", "Easy", "Normal", "Hard"]
 const TIME_NAMES := ["Off", "Level", "Short"]
 const COIN_POINTS := [0, 100, 200, 500]
 const COINS_PER_LIFE := [0, 50, 100, 200]
@@ -29,6 +33,13 @@ const LIFE_POINTS := [0, 2500, 5000, 10000, 20000]
 ## (e.g. Anbernic RG552: touchscreen AND D-pad -> hidden). Pause + mute at
 ## the top are never affected.
 const TOUCH_NAMES := ["Auto", "On", "Off"]
+
+## 0 easy, 1 normal, 2 hard for the boss (stun time, fire flowers; boss.gd)
+static func boss_difficulty(cfg: Dictionary) -> int:
+	var b := int(cfg.get("boss_difficulty", 0))
+	if b <= 0:
+		return clampi(int(cfg.get("difficulty", 1)), 0, 2)
+	return clampi(b - 1, 0, 2)
 
 static func touch_buttons_visible(mode: int, touch_device: bool, joypads: int) -> bool:
 	match mode:

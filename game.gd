@@ -421,6 +421,13 @@ func _begin_level() -> void:
 	_update_hud()
 	_set_world_active(false)
 	_build_level(level_index, true)
+	# the A press that entered the course (map, level select) is also a
+	# jump: the world only stops at the end of this frame (deferred), so a
+	# fresh hero would still jump off here and fly on after the card
+	# (player 2026-09-29: "hops at the start of every level"). No input
+	# until the card is gone.
+	if player:
+		player.input_enabled = false
 	save_run()
 	time_left = GameSettings.level_time(cfg, data.TIME)
 	_time_acc = 0.0
@@ -431,6 +438,9 @@ func _begin_level() -> void:
 	tw.tween_callback(func():
 		hud.hide_card()
 		hud.set_buttons_visible(true)
+		if player:
+			player.input_enabled = true
+			player.jump_buffer_t = 0.0
 		_set_world_active(true)
 		state = State.PLAYING
 		apply_touch_layout()

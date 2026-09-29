@@ -63,7 +63,7 @@ const HELP_FALLBACK := {
 	"items": "Hit ? blocks from below.\nMushroom: grow big.  Fire flower: throw fireballs.\nStar: invincible for a while.  Green mushroom: extra life.\nBig heroes break bricks.",
 	"dragon": "An egg hides in one ? block.\nJump onto the dragon to ride it.\nRun button: tongue eats enemies.\nDown + jump: hop off.  A hit throws you off.",
 	"worlds": "Stomp a turtle, then kick its shell:\nit knocks out every enemy in its way.\nRed turtles turn at edges, winged ones need two stomps.\nIce is slippery. Lava and water: don't fall in!\nCave bats swoop (small: walk under them, big: duck),\ncactus stacks are spiky (use fire),\npenguins belly-slide.",
-	"castles": "Fire bars spin, lava bubbles leap: time your jumps.\nThe boss ends every world: stomp its head 3-5 times\n(5 fireballs = 1 hit). A fire flower waits before\nthe arena; Easy/Normal: no fire left? it drops one. A win = 1UP.\nLevel select: on the title press B Y X A, type LEVELS\nor tap the title 5 times. 'Boss' starts at the boss arena\n(practice runs: not saved, no high score).",
+	"castles": "Fire bars spin, lava bubbles leap: time your jumps.\nThe boss ends every world: stomp its head 3-6 times\n(5 fireballs = 1 hit). A fire flower waits before\nthe arena; boss Easy/Normal: no fire left? it drops one\n(Settings: Boss fight). A win = 1UP.\nLevel select: on the title press B Y X A, type LEVELS\nor tap the title 5 times. 'Boss' starts at the boss arena\n(practice runs: not saved, no high score).",
 	"sky": "Falling slabs shake, then drop: jump off in time.\nTipping planks tip toward your side: keep moving.\nJump up through the clouds.\nThe cloud imp throws spikies: stomp it from up high.\nSpikies can't be stomped: fire, shells or a star.\nGulls glide at you. The storm boss's lightning flashes first.",
 	"sea": "Underwater you swim: every jump press is one stroke up.\nThe side pipe at the end leads to the beach.\nFish can't be stomped while swimming: dodge or use fire.\nJellyfish pulse toward you, crabs can be stomped.\nSea urchins can't be beaten: swim around them.",
 	"water": "Castle pools: you swim in them. Press jump at\nthe surface to leap out onto the rim.\nStone teeth reach into the water: dive under them.\nCurrents (moving streaks) push you: hold run and\nswim hard against them, or let one carry you along.\nThe dragon can't swim - it waits on dry land.",
@@ -276,7 +276,7 @@ func _row(label_text: String, label_w := 110.0) -> HBoxContainer:
 
 func _stepper(row: HBoxContainer, get_val: Callable, set_val: Callable, fmt: Callable) -> void:
 	var val_l := Label.new()
-	val_l.custom_minimum_size = Vector2(70, 0)
+	val_l.custom_minimum_size = Vector2(76, 0)
 	val_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	val_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	val_l.add_theme_font_size_override("font_size", FONT)
@@ -706,6 +706,11 @@ func _build_settings() -> void:
 		func(d): _set_cfg("difficulty", posmod(_cfg.difficulty + d, GameSettings.DIFF_NAMES.size())),
 		func(v): return GameSettings.DIFF_NAMES[v])
 	list.add_child(diff_row)
+	var boss_row := _row("Boss fight")
+	_stepper(boss_row, func(): return _cfg.boss_difficulty,
+		func(d): _set_cfg("boss_difficulty", posmod(_cfg.boss_difficulty + d, GameSettings.BOSS_DIFF_NAMES.size())),
+		func(v): return GameSettings.BOSS_DIFF_NAMES[v])
+	list.add_child(boss_row)
 	var time_row := _row("Timer")
 	_stepper(time_row, func(): return _cfg.time_limit,
 		func(d): _set_cfg("time_limit", posmod(_cfg.time_limit + d, GameSettings.TIME_NAMES.size())),

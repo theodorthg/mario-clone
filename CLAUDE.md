@@ -252,7 +252,10 @@ Musik +20 % Tempo).
 
 ## Einstellungen (Start-Screen + Pause)
 
-Leben (1–9), Schwierigkeit (Gegnertempo ×0,8/1,0/1,25; Easy +100 Zeit),
+Leben (1–9), Schwierigkeit (Gegnertempo ×0,8/1,0/1,25 — alle Gegner,
+auch Meteorfelder; Easy +100 Zeit), „Boss fight“ (v1.5.1: As game / Easy /
+Normal / Hard — Boss-Schwierigkeit unabhängig vom Rest,
+`GameSettings.boss_difficulty(cfg)`; „As game“ folgt Difficulty),
 Timer (Off/Level/Short = 75 %), Münzpunkte (0/100/200/500), 1-UP-Münzen
 (Off/50/100/200), 1-UP-Punkte (v0.15: Off/2500/5000/10000/20000 —
 `game.gd::add_score` zählt überschrittene Schwellen, zustandslos), „Start
@@ -634,7 +637,8 @@ Partikel, Musik `music_castle`). Deko: `*` Banner, `+`/`t` Fackel
   waagrecht oder nach unten (max. 37°, `MAX_DOWN`), auch jede Fächer-
   Flamme (`_fan`); Eisbälle werden waagrecht ausgespuckt und springen erst
   am Boden hoch (Mindest-Rückprall in `boss_flame.gd`). Settings >
-  Difficulty: `STUN` 1,0 / 0,8 / 0,5 s, Feuerblumen (`FLOWERS`) bei Leicht
+  Boss fight (seit v1.5.1 eigene Einstellung, „As game“ = wie
+  Difficulty): `STUN` 1,0 / 0,8 / 0,5 s, Feuerblumen (`FLOWERS`) bei Leicht
   und Mittel, bei Schwer keine — Blumen kommen bei einem Treffer UND
   1,2 s nachdem der Held seine Feuerkraft verloren hat (`_no_fire_t`; der
   Nutzer hatte den Abwurf nie gesehen). Die Feuerblume vor der Arena und
@@ -696,6 +700,12 @@ skaliert (NEAREST). Adaptive-Vordergrund bleibt im sichtbaren Kreis (~61 %).
 
 ## Weltkarte (v1.1, ersetzt „Select World“)
 
+- **Kein Start-Hüpfer (v1.5.1)**: A betritt den Kurs UND ist Springen;
+  die Welt hält erst am Frame-Ende an (`set_deferred`), der neue Held sah
+  also noch „Sprung gedrückt“ und flog nach der Titelkarte weiter (47 px,
+  Nutzer: „hüpft am Anfang jedes Levels“). `_begin_level()` setzt
+  `player.input_enabled = false` bis die Karte weg ist und leert dann den
+  Sprungpuffer. Playtest `starthop`.
 - **Ablauf**: Titel „Play“ (`play_pressed(-1)`) → `game.gd::start_map_run()`
   = neuer Lauf (`_new_run()`: Punkte, Münzen, Leben, Kraft, Drache) → Karte
   (`State.MAP`, `_show_map()`), Held auf dem weitesten erreichten Kurs →

@@ -1979,6 +1979,38 @@ func _run() -> void:
 			var m := game.world_map
 			print("MAP 8: reach=%d at=%d banner='%s'" % [m.reach, m.at, m._title.text])
 			await shot("map_8")
+		"starthop":
+			# v1.5.1: entering a course with A (also "jump") must not make the
+			# hero hop at the start
+			SaveGame.clear()
+			await _wait(0.5)
+			game.menus.hide_all()
+			game.menus.play_pressed.emit(-1)
+			await _wait(1.2)
+			await _pad(0)                      # A on the map: enter the course
+			var y0 := 0.0
+			var ymin := 99999.0
+			for i in 200:
+				await physics_frame
+				if game.player:
+					if y0 == 0.0:
+						y0 = game.player.global_position.y
+					ymin = minf(ymin, game.player.global_position.y)
+			print("STARTHOP: state=%d spawn y=%.0f highest y=%.0f -> hop %.0f px (expected 0)" % [game.state, y0, ymin, y0 - ymin])
+		"bossdiff":
+			# v1.5.1: the boss fight has its own difficulty (Settings > Boss fight)
+			for pair in [[2, 0], [2, 1], [0, 3], [1, 2]]:
+				var cf := GameSettings.load_all()
+				cf.difficulty = pair[0]
+				cf.boss_difficulty = pair[1]
+				GameSettings.save(cf)
+				game.menus.hide_all()
+				game._start_game(Game.castle_of_world(1), true, true)
+				await _wait(Game.CARD_TIME + 0.3)
+				var boss: Boss = game.get_tree().get_nodes_in_group("boss")[0]
+				print("BOSSDIFF game=%s boss setting=%s -> boss difficulty=%d stun=%.1f flowers=%s enemy speed x%.2f" % [
+					GameSettings.DIFF_NAMES[pair[0]], GameSettings.BOSS_DIFF_NAMES[pair[1]], boss.difficulty,
+					Boss.STUN[boss.difficulty], Boss.FLOWERS[boss.difficulty], game.enemy_speed_mul()])
 	await _wait(0.3)
 	_restore_user_files()
 	quit()
