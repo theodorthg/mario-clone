@@ -23,9 +23,10 @@ const THEME_MUSIC := {"cave": "music_cave", "cavern": "music_cave", "desert": "m
 	"sky": "music_sky", "sky_dusk": "music_sky", "sea": "music_sea", "sea_deep": "music_sea",
 	"fortress_magma": "music_castle", "fortress_sun": "music_castle", "fortress_ice": "music_castle",
 	"fortress_storm": "music_castle", "fortress_tide": "music_castle",
-	"ghost": "music_ghost", "ghost_yard": "music_ghost", "fortress_ghost": "music_castle"}
+	"ghost": "music_ghost", "ghost_yard": "music_ghost", "fortress_ghost": "music_castle",
+	"volcano": "music_volcano", "volcano_core": "music_volcano", "fortress_volcano": "music_castle"}
 const MAP_THEME := "map"
-const WORLD_NAMES := ["Meadows", "Caverns", "Desert", "Snow", "Sky", "Sea", "Ghosts"]
+const WORLD_NAMES := ["Meadows", "Caverns", "Desert", "Snow", "Sky", "Sea", "Ghosts", "Volcano"]
 const LEVELS := [
 	preload("res://levels/level_1_1.gd"),
 	preload("res://levels/level_1_2.gd"),
@@ -49,6 +50,9 @@ const LEVELS := [
 	preload("res://levels/level_7_1.gd"),
 	preload("res://levels/level_7_2.gd"),
 	preload("res://levels/level_7_3.gd"),
+	preload("res://levels/level_8_1.gd"),
+	preload("res://levels/level_8_2.gd"),
+	preload("res://levels/level_8_3.gd"),
 ]
 const CHAIN := [100, 200, 400, 500, 800, 1000, 2000, 4000, 5000, 8000]
 const TIME_TICK := 0.4

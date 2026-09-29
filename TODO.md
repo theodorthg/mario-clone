@@ -18,7 +18,11 @@ Version inkl. itch.io-Upload:
       Durchgänge, Geister (kommen nur, wenn man wegschaut), Knochen-
       Schildkröte, Phantom-König (blendet sich weg), Musik „Haunted
       Waltz“, Karten-Region, Hilfeseite „Ghost House“.
-- [ ] v1.5.0 Welt 8 „Vulkan“ (letzte Welt, Endboss).
+- [x] v1.5.0 Welt 8 „Vulkan“ (2026-09-29, letzte Welt): 8-1 Ashen
+      Slopes, 8-2 Magma Core, Burg 8-3 Inferno Keep mit Endboss „Volcano
+      Lord“; Magma-Kleckse (werden gestampft zu Fels, schwimmen auf Lava),
+      Salamander, Meteorfelder, Musik „Magma March“, Karten-Region 8,
+      Hilfeseite „Volcano“. Damit ist die letzte Erweiterungsrunde fertig.
 - [x] itch.io-Upload per `butler` (2026-09-28, Nutzer hat Channels
       linux/android/windows/web angelegt): v1.4.0 gepusht. Ablauf in der
       Wurzel-CLAUDE.md; Chrome + `projects/itch_upload_server.py` nur noch

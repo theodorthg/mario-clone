@@ -72,7 +72,7 @@ func _ready() -> void:
 	add_to_group("boss")
 	if Game.instance:
 		difficulty = clampi(int(Game.instance.cfg.get("difficulty", 1)), 0, 2)
-	max_hp = 3 + (1 if world >= 3 else 0) + (1 if world >= 6 else 0)
+	max_hp = 3 + (1 if world >= 3 else 0) + (1 if world >= 6 else 0) + (1 if world >= 8 else 0)
 	hp = max_hp
 	sprite = AnimatedSprite2D.new()
 	sprite.sprite_frames = load("res://assets/graphics/boss_%d.tres" % clampi(world, 1, 8))
@@ -175,7 +175,7 @@ func _physics_process(delta: float) -> void:
 			if _hero_above(p):
 				_retreat(p)
 				_act = 0.8
-			elif world == 7 and randf() < 0.45:
+			elif (world == 7 and randf() < 0.45) or (world == 8 and randf() < 0.25):
 				_phase(p)
 			elif randf() < 0.55:
 				_windup = WINDUP
@@ -190,7 +190,7 @@ func _physics_process(delta: float) -> void:
 	if was_air and is_on_floor():
 		if _jumping:
 			_jumping = false
-			if world == 3 or (world == 6 and randf() < 0.5):
+			if world == 3 or (world in [6, 8] and randf() < 0.5):
 				_shock_waves()
 		_stretch(Vector2(1.18, 0.82))
 		_snd("bump")
@@ -235,7 +235,10 @@ func _retreat(p: Player) -> void:
 ## flash at the top of the arena first — step aside) · 7 fades out and
 ## reappears across the arena (see _phase), then a fan of flames · 6 (5 HP)
 ## picks one of the fan / ice balls / bolts each time, and every other
-## landing sends shock waves
+## landing sends shock waves · 8 the volcano lord, the final boss (6 HP):
+## fan / two magma balls / aimed flame + a meteor rain around the hero
+## (markers on the floor first), shock waves on every other landing, and
+## now and then it phases like the phantom king
 func _breathe(p: Player) -> void:
 	_roar = 0.6
 	facing = 1 if p.global_position.x > global_position.x else -1
@@ -267,6 +270,15 @@ func _breathe(p: Player) -> void:
 				_:
 					_shoot("flame", mouth, aim * 120.0)
 					_bolts(p)
+		8:
+			match randi() % 3:
+				0:
+					_fan(down, 120.0, mouth)
+				1:
+					_ice_pair(mouth, "magma")
+				_:
+					_shoot("flame", mouth, aim * 120.0)
+					_meteors(p)
 		_:
 			_shoot("flame", mouth, aim * 115.0)
 
@@ -281,9 +293,18 @@ func _fan(down: float, speed: float, mouth: Vector2) -> void:
 		_shoot("flame", mouth, _dir(top + FAN_STEP * k) * speed)
 
 ## Two ice balls spat out level: they drop to the floor and bounce along it.
-func _ice_pair(mouth: Vector2) -> void:
-	_shoot("ice", mouth, Vector2(facing * 95.0, 0.0))
-	_shoot("ice", mouth, Vector2(facing * 140.0, 60.0))
+func _ice_pair(mouth: Vector2, kind := "ice") -> void:
+	_shoot(kind, mouth, Vector2(facing * 95.0, 0.0))
+	_shoot(kind, mouth, Vector2(facing * 140.0, 60.0))
+
+## Final boss: three meteors crash down around the hero (each announced
+## by a marker on the arena floor for METEOR_FALL s).
+func _meteors(p: Player) -> void:
+	for dx in [-56.0, 0.0, 56.0]:
+		var m := BossFlame.new()
+		m.kind = "meteor"
+		m.target = Vector2(clampf(p.global_position.x + dx, arena_left + 24.0, arena_right - 24.0), global_position.y)
+		get_parent().add_child(m)
 
 func _bolts(p: Player) -> void:
 	var sky_y := global_position.y - 11.0 * Level.T

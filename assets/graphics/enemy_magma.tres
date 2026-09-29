@@ -1,0 +1,62 @@
+[gd_resource type="SpriteFrames" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/graphics/enemy_magma.png" id="1_tex"]
+
+[sub_resource type="AtlasTexture" id="at_hop1"]
+atlas = ExtResource("1_tex")
+region = Rect2(0, 0, 18, 13)
+
+[sub_resource type="AtlasTexture" id="at_hop2"]
+atlas = ExtResource("1_tex")
+region = Rect2(18, 0, 18, 13)
+
+[sub_resource type="AtlasTexture" id="at_rock"]
+atlas = ExtResource("1_tex")
+region = Rect2(36, 0, 18, 13)
+
+[sub_resource type="AtlasTexture" id="at_glow"]
+atlas = ExtResource("1_tex")
+region = Rect2(54, 0, 18, 13)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_hop1")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_hop2")
+}],
+"loop": true,
+"name": &"hop",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_rock")
+}],
+"loop": false,
+"name": &"rock",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_glow")
+},
+{
+"duration": 1.0,
+"texture": SubResource("at_rock")
+}],
+"loop": true,
+"name": &"glow",
+"speed": 10.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("at_hop1")
+}],
+"loop": false,
+"name": &"flipped",
+"speed": 1.0
+}]

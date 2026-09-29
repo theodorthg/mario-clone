@@ -206,7 +206,7 @@ func _run() -> void:
 			print("enemy at ", e.global_position, " active=", e.active)
 			game.player.global_position = e.global_position + Vector2(0, -24)
 			game.player.velocity = Vector2(0, 60)
-			await _frames(12)
+			await _wait(0.35)            # time, not frames: frame rate varies
 			state("just after stomp")
 			await shot("stomped")
 			state("after stomp")
@@ -1787,6 +1787,198 @@ func _run() -> void:
 			await _wait(1.2)
 			print("MAP 7 left: at=%d banner='%s'" % [m.at, m._title.text])
 			await shot("map_6_7")
+		"volcano":
+			# v1.5 world 8: salamander spit, magma blob -> rock (stand on it,
+			# floats on lava, melts later), meteor fields, 8-2, the final
+			# boss with every trick, victory after 8-3, map region 8
+			var go := func(lv: int) -> void:
+				game.menus.hide_all()
+				game._start_game(lv, true)
+				await _wait(Game.CARD_TIME + 0.4)
+			var vshot := func(label: String) -> void:
+				var keep: float = game.player.invuln_t
+				game.player.invuln_t = 0.0
+				await physics_frame
+				game.player.sprite.visible = true
+				await shot(label)
+				game.player.invuln_t = keep
+			var first_of := func(cls) -> Node:
+				for e in game.level.get_children():
+					if is_instance_of(e, cls) and not e.dead:
+						return e
+				return null
+			var w8 := Game.first_level_of_world(8)
+			await go.call(w8)
+			var p := game.player
+			await vshot.call("slopes_start")
+			# salamander at column 20 walks left toward the hero: it spits
+			game.change_power(Player.Power.BIG, false)
+			await _wait(0.8)
+			await teleport(Vector2i(11, 16))
+			p.facing = 1
+			var sala: Salamander = first_of.call(Salamander)
+			var spits := 0
+			var flat := true
+			for i in 180:
+				await physics_frame
+				for c in game.level.get_children():
+					if c is BossFlame and c.kind == "spit":
+						spits = maxi(spits, 1)
+						flat = flat and absf(c.velocity.y) < 0.1
+				if spits and i % 20 == 0:
+					pass
+			print("SPIT: salamander at %s flames seen=%d horizontal=%s hero power after=%d (BIG=%d)" % [
+				sala.global_position.round() if sala else Vector2.ZERO, spits, flat, p.power, Player.Power.BIG])
+			await vshot.call("salamander")
+			# magma blob on the hill (37,12): stomp -> rock, stand on it
+			await go.call(w8)
+			p = game.player
+			p.invuln_t = 99.0
+			var blob: MagmaBlob = first_of.call(MagmaBlob)
+			await teleport(Vector2i(int(blob.global_position.x / 16.0) - 4, int(blob.global_position.y / 16.0) - 1))
+			await _wait(0.3)
+			blob.active = true
+			blob._wait = 99.0
+			p.global_position = blob.global_position + Vector2(0, -40)
+			p.velocity = Vector2(0, 120)
+			await _wait(0.35)
+			print("BLOB stomped: state=%s (ROCK=%d) layer=%d score=%d" % [blob.state, MagmaBlob.State.ROCK, blob.collision_layer, game.score])
+			p.global_position = blob.global_position + Vector2(0, -12)
+			p.velocity = Vector2.ZERO
+			await _wait(0.4)
+			print("BLOB rock: hero on it: on_floor=%s feet y=%.0f rock top y=%.0f" % [p.is_on_floor(), p.global_position.y, blob.global_position.y - MagmaBlob.ROCK_H])
+			await vshot.call("on_rock")
+			await _wait(5.0)
+			print("BLOB after 5.7 s with the hero on top: state=%s (still a rock)" % blob.state)
+			await teleport(Vector2i(int(blob.global_position.x / 16.0) - 5, 16))
+			await _wait(0.3)
+			print("BLOB hero stepped off: state=%s (HOP=%d) layer=%d" % [blob.state, MagmaBlob.State.HOP, blob.collision_layer])
+			# a blob over the lava pit (24..28) rests on the lava; stomped, it floats
+			var b2 := MagmaBlob.new()
+			b2.position = Vector2(26 * 16 + 8, 12 * 16)
+			game.level.add_child(b2)
+			b2.active = true
+			b2._wait = 99.0
+			await teleport(Vector2i(21, 16))
+			await _wait(1.0)
+			print("LAVA blob: y=%.0f on_lava=%s dead=%s (lava surface y=%d)" % [b2.global_position.y, b2._on_lava, b2.dead, 18 * 16 + 1])
+			p.global_position = b2.global_position + Vector2(0, -40)
+			p.velocity = Vector2(0, 120)
+			await _wait(0.35)
+			p.global_position = b2.global_position + Vector2(0, -12)
+			p.velocity = Vector2.ZERO
+			await _wait(0.5)
+			print("LAVA rock: state=%s y=%.0f hero on_floor=%s gstate=%d (PLAYING=%d)" % [b2.state, b2.global_position.y, p.is_on_floor(), game.state, Game.State.PLAYING])
+			await vshot.call("rock_on_lava")
+			blob.fire_hit()
+			print("FIRE on a blob: dead=%s" % blob.dead)
+			# meteor field 1 (48..72): meteors with markers
+			await teleport(Vector2i(56, 16))
+			p.invuln_t = 99.0
+			var metcount := 0
+			var marks := 0
+			var shot_done := false
+			for i in 360:
+				await physics_frame
+				p.invuln_t = 99.0
+				for c in game.level.get_children():
+					if c is BossFlame and c.kind == "meteor" and not c.has_meta("counted"):
+						c.set_meta("counted", true)
+						metcount += 1
+					if c is BossFlame.MeteorMark:
+						marks = maxi(marks, 1)
+						if not shot_done and c.t > 0.5:
+							shot_done = true
+							await vshot.call("meteor_mark")
+			print("METEORS in 6 s standing in field 1: %d (markers seen=%d)" % [metcount, marks])
+			p.invuln_t = 0.0
+			var hurt := false
+			for i in 480:
+				await physics_frame
+				if p.invuln_t > 0.0 or game.state != Game.State.PLAYING:
+					hurt = true
+					break
+			print("METEOR standing still 8 s: hero got hit=%s power=%d" % [hurt, p.power])
+			await teleport(Vector2i(40, 16))
+			await _wait(3.0)
+			var left := 0
+			for c in game.level.get_children():
+				if c is BossFlame and c.kind == "meteor":
+					left += 1
+			print("METEOR outside the field after 3 s: %d in the air (expected 0)" % left)
+			# 8-2 magma core and its exit on the crater rim
+			await go.call(w8 + 1)
+			p = game.player
+			await vshot.call("core_start")
+			p.invuln_t = 99.0
+			await teleport(Vector2i(207, 14))
+			await hold("move_down", 1.2)
+			await _wait(1.2)
+			print("CORE exit pipe: area=%s theme=%s music=%s" % [game.area, game.level.data.AREAS[game.area]["theme"], game._snd_call("current_music", "")])
+			await vshot.call("core_exit")
+			# 8-3 inferno keep, final boss
+			await go.call(Game.castle_of_world(8))
+			await vshot.call("keep")
+			game.menus.hide_all()
+			game._start_game(Game.castle_of_world(8), true, true)
+			await _wait(Game.CARD_TIME + 0.3)
+			p = game.player
+			Input.action_press("move_right")
+			await _wait(1.6)
+			Input.action_release("move_right")
+			await _wait(0.3)
+			var boss: Boss = game.get_tree().get_nodes_in_group("boss")[0]
+			var kinds := {}
+			var up := 0
+			var phases := 0
+			var was := false
+			var bshot := false
+			for i in 1500:
+				await physics_frame
+				p.invuln_t = 99.0
+				var ph := boss._phase_t > 0.0
+				if ph and not was:
+					phases += 1
+				was = ph
+				for c in game.level.get_children():
+					if c is BossFlame:
+						kinds[c.kind] = true
+						if c.kind in ["flame", "spit"] and c.velocity.y < -1.0:
+							up += 1
+						if c.kind == "meteor" and not bshot and c._t > 0.4:
+							bshot = true
+							await vshot.call("boss_meteors")
+			if not kinds.has("meteor"):
+				boss._meteors(p)
+				await _wait(0.5)
+				for c in game.level.get_children():
+					if c is BossFlame and c.kind == "meteor":
+						kinds["meteor"] = true
+				await vshot.call("boss_meteors")
+			print("BOSS8 hp=%d/%d attacks=%s phases=%d upward flame frames=%d" % [boss.hp, boss.max_hp, kinds.keys(), phases, up])
+			# defeat it: victory after the last course
+			boss.hp = 1
+			boss._inv = 0.0
+			boss._phase_t = 0.0
+			boss.take_hit()
+			await _wait(9.0)
+			print("VICTORY: gstate=%d screen=%d (VICTORY=%d) texts=%s" % [game.state, game.menus.screen, Menus.Screen.VICTORY, _button_texts()])
+			await shot("victory")
+			# world map region 8
+			var c := ConfigFile.new()
+			c.load(GameSettings.CFG_PATH)
+			c.set_value("progress", "level", "8-2")
+			c.set_value("progress", "world", 8)
+			c.save(GameSettings.CFG_PATH)
+			SaveGame.clear()
+			game._to_title()
+			await _wait(0.5)
+			game.menus.hide_all()
+			game.menus.play_pressed.emit(-1)
+			await _wait(1.0)
+			var m := game.world_map
+			print("MAP 8: reach=%d at=%d banner='%s'" % [m.reach, m.at, m._title.text])
+			await shot("map_8")
 	await _wait(0.3)
 	_restore_user_files()
 	quit()

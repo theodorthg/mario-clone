@@ -823,6 +823,125 @@ def dead_trees():
     return img
 
 
+# ----------------------------------------------------------- volcano (v1.5) --
+def _heat(img, k=1.0):
+    """recolor a (blue/gray) layer into glowing-rock reds by luminance"""
+    px = img.load()
+    for y in range(img.size[1]):
+        for x in range(img.size[0]):
+            r, g, b, a = px[x, y]
+            if a == 0:
+                continue
+            lum = (r * 0.3 + g * 0.5 + b * 0.2) * k
+            px[x, y] = (min(255, int(lum * 1.35 + 8)), int(lum * 0.52), int(lum * 0.46), a)
+    return img
+
+
+def volcano_peak():
+    """far layer: a big smoking volcano with lava running down, two small
+    cones beside it (one volcano per 640 px)"""
+    h = 200
+    img = Image.new("RGBA", (BG_W, h), TRANSPARENT)
+    px = img.load()
+    rock, rock_l, rock_d = hex_rgba("#3e1c20"), hex_rgba("#5a2a2c"), hex_rgba("#2a1216")
+    lava, lava_h, glow = hex_rgba("#ff6a1a"), hex_rgba("#ffc040"), hex_rgba("#8a2a18")
+
+    def cone(cx, top, half_top, base_half):
+        for y in range(top, h):
+            t = (y - top) / (h - top)
+            half = int(half_top + (base_half - half_top) * (t ** 0.8))
+            for dx in range(-half, half + 1):
+                x = (cx + dx) % BG_W
+                px[x, y] = rock_l if dx < -half + 3 else (rock_d if dx > half - 4 else rock)
+    cone(96, 128, 6, 110)
+    cone(548, 120, 7, 120)
+    cone(320, 46, 18, 200)
+    # crater glow + lava streams
+    for dx in range(-17, 18):
+        px[(320 + dx) % BG_W, 46] = lava_h if abs(dx) < 12 else lava
+        px[(320 + dx) % BG_W, 47] = lava
+    rng = random.Random(81)
+    for start in (-12, -3, 7, 14):
+        x = 320 + start
+        for y in range(48, h - 20):
+            x += rng.choice((-1, 0, 0, 1)) + (1 if start > 0 and y % 5 == 0 else (-1 if start < 0 and y % 5 == 0 else 0))
+            px[x % BG_W, y] = lava_h if y < 70 else lava
+            px[(x + 1) % BG_W, y] = glow
+    # smoke plume drifting right
+    puffs = []
+    for i in range(18):
+        r = 6 + i * 0.55 + rng.randint(0, 2)
+        puffs.append((322 + i * 8 + rng.randint(-3, 3), max(r + 1, 38 - i * 1.8 + 3 * math.sin(i * 1.3)), r))
+    for cx, cy, r in reversed(puffs):
+        for y in range(int(cy - r), int(cy + r) + 1):
+            for x in range(int(cx - r), int(cx + r) + 1):
+                if 0 <= y < h and (x - cx) ** 2 + (y - cy) ** 2 <= r * r:
+                    shade = 58 + (8 if (x - cx) + (y - cy) < -r * 0.4 else 0)
+                    px[x % BG_W, y] = (shade, shade - 14, shade - 12, 235)
+    return img
+
+
+def lava_fields():
+    """mid layer: dark basalt hills with glowing lava rivers"""
+    img = hills(120, ["#6a3a36", "#40262a", "#321c22", "#1e1216"],
+                [(14, 2, 0.9), (8, 5, 2.4), (4, 11, 0.4)], 48, pattern=False, seed=41)
+    px = img.load()
+    lava, lava_h = hex_rgba("#ff6a1a"), hex_rgba("#ffb040")
+    for x0 in (60, 250, 430, 590):
+        x = x0
+        top = next(y for y in range(120) if px[x % BG_W, y][3])
+        for y in range(top + 2, 120):
+            x += (1 if (y // 3) % 3 == 0 else 0) - (1 if (y // 7) % 4 == 1 else 0)
+            for dx in range(0, 2 + (y - top) // 18):
+                px[(x + dx) % BG_W, y] = lava_h if dx == 0 else lava
+    return img
+
+
+def basalt_spires():
+    """near layer: jagged basalt columns with a hot rim on the left"""
+    h = 120
+    img = Image.new("RGBA", (BG_W, h), TRANSPARENT)
+    px = img.load()
+    body, dark, rim = hex_rgba("#2a1a1e"), hex_rgba("#1a1014"), hex_rgba("#a8442a")
+    base = [int(96 - periodic(x, [(5, 3, 0.3), (3, 8, 1.1)])) for x in range(BG_W)]
+    for x in range(BG_W):
+        for y in range(base[x], h):
+            px[x, y] = body
+    rng = random.Random(91)
+    x = 8
+    while x < BG_W - 6:
+        w, top = rng.randint(7, 15), rng.randint(18, 70)
+        for dx in range(w):
+            peak = top + abs(dx - w // 2) * 2 + rng.randint(0, 1)
+            for y in range(peak, base[(x + dx) % BG_W] + 1):
+                px[(x + dx) % BG_W, y] = rim if dx == 0 else (dark if dx >= w - 2 else body)
+        x += w + rng.randint(10, 40)
+    return img
+
+
+def magma_cave_far():
+    """inside the volcano: the cave wall in reds, with lava falls"""
+    img = _heat(cave_far())
+    px = img.load()
+    lava, lava_h, lava_w = hex_rgba("#ff6a1a"), hex_rgba("#ffb040"), hex_rgba("#fff0a0")
+    for fx in (60, 230, 440, 590):
+        top = next(y for y in range(270) if not px[fx, y][3] or px[fx, y][0] < 60) if px[fx, 0][3] else 0
+        for y in range(max(0, top - 4), 236):
+            wob = int(1.5 * math.sin(y / 6.0 + fx))
+            for dx in range(-3, 4):
+                x = (fx + dx + wob) % BG_W
+                px[x, y] = lava_w if dx == 0 and y % 9 < 3 else (lava_h if abs(dx) < 2 else lava)
+        for y in range(232, 240):
+            half = 3 + (y - 232)
+            for dx in range(-half, half + 1):
+                px[(fx + dx) % BG_W, y] = lava_h if abs(dx) < half - 2 else lava
+    return img
+
+
+def magma_cave_near():
+    return _heat(cave_near(), 0.9)
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     layers = {
@@ -869,6 +988,12 @@ def main():
         "bg_ghost_manor": haunted_manor(),
         "bg_ghost_graves": graves_band(),
         "bg_ghost_trees": dead_trees(),
+        # volcano (v1.5)
+        "bg_volcano_peak": volcano_peak(),
+        "bg_volcano_fields": lava_fields(),
+        "bg_volcano_spires": basalt_spires(),
+        "bg_magma_far": magma_cave_far(),
+        "bg_magma_near": magma_cave_near(),
     }
     for name, im in layers.items():
         im.save(os.path.join(OUT, name + ".png"))

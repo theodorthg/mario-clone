@@ -1107,6 +1107,84 @@ def crypt_frames():
     return frames
 
 
+# ----------------------------------------------------------- volcano (v1.5) --
+# basalt ground under a crust of ash with glowing embers, glowing lava veins
+# in the rock, obsidian bricks with magma in the joints
+BASALT = {
+    "a": "#3e3238", "b": "#342a30", "c": "#282026", "d": "#1a1418",
+    "e": "#564850", "s": "#4e4248", "S": "#221a20", "T": "#6e6066", "r": "#ff6a1a",
+}
+ASH_TOP = {
+    "L": "#a08a80", "g": "#7a6862", "G": "#5c4c4c", "H": "#43363a",
+    "D": "#1e161a", "d": "#1a1418",
+}
+OBSIDIAN_PAL = {"k": OUTLINE, "l": "#6a5888", "b": "#34283e", "B": "#221a2c", "m": "#e8581a"}
+EMBER = "#ff8a2a"
+EMBER_HOT = "#ffd870"
+
+
+def basalt_tile(mask):
+    img = edge_tile(mask, BASALT, ASH_TOP)
+    px = img.load()
+    if mask & 1:
+        for x, y in ((4, 4), (11, 5), (8, 3)):
+            if px[x, y][3]:
+                px[x, y] = hex_rgba(EMBER)
+    return img
+
+
+def basalt_variant(i):
+    """interior basalt: plain, a stone, a glowing vein, a glowing crack"""
+    img = dirt_variant(i, BASALT)
+    px = img.load()
+    if i == 2:
+        for x, y in ((10, 2), (11, 3), (11, 4), (12, 5)):
+            px[x, y] = hex_rgba(EMBER_HOT)
+    elif i == 3:
+        for k, (x, y) in enumerate(((4, 7), (5, 8), (6, 8), (7, 9), (8, 10), (8, 11), (9, 12))):
+            px[x, y] = hex_rgba(EMBER_HOT if k in (2, 3, 4) else EMBER)
+    return img
+
+
+LAVA_ROCK = [
+    "......sT..........",
+    ".....sTTs.........",
+    "....sTsssS....sT..",
+    "...sTssrssS..sTTs.",
+    "..sTsssrrssSsTsssS",
+    "..sssssrsssSssssSS",
+    ".sTssssrrsssssrsSS",
+    ".ssssssssrssssrsSS",
+    "sTsssSsssrssssrsSS",
+    "ssssSSssssssSSrSSS",
+    "sssSSSSsssssSSSSSS",
+    "SSSSSSSSSSSSSSSSSS",
+]
+LAVA_ROCK_PAL = {"s": "#4e4248", "T": "#7a6c72", "S": "#2a2026", "r": "#ff7a1a"}
+VENT = [
+    "....y.y.....",
+    "...yfyfy....",
+    "....yfy.....",
+    "...sTRRs....",
+    "..sTsRRss...",
+    "..TssssssS..",
+    ".sTsssssSSs.",
+    "sTsssssssSSS",
+    "SSSSSSSSSSSS",
+]
+VENT_PAL = {"s": "#5a4c52", "T": "#7a6c72", "S": "#2e2428", "R": "#ff5a1a", "y": "#ff8a1a", "f": "#ffe070"}
+FLAME_JET = [
+    "..y...",
+    ".yy.y.",
+    ".yfy..",
+    "yfwfy.",
+    "yfwwfy",
+    ".yffy.",
+    "..yy..",
+]
+FLAME_PAL = {"w": "#fffbe0", "f": "#ffd84a", "y": "#ff7a1a"}
+
+
 def biome_decor():
     ol_ = lambda im: outline(im, color=OUTLINE, selective=False)  # noqa: E731
     small_bush = [r[:18] for r in BUSH_L[1:]]
@@ -1153,6 +1231,12 @@ def biome_decor():
         ("tomb", ol_(parse(TOMB, TOMB_PAL))),
         ("tuft_grave", recolored(TUFT, L="#c8c8a0", g="#8a8a62", G="#5a5a3a")),
         ("cross", ol_(parse(CROSS, CROSS_PAL))),
+        # volcano (v1.5)
+        ("lava_rock", ol_(parse(LAVA_ROCK, LAVA_ROCK_PAL))),
+        ("vent", ol_(parse(VENT, VENT_PAL))),
+        ("ember_bloom", recolored(FLOWER_A, r="#ff5a1a", y="#ffe070", G="#6a5a58")),
+        ("flame_jet", parse(FLAME_JET, FLAME_PAL)),
+        ("rock_volcano", ol_(recolored(ROCK, s="#4e4248", T="#7a6c72", S="#2a2026"))),
     ]
 
 
@@ -1325,7 +1409,7 @@ def water_body():
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    atlas = Image.new("RGBA", (16 * T, 15 * T), TRANSPARENT)
+    atlas = Image.new("RGBA", (16 * T, 16 * T), TRANSPARENT)
     for m in range(16):
         atlas.paste(edge_tile(m, DIRT, GRASS), (m * T, 0))
         atlas.paste(edge_tile(m, CAVE, CAVE_TOP), (m * T, 3 * T))
@@ -1336,6 +1420,7 @@ def main():
         atlas.paste(edge_tile(m, REEF, CORAL_TOP), (m * T, 11 * T))
         atlas.paste(plank_tile(m), (m * T, 12 * T))             # v1.4 ghost house floor
         atlas.paste(edge_tile(m, GRAVE, GRAVE_TOP), (m * T, 13 * T))  # graveyard soil
+        atlas.paste(basalt_tile(m), (m * T, 15 * T))            # v1.5 volcano basalt
     # row 14: ghost wall panel 0, plank interiors 1-3, grave interiors 4-7,
     # crypt stone brick 8
     atlas.paste(parse(GHOST_PANEL, GHOST_PANEL_PAL), (0, 14 * T))
@@ -1344,6 +1429,10 @@ def main():
     for i in range(4):
         atlas.paste(dirt_variant(i, GRAVE), ((4 + i) * T, 14 * T))
     atlas.paste(parse(BRICK, CRYPT_PAL), (8 * T, 14 * T))
+    # row 14 (v1.5): obsidian brick 9, basalt interiors 10-13
+    atlas.paste(parse(BRICK, OBSIDIAN_PAL), (9 * T, 14 * T))
+    for i in range(4):
+        atlas.paste(basalt_variant(i), ((10 + i) * T, 14 * T))
     atlas.paste(parse(BRICK, CORAL_BRICK_PAL), (6 * T, 10 * T))
     for i in range(1, 4):
         atlas.paste(dirt_variant(i, REEF), ((6 + i) * T, 10 * T))

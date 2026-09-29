@@ -21,8 +21,10 @@ davon ist aus Nintendo-Spielen übernommen (Figuren nur „im Stil von“).
   Highscore-Eintrag, v1.2.1 Feinschliff (Highscore-Liste, Panzer-Limit,
   zehn eigene Bonusräume, Boss je Schwierigkeit), v1.3.0 Becken +
   Strömungen, geflutete Burg 6-3, v1.4.0 Welt 7 Geisterhaus (Türen,
-  Geister, Knochen-Schildkröten, Phantom-König). Letzte Erweiterungsrunde
-  (Nutzer 2026-09-28): danach noch Welt 8 Vulkan.
+  Geister, Knochen-Schildkröten, Phantom-König), v1.5.0 Welt 8 Vulkan
+  (letzte Welt, Endboss). Damit ist die letzte Erweiterungsrunde (Nutzer
+  2026-09-28) abgeschlossen — weitere Ideen nur, wenn der Nutzer welche
+  hat. Stand: 8 Welten, 25 Kurse, 8 Bosse.
 
 ## Design-Entscheidungen
 
@@ -185,8 +187,8 @@ Dach, Schildkröten-Reihe auf einem Sims (Kombo), Stufenpyramide mit Tunnel.
 4-2 (Thema `snow_night`: Sterne + Mond, blaue Tönung): lange Eisbahn,
 Eisziegel-Türme, See mit Eisschollen, Eisbrücke über Wasser.
 Reihenfolge in `game.gd::LEVELS`: 1-1 … 1-4, 2-1 … 2-3, 3-1 … 3-3,
-4-1 … 4-3, 5-1 … 5-3, 6-1 … 6-3, 7-1 … 7-3 (x-4/x-3 = Burg); nach
-dem letzten Kurs (derzeit 7-3) Siegerbildschirm.
+4-1 … 4-3, 5-1 … 5-3, 6-1 … 6-3, 7-1 … 7-3, 8-1 … 8-3 (x-4/x-3 =
+Burg); nach dem letzten Kurs (8-3) Siegerbildschirm.
 
 ### 1-1 „Green Hills“ (312 Spalten, davon 262 Hauptlevel)
 Start-Wiese mit ?-Blöcken → Röhrenfeld (Warp-Röhre Spalte 53 → Münzhöhle,
@@ -320,7 +322,8 @@ Nintendo-Themen. Loops werden mit umgeklapptem Nachhall gerendert (nahtlos);
   Over löscht, New-Game-Rückfrage, Levelauswahl lässt den Spielstand in
   Ruhe), polish (v1.2.1: Panzer-Limit, Boss je Schwierigkeit + nichts nach
   oben, alle zehn Bonusräume mit Screenshot, Drache an der Grotte,
-  benannter Lauf ohne Namensfeld, „Clear list“). **Jedes Szenario sichert `savegame.cfg`, `hall_of_fame.cfg` und
+  benannter Lauf ohne Namensfeld, „Clear list“), water (v1.3), ghost
+  (v1.4), volcano (v1.5). **Jedes Szenario sichert `savegame.cfg`, `hall_of_fame.cfg` und
   `settings.cfg` vorher und stellt sie danach wieder her** (Autosave/Game
   Over schreiben sonst in die echten Dateien des Entwicklungsrechners).
   Synthetische Mausklicks zählen in
@@ -515,6 +518,53 @@ Ducken und Absteigen auf Touch unmöglich.
   alle Türen in 7-1/7-2, Knochenhaufen steht wieder auf, Phasen des
   Bosses ohne Feuer nach oben, Karte Region 7).
 
+## Welt 8 „Volcano“ (v1.5) — letzte Welt, Endboss
+
+- 8-1 „Ashen Slopes“ (Thema `volcano`: brennender Himmel, rauchender
+  Vulkan mit Lavaströmen, Lavafelder, Basaltspitzen, Partikel `ash` —
+  graue Flocken, manche glühen noch), 8-2 „Magma Core“ (`volcano_core`:
+  rote Höhle mit Lavafällen, Partikel `embers`; Ausgang per Röhre auf den
+  Kraterrand `exit` mit Fahne), Burg 8-3 „Inferno Keep“
+  (`fortress_volcano`, die längste Burg: 7 Abschnitte). Musik
+  `music_volcano` „Magma March“ (c-Moll, 144 bpm); Burg `music_castle`.
+  Bonusraum 8-1: eigener Stil `forge` (Obsidian-Ambosse mit Münztürmen,
+  Thema `volcano_core`).
+- Biom `volcano`: `#` = Basalt unter Asche (Atlas-Reihe 15, glühende
+  Glutpunkte in der Kruste), Innenvarianten Reihe 14 Spalten 10–13 (mit
+  glühenden Adern), `w` = Obsidian mit Magmafugen (`OBSIDIAN` 9/14).
+  Deko: `*` Lavafels, `+` Schlot (flackert), `f` Glutblume, `t`
+  Flämmchen (flackert), `r` Basaltbrocken.
+- **Magma-Klecks** `m` (`magma_blob.gd`, `MagmaBlob`): hüpft auf den
+  Helden zu. Gestampft erstarrt er für `COOL` 5 s zu einem Fels (Welt-
+  Layer 1 → man kann draufstehen, Stufe zu hohen Simsen), glüht die
+  letzte 1,2 s und schmilzt zurück — nie, solange der Held darauf steht.
+  **Lava ist sein Element**: Klecks und Fels liegen auf der Lava-
+  Oberfläche (`_rest_on_lava()`, 1 px eingesunken) → ein über Lava
+  gestampfter Klecks wird zur schwimmenden Trittfläche. Feuer wirkungslos
+  (`fire_hit()` leer), Stern/Panzer/Zunge erledigen ihn.
+- **Salamander** `d` (`salamander.gd`, `extends Shroom`): läuft, dreht an
+  Kanten; steht der Held vor ihm auf ähnlicher Höhe (< 190 px), bleibt er
+  0,5 s mit offenem Maul stehen (Warnung) und spuckt eine kleine Flamme
+  waagrecht über den Boden (`BossFlame` Art `spit`). Stampfbar, Feuer
+  wirkt.
+- **Meteorfelder** (`L.meteors` → Level-Konstante `METEORS` =
+  [Vector2i(c0, c1)], `meteor_field.gd`, `MeteorField`): solange der Held
+  in den Spalten ist, fällt alle 1,5–2,3 s (Schwierigkeit skaliert) ein
+  brennender Fels nahe seiner Laufrichtung (`BossFlame` Art `meteor`,
+  fällt `METEOR_FALL` 1 s schräg auf einen blinkenden Ring am Boden,
+  `MeteorMark`; Ton `meteor` = Pfeifen + Einschlag genau bei der
+  Landung). 8-1 hat zwei Felder. Selbsttest prüft die Grenzen.
+- **Endboss Welt 8 „Volcano Lord“** (Lava-Farben, 6 HP): wählt jedes Mal
+  Fächer / zwei Magmakugeln (`magma` = springt wie `ice`, orange) /
+  gezielte Flamme + Meteorregen (drei Meteore um den Helden, `_meteors()`),
+  Schockwellen bei jeder zweiten Landung, ab und zu `_phase()` wie der
+  Phantom-König. Nie nach oben (Magmakugeln waagrecht ausgespuckt).
+  Danach „YOU WIN!“ (Siegerbildschirm).
+- Hilfeseite „Volcano“; Playtest `volcano` (Spucke, Fels + Draufstehen +
+  nicht schmelzen + Schmelzen, Fels auf Lava, Feuer-Immunität, Meteore
+  + Treffer + nichts außerhalb des Felds, 8-2-Ausgang, Boss mit allen
+  Angriffen, Sieg nach 8-3, Karte Region 8).
+
 ## Biom-Gegner (v0.9)
 
 - `a` Fledermaus (`bat.gd`, Höhle; `L.bat(c)` setzt sie direkt unter die
@@ -659,10 +709,11 @@ skaliert (NEAREST). Adaptive-Vordergrund bleibt im sichtbaren Kreis (~61 %).
   `_run_reach` = max(Fortschritt, gestarteter Kurs).
 - **Karte** `world_map.gd` (`WorldMap`, Kind von World, eigene Banner-
   CanvasLayer 9 mit Kursname + Hinweis): Bild + Daten aus
-  `tools/gen_map.py` — `assets/graphics/world_map.png` (1630×270, sieben
+  `tools/gen_map.py` — `assets/graphics/world_map.png` (1860×270, acht
   Regionen nebeneinander: Wiese mit Teich, Höhle mit Bergkamm/Lava, Wüste
   mit Pyramide/Oase, Schnee mit Gipfeln/See, Himmel mit Wolkeninseln +
-  Regenbogen, Meer mit Strand/Inseln, Geisterhaus mit Villa/Gräbern/Nebel
+  Regenbogen, Meer mit Strand/Inseln, Geisterhaus mit Villa/Gräbern/Nebel,
+  Vulkan mit Lavastrom und Lavasee
   — jede neue Welt hängt rechts eine Region an: `W`, `REGIONS`, `NODES`,
   `CASTLES`, `BEND`, `PAL` in gen_map.py), `map_nodes.png` (offen gelb /
   geschafft grün mit Haken / gesperrt dunkel mit Schloss), `map_castles.png`

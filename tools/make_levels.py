@@ -40,6 +40,10 @@ Grid legend (one char per 16x16 cell, row 0 = top):
   l  ghost (chases while you look away)   O  bone turtle (falls apart)
   H  ghost house door (the floor cell in front of it; linked in pairs via
      WARPS kind "door", see L.door() / L.link())
+  m  magma blob (hops at you; stomped it cools into a rock to stand on)
+  d  salamander (walks, spits fire along the ground)
+  Meteor fields (v1.5, L.meteors): column ranges where burning rocks rain
+  down near the hero, each announced by a marker on the ground.
   Underwater areas (theme sea / sea_deep): the hero swims; put water
   surface tiles 'v' in row 2 (see add_surface()).
   Pools (v1.3, L.pools): rectangles of swimmable water inside a dry area
@@ -66,7 +70,8 @@ THEME_BIOME = {"cave": "cave", "cavern": "cave", "desert": "sand", "desert_dusk"
                "snow": "snow", "snow_night": "snow", "fortress": "castle", "sky": "sky", "sky_dusk": "sky",
                "sea": "sea", "sea_deep": "sea", "beach": "beach", "fortress_magma": "castle",
                "fortress_sun": "castle", "fortress_ice": "castle", "fortress_storm": "castle",
-               "fortress_tide": "castle", "ghost": "ghost", "ghost_yard": "grave", "fortress_ghost": "castle"}
+               "fortress_tide": "castle", "ghost": "ghost", "ghost_yard": "grave", "fortress_ghost": "castle",
+               "volcano": "volcano", "volcano_core": "volcano", "fortress_volcano": "castle"}
 
 
 class Level:
@@ -87,6 +92,7 @@ class Level:
         self.arena = None
         self.pools = []       # (c0, r0, c1, r1): swimmable water inside a dry area
         self.currents = []    # (c0, r0, c1, r1, dir): water flowing left (-1) / right (1)
+        self.meteors = []     # (c0, c1): meteor field columns (v1.5)
 
     # ---------------------------------------------------------------- basics
     def set(self, c, r, ch):
@@ -224,6 +230,8 @@ class Level:
             if self.currents:
                 fh.write("const CURRENTS := [%s]\n" % ", ".join("[Rect2i(%d, %d, %d, %d), %d]" % (c0, r0, c1 - c0 + 1, r1 - r0 + 1, d)
                                                                for c0, r0, c1, r1, d in self.currents))
+            if self.meteors:
+                fh.write("const METEORS := [%s]\n" % ", ".join("Vector2i(%d, %d)" % m for m in self.meteors))
             fh.write("const CHECKPOINTS := [%s]\n" % ", ".join("Vector2i(%d, %d)" % p for p in self.checkpoints))
             fh.write("const AREAS := {\n")
             for k, (c0, c1, theme) in self.areas.items():
@@ -590,10 +598,28 @@ def _bonus_slabs(L, B0, B1):
     return mouth, "sky"
 
 
+def _bonus_forge(L, B0, B1):
+    """8-1: the forge deep in the volcano — obsidian anvils with coin
+    stacks, a coin river along the floor, a row high up, a hidden 1-UP"""
+    mouth = _bonus_frame(L, B0, B1)
+    o = B0
+    L.coins(o + 4, 16, 26)
+    for k, c in enumerate((7, 13, 19, 25)):
+        h = 2 + (k % 2) * 2
+        L.fill(o + c, o + c + 2, GROUND - h, GROUND - 1, "w")
+        for r in range(GROUND - h - 3, GROUND - h):
+            L.coins(o + c, r, 3)
+    L.coins(o + 11, 8, 12)
+    L.set(o + 16, 5, "h")
+    L.decor(o + 3, "*")
+    L.decor(o + 30, "+")
+    return mouth, "volcano_core"
+
+
 BONUS_ROOMS = {"classic": _bonus_classic, "heaven": _bonus_heaven, "blocks": _bonus_blocks,
                "pillars": _bonus_pillars, "lifts": _bonus_lifts, "pyramid": _bonus_pyramid,
                "grotto": _bonus_grotto, "ice": _bonus_ice, "zigzag": _bonus_zigzag,
-               "slabs": _bonus_slabs}
+               "slabs": _bonus_slabs, "forge": _bonus_forge}
 
 
 def finale(L, stairs_at, flag_at, castle_at):
@@ -1957,11 +1983,191 @@ def level_7_2():
 
 
 # =========================================================================
+# 8-1  "Ashen Slopes" (v1.5) — the last world: ash hills, lava rivers,
+#      salamanders, magma blobs, two meteor fields, a forge bonus room
+# =========================================================================
+def level_8_1():
+    L = Level("8-1", "ASHEN SLOPES", 330, time=400)
+    MAIN_END = 270
+    L.ground(0, MAIN_END - 1)
+    for c, ch in ((2, "*"), (6, "t"), (12, "+"), (17, "r")):
+        L.decor(c, ch)
+    L.blocks(8, 13, "?M?")
+    L.enemy(20, ch="d")
+    # a first lava pit with a bubble
+    L.lava(24, 28)
+    L.set(26, GROUND + 1, "b")
+    L.coin_arc(23, 11, 7)
+    # an ash hill with a magma blob on top
+    L.fill(32, 40, 15, GROUND - 1, "#")
+    L.fill(35, 38, 13, 14, "#")
+    L.enemy(37, 12, "m")
+    L.coins(33, 13, 2)
+    L.decor(44, "*")
+    # meteor field 1: keep moving
+    L.meteors.append((48, 72))
+    L.blocks(52, 13, "B?B")
+    L.coins(57, 13, 5)
+    L.blocks(66, 12, "?")
+    L.decor(62, "+")
+    L.decor(70, "t")
+    L.enemy(64, ch="d")
+    # a lava river, crossed on a lift
+    L.lava(76, 87)
+    L.set(77, 14, "~")
+    L.coins(78, 11, 4)
+    # basalt hills, salamanders, the warp pipe down to the forge
+    L.fill(90, 97, 15, GROUND - 1, "#")
+    L.enemy(94, 14, "d")
+    L.enemy(101, ch="d")
+    warp_in = L.pipe(105, 3, warp=True)
+    L.decor(99, "*")
+    L.decor(109, "r")
+    L.checkpoints.append((112, GROUND - 1))
+    # magma blobs in a hollow — a cooled one is a step up to the ledge
+    L.enemy(118, ch="m")
+    L.enemy(124, ch="m")
+    L.blocks(120, 13, "?C?")
+    L.ledge(127, 131, 11, depth=1)
+    L.coins(127, 10, 5)
+    L.decor(133, "+")
+    # meteor field 2 over small lava pits with loose slabs
+    L.meteors.append((136, 172))
+    for c0 in (140, 152, 164):
+        L.lava(c0, c0 + 4)
+        L.set(c0 + 1, 14, "D")
+        L.coins(c0 + 1, 11, 3)
+    L.enemy(158, ch="d")
+    L.decor(149, "+")
+    L.decor(171, "*")
+    # tall steps up to a ridge and down again
+    L.stairs(176, 4, up=True)
+    L.fill(180, 188, 13, GROUND - 1, "#")
+    L.enemy(185, 12, "d")
+    L.blocks(182, 9, "B?B")
+    L.stairs(189, 4, up=False)
+    # a lava lake with lifts
+    L.lava(196, 214)
+    L.set(197, 14, "^")
+    L.set(203, 12, "~")
+    L.set(210, 14, "^")
+    L.set(207, GROUND + 1, "b")
+    L.coin_arc(200, 8, 8)
+    # last stretch: blobs, the pipe back up from the forge
+    L.enemy(220, ch="m")
+    L.enemy(226, ch="d")
+    warp_out = L.pipe(230, 2)
+    L.blocks(234, 13, "?B?")
+    L.decor(218, "*")
+    L.decor(238, "t")
+    finale(L, 242, 258, 262)
+    L.decor(240, "+")
+    B0, B1 = 290, 329
+    exit_mouth, bonus = coin_room(L, B0, B1, "forge")
+    L.areas = {"main": (0, MAIN_END - 1, "volcano"), "bonus": (B0, B1, bonus)}
+    L.warps = [
+        {"entry": warp_in, "kind": "down", "arrive": (B0 + 3, 4), "arrive_kind": "drop", "area": "bonus"},
+        {"entry": exit_mouth, "kind": "right", "arrive": warp_out, "arrive_kind": "up", "area": "main"},
+    ]
+    return L
+
+
+# =========================================================================
+# 8-2  "Magma Core" (v1.5) — inside the volcano: stepping stones, tipping
+#      planks, fire bars, falling slabs over a magma lake, lifts; out
+#      through a pipe to the flag on the crater rim
+# =========================================================================
+def level_8_2():
+    L = Level("8-2", "MAGMA CORE", 264, time=400)
+    MAIN_END = 214
+    L.top = 3
+    L.ground(0, MAIN_END - 1)
+    L.ceiling(0, MAIN_END - 1, 3)
+    for c0, c1, d in [(38, 42, 5), (86, 90, 6), (108, 112, 5), (146, 150, 6)]:
+        L.fill(c0, c1, 3, d - 1, "#")
+    L.decor(2, "+")
+    L.decor(5, "*")
+    L.blocks(7, 13, "?M?")
+    L.enemy(14, GROUND - 1, "m")
+    # stepping stones over lava, bubbles in between
+    L.lava(18, 34)
+    for c in (21, 26, 31):
+        L.fill(c, c + 1, 15, ROWS - 1, "#")
+        L.coins(c, 13, 2)
+    L.set(24, GROUND + 1, "b")
+    L.set(29, GROUND + 1, "b")
+    # the salamander hall
+    L.enemy(40, GROUND - 1, "d")
+    L.enemy(47, GROUND - 1, "d")
+    L.blocks(43, 13, "B?B")
+    L.enemy(52, GROUND - 1, "m")
+    L.decor(50, "t")
+    # a lava lake with tipping planks and a lift
+    L.lava(56, 78)
+    L.set(57, 14, "T")
+    L.set(64, 13, "~")
+    L.set(73, 14, "T")
+    L.set(62, GROUND + 1, "b")
+    L.set(71, GROUND + 1, "b")
+    L.coin_arc(63, 9, 8)
+    L.checkpoints.append((83, GROUND - 1))
+    # fire bar corridor
+    for c in (90, 98, 106):
+        L.set(c, GROUND - 1, "F")
+    L.set(94, 10, "F")
+    L.set(102, 10, "F")
+    L.coins(92, 13, 3)
+    L.coins(100, 13, 3)
+    L.enemy(110, GROUND - 1, "d")
+    # a magma lake with falling slabs, blobs on the far shore
+    L.lava(116, 140)
+    for c0, r in ((117, 15), (123, 14), (129, 15), (135, 14)):
+        L.set(c0, r, "D")
+    L.coins(123, 11, 3)
+    L.coins(135, 11, 3)
+    L.enemy(145, GROUND - 1, "m")
+    L.enemy(149, GROUND - 1, "m")
+    L.blocks(147, 13, "?")
+    # up on a lift to a high ledge, down on the next one
+    L.lava(154, 172)
+    L.set(155, 14, "^")
+    L.ledge(160, 166, 9, depth=1)
+    L.coins(160, 8, 7)
+    L.enemy(165, 8, "d")
+    L.set(168, 14, "^")
+    L.set(163, GROUND + 1, "b")
+    # the last lava sea: a lift, a pillar, a lift
+    L.lava(178, 199)
+    L.set(179, 14, "~")
+    L.fill(188, 189, 15, ROWS - 1, "#")
+    L.set(191, 14, "~")
+    L.coin_arc(182, 10, 6)
+    L.coins(191, 11, 4)
+    L.decor(202, "*")
+    exit_pipe = L.pipe(207, 2, warp=True)
+    L.coins(206, 11, 4)
+    L.fill(MAIN_END - 2, MAIN_END - 1, 0, GROUND - 1, "w")
+    E0, E1 = 220, 263
+    L.ground(E0, E1)
+    arrive = L.pipe(E0 + 3, 2)
+    L.decor(E0 + 7, "+")
+    L.decor(E0 + 10, "r")
+    L.coins(E0 + 8, 12, 3)
+    finale(L, E0 + 12, E0 + 28, E0 + 32)
+    L.decor(E0 + 24, "t")
+    L.areas = {"main": (0, MAIN_END - 1, "volcano_core"), "exit": (E0, E1, "volcano")}
+    L.warps = [
+        {"entry": exit_pipe, "kind": "down", "arrive": arrive, "arrive_kind": "up", "area": "exit"},
+    ]
+    return L
+
+
+# =========================================================================
 # castles — the last course of every world: fire bars, lava bubbles,
 # a power-up before the arena and the boss. Harder with every world.
 # =========================================================================
 CASTLE_NAMES = {1: "STONE KEEP", 2: "MAGMA FORT", 3: "SUN CITADEL", 4: "FROST BASTION", 5: "STORM CITADEL",
-                6: "TIDE FORTRESS", 7: "PHANTOM KEEP"}
+                6: "TIDE FORTRESS", 7: "PHANTOM KEEP", 8: "INFERNO KEEP"}
 
 
 # Castle sections. v0.14: every castle its own mix (3-3 and 4-3 had been
@@ -2102,7 +2308,7 @@ def _sec_gallery(L, c, world):
     L.blocks(c + 3, 13, "?B?")
     L.coins(c + 9, 12, 4)
     walkers = {1: ("g", "g"), 2: ("k", "k"), 3: ("p", "g"), 4: ("q", "q"), 5: ("x", "k"), 6: ("z", "z"),
-               7: ("O", "O"), 8: ("O", "k")}[world]
+               7: ("O", "O"), 8: ("d", "m")}[world]
     for d, ch in zip((9, 13), walkers):
         L.enemy(c + d, ch=ch)
     if world == 4:
@@ -2209,6 +2415,8 @@ CASTLE_PLAN = {
     6: ([_sec_tower, _sec_moat, _sec_gallery, _sec_tank, _sec_maze, _sec_vlifts], "fortress_tide"),
     # the phantom keep (v1.4): ghosts, door riddles, bone turtles
     7: ([_sec_haunt, _sec_bridge, _sec_doors, _sec_gallery, _sec_maze, _sec_lake], "fortress_ghost"),
+    # the inferno keep (v1.5), the final castle: the longest, every trap
+    8: ([_sec_bubbles, _sec_tips, _sec_steps, _sec_gallery, _sec_lake, _sec_slabs, _sec_tower], "fortress_volcano"),
 }
 SEC_GAP = 3
 
@@ -2298,6 +2506,9 @@ def render_preview(L, path):
     bones_im = Image.open(os.path.join(gfx, "enemy_bones.png")).convert("RGBA").crop((0, 0, 28, 26))
     door_im = Image.open(os.path.join(gfx, "door.png")).convert("RGBA").crop((0, 0, 16, 32))
     crypt_im = Image.open(os.path.join(gfx, "crypt.png")).convert("RGBA").crop((0, 0, 48, 44))
+    magma_im = Image.open(os.path.join(gfx, "enemy_magma.png")).convert("RGBA").crop((0, 0, 18, 13))
+    sala_im = Image.open(os.path.join(gfx, "enemy_salamander.png")).convert("RGBA").crop((0, 0, 20, 11))
+    meteor_im = Image.open(os.path.join(gfx, "meteor.png")).convert("RGBA").crop((0, 0, 16, 13))
     import re
     idx = {}
     for line in open(os.path.join(ROOT, "decor_index.gd")):
@@ -2333,6 +2544,7 @@ def render_preview(L, path):
         "beach": {"*": "palm", "+": "palm", "f": "starfish", "t": "tuft_sand", "r": "rock_sand"},
         "ghost": {"*": "candelabra", "+": "chair", "f": "pumpkin", "t": "candle", "r": "bones"},
         "grave": {"*": "dead_tree", "+": "tomb", "f": "pumpkin", "t": "tuft_grave", "r": "cross"},
+        "volcano": {"*": "lava_rock", "+": "vent", "f": "ember_bloom", "t": "flame_jet", "r": "rock_volcano"},
     }
     col_biome = ["grass"] * L.cols
     for c0, c1, theme in L.areas.values():
@@ -2355,7 +2567,7 @@ def render_preview(L, path):
                 if not solid_ground(c + 1, r, ch):
                     m |= 8
                 row = {"grass": 0, "cave": 3, "sand": 4, "snow": 5, "castle": 7, "sky": 9, "sea": 11,
-                       "beach": 4, "ghost": 12, "grave": 13}[bio] if ch == "#" else 3
+                       "beach": 4, "ghost": 12, "grave": 13, "volcano": 15}[bio] if ch == "#" else 3
                 img.alpha_composite(tile(m, row), (x, y))
             elif ch == "I":
                 img.alpha_composite(tile(8, 6), (x, y))
@@ -2394,6 +2606,10 @@ def render_preview(L, path):
                 later.append((ghost_im, x - 1, y - 2))
             elif ch == "O":
                 later.append((bones_im, x - 6, y - 10))
+            elif ch == "m":
+                later.append((magma_im, x - 1, y + 3))
+            elif ch == "d":
+                later.append((sala_im, x - 2, y + 5))
             elif ch == "H":
                 if bio == "grave":
                     later.append((crypt_im, x - 16, y + 16 - 44))
@@ -2421,6 +2637,8 @@ def render_preview(L, path):
                     img.alpha_composite(tile(0, 14), (x, y))
                 elif bio == "grave":
                     img.alpha_composite(tile(8, 14), (x, y))
+                elif bio == "volcano":
+                    img.alpha_composite(tile(9, 14), (x, y))
                 else:
                     img.alpha_composite(blk(6), (x, y))
             elif ch == "=":
@@ -2475,6 +2693,10 @@ def render_preview(L, path):
                 dr.line((x - 6 * d, y, x + 6 * d, y), fill=(255, 255, 255, 200), width=2)
                 dr.line((x + 6 * d, y, x + 2 * d, y - 3), fill=(255, 255, 255, 200), width=2)
                 dr.line((x + 6 * d, y, x + 2 * d, y + 3), fill=(255, 255, 255, 200), width=2)
+    for c0, c1 in L.meteors:
+        for c in range(c0, c1 + 1, 6):
+            img.alpha_composite(meteor_im, (c * T, 3 * T + (c * 7) % 40))
+        dr.line((c0 * T, 2 * T, c1 * T + T, 2 * T), fill=(255, 120, 40, 220), width=3)
     if L.flag and L.flag[0] >= 0:
         c, r = L.flag
         pole = idx["pole"]
@@ -2521,3 +2743,6 @@ if __name__ == "__main__":
     level_7_1().emit()
     level_7_2().emit()
     castle_level(7, "7-3").emit()
+    level_8_1().emit()
+    level_8_2().emit()
+    castle_level(8, "8-3").emit()

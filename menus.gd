@@ -40,6 +40,7 @@ const HELP_DESKTOP := [
 	{"file": "sea", "h": "Sea World"},
 	{"file": "water", "h": "Pools & Currents"},
 	{"file": "ghost", "h": "Ghost House"},
+	{"file": "volcano", "h": "Volcano"},
 	{"file": "castles", "h": "Castles & Secrets"},
 ]
 const HELP_TOUCH := [
@@ -53,6 +54,7 @@ const HELP_TOUCH := [
 	{"file": "sea", "h": "Sea World"},
 	{"file": "water", "h": "Pools & Currents"},
 	{"file": "ghost", "h": "Ghost House"},
+	{"file": "volcano", "h": "Volcano"},
 	{"file": "castles", "h": "Castles & Secrets"},
 ]
 const HELP_FALLBACK := {
@@ -65,6 +67,7 @@ const HELP_FALLBACK := {
 	"sky": "Falling slabs shake, then drop: jump off in time.\nTipping planks tip toward your side: keep moving.\nJump up through the clouds.\nThe cloud imp throws spikies: stomp it from up high.\nSpikies can't be stomped: fire, shells or a star.\nGulls glide at you. The storm boss's lightning flashes first.",
 	"sea": "Underwater you swim: every jump press is one stroke up.\nThe side pipe at the end leads to the beach.\nFish can't be stomped while swimming: dodge or use fire.\nJellyfish pulse toward you, crabs can be stomped.\nSea urchins can't be beaten: swim around them.",
 	"water": "Castle pools: you swim in them. Press jump at\nthe surface to leap out onto the rim.\nStone teeth reach into the water: dive under them.\nCurrents (moving streaks) push you: hold run and\nswim hard against them, or let one carry you along.\nThe dragon can't swim - it waits on dry land.",
+	"volcano": "Magma blobs hop at you. Stomp one: it cools into a rock\nyou can stand on - it even floats on lava. Fire can't hurt it.\nSalamanders spit fire along the ground - jump over it.\nMeteor fields: a blinking ring shows where a rock will land.\nThe volcano lord is the final boss. Good luck!",
 	"ghost": "Doors: press down (or up) in front of one to go through.\nThey lead past walls - coins mark the right one.\nGhosts come closer while you look away and freeze\nwhen you face them; fire can't hurt them, a star can.\nBone turtles fall apart when stomped and rise again.\nThe phantom king fades out and appears elsewhere.",
 	"map": "Play opens the world map. Walk with left / right,\nA or Space plays the course you stand on.\nTouch: tap a course to walk there, tap it again to play.\nA check = cleared, a lock = not reached yet.\nAfter a course the road to the next one opens.\nYour run is saved all along: quit any time,\nthen Continue on the title screen.",
 	"goal": "Stomp enemies from above.\nCoins: points, 100 coins = extra life.\nPipes marked by coins lead to bonus rooms.\nGrab the flag pole as high as you can!\nExtra lives for points: Settings > 1-UP points.",

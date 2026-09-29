@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """World map (v1.1): one wide illustrated map with all worlds side by side
-(v1.4: seven — the ghost house joined on the right).
+(v1.4: seven — the ghost house joined on the right; v1.5: eight — the volcano).
 
     python3 tools/gen_map.py [--preview]
 
@@ -29,11 +29,12 @@ GFX = os.path.join(ROOT, "assets", "graphics")
 PREVIEW = "--preview" in sys.argv
 PREVIEW_DIR = os.environ.get("PREVIEW_DIR", "/tmp")
 OUTLINE = "#1a1018"
-W, H = 1630, 270
+W, H = 1860, 270
 
 # region x ranges (left edges wobble a little, see region_at)
 REGIONS = [(0, 250, "grass"), (250, 480, "cave"), (480, 710, "sand"),
-           (710, 940, "snow"), (940, 1170, "sky"), (1170, 1400, "sea"), (1400, 1630, "ghost")]
+           (710, 940, "snow"), (940, 1170, "sky"), (1170, 1400, "sea"), (1400, 1630, "ghost"),
+           (1630, 1860, "volcano")]
 # course markers in game.gd LEVELS order: 1-1 .. 1-4, 2-1 .. 2-3, ... 6-3
 NODES = [
     (48, 196), (104, 150), (160, 198), (218, 142),
@@ -43,11 +44,13 @@ NODES = [
     (984, 150), (1050, 106), (1116, 140),
     (1206, 204), (1276, 222), (1350, 168),
     (1440, 198), (1514, 150), (1588, 192),
+    (1672, 204), (1746, 168), (1822, 196),
 ]
-CASTLES = {3, 6, 9, 12, 15, 18, 21}
+CASTLES = {3, 6, 9, 12, 15, 18, 21, 24}
 # bend of each road (perpendicular offset of the Bezier control point, px)
 BEND = {0: -14, 1: 16, 2: -16, 3: 18, 4: -12, 5: 16, 6: -18, 7: 14, 8: -14, 9: 16, 10: -12,
-        11: 14, 12: -26, 13: 14, 14: -12, 15: 26, 16: -10, 17: 14, 18: -12, 19: 16, 20: -14}
+        11: 14, 12: -26, 13: 14, 14: -12, 15: 26, 16: -10, 17: 14, 18: -12, 19: 16, 20: -14,
+        21: 14, 22: -14, 23: 16}
 
 PAL = {
     "grass": ((92, 188, 74), (142, 224, 112), (62, 160, 50)),
@@ -57,6 +60,7 @@ PAL = {
     "sky": ((150, 208, 250), (206, 236, 255), (120, 186, 240)),
     "sea": ((42, 122, 200), (96, 178, 240), (30, 96, 170)),
     "ghost": ((66, 58, 92), (92, 82, 124), (46, 40, 68)),
+    "volcano": ((78, 46, 48), (108, 66, 62), (54, 32, 36)),
 }
 
 
@@ -281,6 +285,26 @@ def landscape(rds):
     for cx, cy in ((1420, 120), (1486, 230), (1612, 128), (1456, 60), (1604, 244)):
         blob(px, cx, cy, 20, 5, (108, 100, 140, 255))                      # fog wisps
     scatter(["dead_tree", "tomb", "cross", "pumpkin", "tomb"], 1404, 1626, 16, keep=16)
+    # 8 volcano (v1.5): a smoking volcano, a lava river into a lava lake
+    rock, rock_l, rock_d = (58, 30, 34, 255), (86, 48, 48, 255), (38, 20, 24, 255)
+    lava, lava_h = (255, 106, 26, 255), (255, 200, 72, 255)
+    for y in range(30, 128):
+        half = int(10 + (y - 30) * 0.78)
+        for x in range(1752 - half, 1752 + half + 1):
+            px[x, y] = rock_l if x < 1752 - half + 4 else (rock_d if x > 1752 + half - 5 else rock)
+    for x in range(1744, 1761):
+        px[x, 30] = lava_h
+        px[x, 31] = lava
+    rx = 1756
+    for y in range(32, 124):
+        rx += 1 if y % 4 == 0 else 0
+        for dx in range(2 + (y - 32) // 30):
+            px[rx + dx, y] = lava_h if dx == 0 else lava
+    blob(px, 1818, 124, 26, 9, lava, lava_h)
+    for i in range(10):
+        c = 64 + (i % 3) * 8
+        blob(px, 1756 + i * 7, 24 - i * 2, 6 + i // 2, 5 + i // 3, (c, c - 16, c - 14, 255))
+    scatter(["lava_rock", "vent", "rock_volcano", "rock_volcano"], 1634, 1856, 14, y0=132, keep=16)
     return img
 
 

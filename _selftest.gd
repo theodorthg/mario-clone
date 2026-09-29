@@ -68,6 +68,8 @@ func _init() -> void:
 				fails += _expect(wp.get("arrive_kind", "") != "door" or grid[a.y][a.x] == "H", "%s door %s leads to a door" % [lv.ID, e])
 			else:
 				fails += _expect(grid[e.y][e.x] in ["W", ">"], "%s warp entry %s is a W/> cell" % [lv.ID, e])
+		for m in lv.get_script_constant_map().get("METEORS", []):
+			fails += _expect(m.x >= 0 and m.x < m.y and m.y < grid[0].length(), "%s meteor field %s inside the level" % [lv.ID, m])
 		for a in lv.AREAS.values():
 			fails += _expect(int(a["to"]) - int(a["from"]) + 1 >= 38, "%s area wide enough for 2.2:1 screens" % lv.ID)
 			fails += _expect(Backdrop.THEMES.has(a["theme"]), "%s theme %s exists" % [lv.ID, a["theme"]])

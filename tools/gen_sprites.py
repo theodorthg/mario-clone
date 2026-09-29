@@ -1714,6 +1714,122 @@ FIREBALL = {
 }
 
 
+# =========================================================================
+# VOLCANO (v1.5): magma blob (cools into a rock), salamander, meteor
+# =========================================================================
+MAGMA_PAL = {"o": "#ff7a1a", "O": "#c83a10", "y": "#ffc040", "w": "#fff4c0",
+             "E": "#ffffff", "e": "#1b1030"}
+ROCK_PAL = {"s": "#5a4c52", "S": "#2e2428", "T": "#7a6c72", "r": "#e8581a"}
+MAGMA = {
+    "hop1": [
+        ".....yyyyyy.....",
+        "...yyywwwyyyy...",
+        "..yooyyyyyyooy..",
+        ".yooEeooooEeooy.",
+        ".oooEeooooEeooo.",
+        "ooooooooooooooOo",
+        "oooooOOooOOooooO",
+        "OoooooooooooooOO",
+        ".OOOOOOOOOOOOOO.",
+    ],
+    "hop2": [
+        "......yyyy......",
+        "....yywwwyy.....",
+        "...yyyyyyyyy....",
+        "...yooyyyyooy...",
+        "..yoEeooooEeoy..",
+        "..ooEeooooEeoo..",
+        "..oooooooooooo..",
+        "..ooooooooooooO.",
+        "..oooOOooOOoooO.",
+        "..OooooooooooOO.",
+        "...OOOOOOOOOOO..",
+    ],
+    "rock": [
+        ".....TTTTT......",
+        "...TTssssssT....",
+        "..TsssrssssssS..",
+        ".Tssssrrsssrsss.",
+        ".ssssssrsssrssS.",
+        "sssSssssssrsssSS",
+        "ssssSSsssssssSSS",
+        "SSSSSSSSSSSSSSSS",
+        "SSSSSSSSSSSSSSSS",
+    ],
+}
+SALA_PAL = {"g": "#e0401a", "G": "#9a2210", "y": "#ffb030", "Y": "#ffe070",
+            "e": "#1b1030", "w": "#ffffff", "m": "#3a0a0a", "f": "#ffe070"}
+SALA_BODY = [
+    "......y.y.y.......",
+    "..ggg.gygygyg.....",
+    ".gwegggggggggggg..",
+    ".geggggggggggggGg.",
+    "gggggyyyyyyyyggGGg",
+    "mggggyyyyyyyyggG.G",
+]
+SALA_LEGS = {
+    "walk1": [".ggG.......Gg.....", ".G..G.....G..G....", "GG..GG...GG..GG..."],
+    "walk2": ["..gG.......gG.....", "..GG.......GG.....", ".GGG......GGG....."],
+}
+SALA_SPIT_HEAD = [
+    "......y.y.y.......",
+    "..ggg.gygygyg.....",
+    ".gwegggggggggggg..",
+    "mmggggggggggggGg..",
+    "fmmggyyyyyyyyggGGg",
+    "mmgggyyyyyyyyggG.G",
+]
+METEOR_PAL = {"s": "#5a4c52", "S": "#2e2428", "T": "#8a7c80", "r": "#ff7a1a",
+              "y": "#ff9a2a", "f": "#ffd84a", "w": "#fffbe0"}
+METEOR = {
+    "m1": [
+        "..........yy..",
+        "........yyfy..",
+        "......yyffy...",
+        ".....yffwfy...",
+        "...SSsTfwy....",
+        "..SsssTTy.....",
+        ".SssrssT......",
+        ".SsrrssS......",
+        ".SssssSS......",
+        "..SSsSS.......",
+        "...SSS........",
+    ],
+    "m2": [
+        "...........y..",
+        ".........yyfy.",
+        ".......yyffy..",
+        "......yfwwfy..",
+        "...SSsTffy....",
+        "..SsssTTyy....",
+        ".SssrssTy.....",
+        ".SsrrssS......",
+        ".SssssSS......",
+        "..SSsSS.......",
+        "...SSS........",
+    ],
+}
+
+
+def volcano_enemies():
+    blob = [(n, ol(parse(bottom(MAGMA[n], 11, 16), MAGMA_PAL, "magma." + n))) for n in ["hop1", "hop2"]]
+    rock = parse(bottom(MAGMA["rock"], 11, 16), ROCK_PAL, "magma.rock")
+    blob.append(("rock", ol(rock)))
+    blob.append(("glow", ol(recolor(rock, {"#e8581a": "#ffe070", "#5a4c52": "#7a4a42", "#7a6c72": "#b0685a"}))))
+    save_set("enemy_magma", blob, 18, 13, {"hop": (["hop1", "hop2"], 5, True), "rock": (["rock"], 1, False),
+                                           "glow": (["glow", "rock"], 10, True), "flipped": (["hop1"], 1, False)})
+    sala = []
+    for n in ["walk1", "walk2"]:
+        sala.append((n, ol(parse(SALA_BODY + SALA_LEGS[n], SALA_PAL, "sala." + n))))
+    sala.append(("spit", ol(parse(SALA_SPIT_HEAD + SALA_LEGS["walk1"], SALA_PAL, "sala.spit"))))
+    squish = ["." * 18] * 5 + ["..ggggggggggggggg.", "mgggyyyyyyyyyyggGG", ".GGGGGGGGGGGGGGGG."]
+    sala.append(("squish", ol(parse(squish, SALA_PAL, "sala.squish"))))
+    save_set("enemy_salamander", sala, 20, 11, {"walk": (["walk1", "walk2"], 6, True), "spit": (["spit"], 1, False),
+                                                "squish": (["squish"], 1, False), "flipped": (["walk1"], 1, False)})
+    met = [(n, ol(parse(METEOR[n], METEOR_PAL, "meteor." + n))) for n in ["m1", "m2"]]
+    save_set("meteor", met, 16, 13, {"fall": (["m1", "m2"], 12, True)})
+
+
 def items():
     coin_frames = [(n, ol(parse(COIN[n], COIN_PAL, "coin." + n))) for n in ["c0", "c1", "c2"]]
     coin_frames.append(("c3", flip_h(coin_frames[1][1])))
@@ -1750,5 +1866,6 @@ if __name__ == "__main__":
     sky_enemies()
     sea_enemies()
     ghost_house_enemies()
+    volcano_enemies()
     boss()
     items()

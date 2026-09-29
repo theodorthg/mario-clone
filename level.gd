@@ -37,6 +37,8 @@ const ROW_GRAVE := 13                # graveyard soil
 const ROW_GHOST_EXTRA := 14          # wall panel, plank + soil interiors, crypt stone
 const GHOST_PANEL := Vector2i(0, 14)
 const CRYPT_BRICK := Vector2i(8, 14)
+const OBSIDIAN := Vector2i(9, 14)      # v1.5 volcano bricks (magma joints)
+const ROW_VOLCANO := 15                # basalt under ash (interiors: row 14, 10..13)
 ## area themes that are underwater (the hero swims there, see player.gd)
 const WATER_THEMES := ["sea", "sea_deep"]
 const CASTLE_WALL := Vector2i(2, 8)
@@ -47,13 +49,14 @@ const SANDSTONE := Vector2i(14, 6)
 const ICE_BRICK := Vector2i(15, 6)
 const BIOME_ROW := {"grass": ROW_GRASS, "cave": ROW_CAVE, "sand": ROW_SAND, "snow": ROW_SNOW,
 	"castle": ROW_CASTLE, "sky": ROW_CLOUD, "sea": ROW_REEF, "beach": ROW_SAND,
-	"ghost": ROW_GHOST, "grave": ROW_GRAVE}
+	"ghost": ROW_GHOST, "grave": ROW_GRAVE, "volcano": ROW_VOLCANO}
 ## area theme (AREAS in the level data) -> ground/decor biome of those columns
 const THEME_BIOME := {"cave": "cave", "cavern": "cave", "desert": "sand", "desert_dusk": "sand",
 	"snow": "snow", "snow_night": "snow", "fortress": "castle", "sky": "sky", "sky_dusk": "sky",
 	"sea": "sea", "sea_deep": "sea", "beach": "beach", "fortress_magma": "castle", "fortress_sun": "castle",
 	"fortress_ice": "castle", "fortress_storm": "castle", "fortress_tide": "castle",
-	"ghost": "ghost", "ghost_yard": "grave", "fortress_ghost": "castle"}
+	"ghost": "ghost", "ghost_yard": "grave", "fortress_ghost": "castle",
+	"volcano": "volcano", "volcano_core": "volcano", "fortress_volcano": "castle"}
 const HARD := Vector2i(4, 1)
 const BRIDGE_L := Vector2i(5, 1)
 const BRIDGE_M := Vector2i(6, 1)
@@ -83,9 +86,10 @@ const DECOR_BIOME := {
 	"beach": {"*": "palm", "+": "palm", "f": "starfish", "t": "tuft_sand", "r": "rock_sand"},
 	"ghost": {"*": "candelabra", "+": "chair", "f": "pumpkin", "t": "candle", "r": "bones"},
 	"grave": {"*": "dead_tree", "+": "tomb", "f": "pumpkin", "t": "tuft_grave", "r": "cross"},
+	"volcano": {"*": "lava_rock", "+": "vent", "f": "ember_bloom", "t": "flame_jet", "r": "rock_volcano"},
 }
 ## decorations with a living flame
-const FLICKER := ["torch", "candle", "candelabra", "pumpkin"]
+const FLICKER := ["torch", "candle", "candelabra", "pumpkin", "flame_jet", "vent"]
 const SWAYING := ["seaweed", "tuft_sea"]
 const FLOWERS := ["flower_a", "flower_b", "flower_c"]
 
@@ -134,6 +138,11 @@ func setup(level_script: Script) -> void:
 	for cur in consts.get("CURRENTS", []):
 		var cr: Rect2i = cur[0]
 		currents.append({"rect": Rect2(Vector2(cr.position) * T, Vector2(cr.size) * T), "dir": int(cur[1])})
+	for m in consts.get("METEORS", []):
+		var mf := MeteorField.new()
+		mf.c0 = m.x
+		mf.c1 = m.y
+		add_child(mf)
 	_build_tiles()
 	_build_entities()
 	_build_meta()
@@ -284,7 +293,8 @@ func _build_tiles() -> void:
 				"w":
 					tiles.set_cell(Vector2i(c, r), 0, {"sand": SANDSTONE, "snow": ICE_BRICK,
 						"castle": CASTLE_WALL, "sky": SKY_BRICK, "sea": CORAL_BRICK,
-						"beach": SANDSTONE, "ghost": GHOST_PANEL, "grave": CRYPT_BRICK}.get(biome_at(c), CAVE_BRICK))
+						"beach": SANDSTONE, "ghost": GHOST_PANEL, "grave": CRYPT_BRICK,
+						"volcano": OBSIDIAN}.get(biome_at(c), CAVE_BRICK))
 				"=":
 					# log bridge; in the sky a one-way cloud strip
 					var l := at(c - 1, r) == "="
@@ -339,6 +349,9 @@ func _ground_tile(c: int, r: int, ch: String, row: int) -> Vector2i:
 	if m == 0 and row == ROW_GRAVE:
 		var hy := absi((c * 73856093) ^ (r * 19349663)) % 20
 		return Vector2i(4 + (0 if hy < 13 else (1 if hy < 15 else (2 if hy < 18 else 3))), ROW_GHOST_EXTRA)
+	if m == 0 and row == ROW_VOLCANO:
+		var hb := absi((c * 73856093) ^ (r * 19349663)) % 20
+		return Vector2i(10 + (0 if hb < 12 else hb % 4), ROW_GHOST_EXTRA)
 	if m == 0 and (row == ROW_SAND or row == ROW_SNOW):
 		var hv := absi((c * 73856093) ^ (r * 19349663)) % 20
 		var k := 0 if hv < 13 else (1 if hv < 15 else (2 if hv < 18 else 3))
@@ -347,7 +360,7 @@ func _ground_tile(c: int, r: int, ch: String, row: int) -> Vector2i:
 
 func _pipe_free(ch: String) -> bool:
 	return ch in [".", "o", "g", "G", "k", "K", "J", "Z", "a", "p", "q", "~", "^", "D", "T", "u", "x", "y", "e", "E", "j", "z", "i",
-			"l", "O"] \
+			"l", "O", "m", "d"] \
 		or DECOR.has(ch)
 
 func _place_pipe(c: int, r: int) -> void:
@@ -502,6 +515,14 @@ func _build_entities() -> void:
 					var bt := BoneTurtle.new()
 					bt.position = cell_feet(c, r)
 					add_child(bt)
+				"m":
+					var mb := MagmaBlob.new()
+					mb.position = cell_feet(c, r)
+					add_child(mb)
+				"d":
+					var sa := Salamander.new()
+					sa.position = cell_feet(c, r)
+					add_child(sa)
 				"H":
 					var door := Door.new()
 					door.crypt = biome_at(c) == "grave"

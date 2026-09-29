@@ -28,6 +28,7 @@ const SOUNDS := {
 	"music_sea": ["Music: Coral Waltz", 55, -4.0],
 	"music_map": ["Music: World Map", 55, -4.0],
 	"music_ghost": ["Music: Haunted Waltz", 55, -4.0],
+	"music_volcano": ["Music: Magma March", 55, -4.0],
 	"jingle_world": ["Jingle: World Clear", 70, -4.0],
 	"jingle_clear": ["Jingle: Course clear", 60, -3.0],
 	"jingle_death": ["Jingle: Lost a life", 60, -3.0],
@@ -60,17 +61,20 @@ const SOUNDS := {
 	"door": ["Door", 60, -4.0],
 	"ghost": ["Ghost", 55, -5.0],
 	"bones": ["Bones rattle", 60, -4.0],
+	"meteor": ["Meteor", 60, -4.0],
+	"harden": ["Magma cools", 60, -4.0],
+	"spit": ["Salamander spit", 55, -6.0],
 }
 const ORDER := [
 	"music_overworld", "music_cave", "music_desert", "music_snow", "music_sky", "music_sea", "music_ghost",
-	"music_castle", "music_star", "music_title", "music_map", "jingle_world",
+	"music_volcano", "music_castle", "music_star", "music_title", "music_map", "jingle_world",
 	"jingle_clear", "jingle_death", "jingle_gameover",
 	"jump", "jump_big", "jump2", "swim", "stomp", "kick", "bump", "break", "coin", "sprout",
 	"powerup", "powerdown", "oneup", "fireball", "pipe", "flagpole", "tick",
-	"skid", "hatch", "dino", "tongue", "gulp", "checkpoint", "hurry", "pause", "door", "ghost", "bones",
+	"skid", "hatch", "dino", "tongue", "gulp", "checkpoint", "hurry", "pause", "door", "ghost", "bones", "meteor", "harden", "spit",
 ]
 const MUSIC_KEYS := ["music_overworld", "music_cave", "music_desert", "music_snow", "music_sky", "music_sea",
-	"music_castle", "music_star", "music_title", "music_map", "music_ghost"]
+	"music_castle", "music_star", "music_title", "music_map", "music_ghost", "music_volcano"]
 
 var _muted := false
 var _players := {}

@@ -229,6 +229,15 @@ def sfx():
         rattle.append(lowpass(noise(n, 9000 - k * 600), 7000) * decay_env(n, 0.008) * 0.9)
         rattle.append(silence(0.028 + 0.004 * k))
     S["bones"] = cat(*rattle)
+    # volcano (v1.5; appended as well)
+    n1, n2 = seg(0.5), seg(0.35)
+    S["meteor"] = cat(osc("tri", 1400, n1, f_end=300) * env(n1, 0.02, 0.1, 0.6, 0.05) * 0.35,
+                      (lowpass(noise(n2, 2500), 1800) * 1.0 + osc("tri", 90, n2, f_end=40) * 0.8) * decay_env(n2, 0.12))
+    n = seg(0.45)
+    S["harden"] = (lowpass(noise(n, 9000), 6000) * 0.6 * decay_env(n, 0.18)
+                   + osc("tri", 140, n, f_end=90) * 0.5 * decay_env(n, 0.06))
+    n = seg(0.18)
+    S["spit"] = (noise(n, 4000) * 0.5 + osc("pulse", 300, n, 0.25, 700) * 0.4) * env(n, 0.005, 0.04, 0.5, 0.06)
     for k, x in S.items():
         write_wav(os.path.join(SND, k + ".wav"), norm(x, 0.85))
     print("  %d sound effects -> assets/sounds/" % len(S))
@@ -618,6 +627,36 @@ def jingle_gameover():
     return s.render(loop=False)
 
 
+def volcano():
+    """'Magma March' — C minor, 144 bpm, 16 bars: a heroic minor lead over
+    an octave-jumping triangle bass, offbeat stabs and a driving beat
+    (volcano, the last world, v1.5)."""
+    s = Song(144)
+    lead = bars(
+        "C5:4 Eb5:2 G5:2 C6:4 Bb5:4", "Ab5:4 G5:2 F5:2 G5:8",
+        "Eb5:4 F5:2 G5:2 Ab5:4 G5:4", "F5:2 Eb5:2 D5:2 B4:2 C5:8",
+        "C5:4 Eb5:2 G5:2 C6:4 D6:4", "Eb6:4 D6:2 C6:2 Bb5:8",
+        "Ab5:4 Bb5:2 C6:2 G5:4 F5:4", "Eb5:2 D5:2 Eb5:2 F5:2 G5:8",
+        "Ab5:6 G5:2 F5:4 Eb5:4", "D5:6 Eb5:2 F5:8",
+        "G5:6 F5:2 Eb5:4 D5:4", "C5:6 D5:2 Eb5:8",
+        "Ab5:4 C6:4 Bb5:4 Ab5:4", "G5:4 B5:4 D6:8",
+        "C6:2 B5:2 C6:2 D6:2 Eb6:4 D6:4", "C6:12 r:4",
+    )
+    prog = ["Cm", "Ab", "Cm", "G", "Cm", "Eb", "Ab", "Eb", "Fm", "Bb", "Eb", "Cm", "Ab", "G", "Cm", "Cm"]
+    root = {"Cm": "C2", "Ab": "Ab1", "G": "G1", "Eb": "Eb2", "Fm": "F1", "Bb": "Bb1"}
+    third = {"Cm": "Eb4", "Ab": "C4", "G": "B3", "Eb": "G4", "Fm": "Ab4", "Bb": "D4"}
+    fifth = {"Cm": "G4", "Ab": "Eb4", "G": "D4", "Eb": "Bb4", "Fm": "C5", "Bb": "F4"}
+    bass = " ".join(" ".join(["%s:2 %s:2" % (root[c], root[c][:-1] + str(int(root[c][-1]) + 1))] * 4) for c in prog)
+    st3 = " ".join(" ".join(["r:2 %s:2" % third[c]] * 4) for c in prog)
+    st5 = " ".join(" ".join(["r:2 %s:2" % fifth[c]] * 4) for c in prog)
+    s.track("pulse", lead, 0.3, duty=0.25, legato=0.85, vib=0.3, d=0.08, s=0.65, echo=0.2)
+    s.track("pulse", st3, 0.08, duty=0.5, legato=0.6, d=0.03, s=0.35)
+    s.track("pulse", st5, 0.07, duty=0.5, legato=0.6, d=0.03, s=0.35)
+    s.track("tri", bass, 0.55, legato=0.7, s=0.9)
+    s.drums(("K.h.S.h.K.KhS.hh" * 16), 0.3)
+    return s.render(loop=True)
+
+
 def music():
     os.makedirs(MUS, exist_ok=True)
     pieces = {
@@ -636,6 +675,7 @@ def music():
         "jingle_death": jingle_death,
         "jingle_gameover": jingle_gameover,
         "music_ghost": ghost,
+        "music_volcano": volcano,
     }
     for k, fn in pieces.items():
         reseed(k)

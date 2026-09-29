@@ -527,6 +527,49 @@ def page_ghost():
     return img
 
 
+def page_volcano():
+    """v1.5: magma blobs (rock to stand on), salamanders, meteor fields,
+    the final boss"""
+    img, d = new_page()
+    text(d, (8, 6), "VOLCANO", f8, GOLD)
+    tl = Image.open(os.path.join(GFX, "tiles.png")).convert("RGBA")
+    lava = tl.crop((9 * 16, 6 * 16, 10 * 16, 7 * 16))
+    blob = Image.open(os.path.join(GFX, "enemy_magma.png")).convert("RGBA")
+    hop, rock = trim(blob.crop((0, 0, 18, 13))), trim(blob.crop((36, 0, 54, 13)))
+    img.alpha_composite(hop, (10, 44 - hop.height))
+    d.polygon([(32, 34), (38, 38), (32, 42)], fill=GOLD)
+    for x in (44, 60):
+        img.alpha_composite(lava, (x, 40))
+    img.alpha_composite(rock, (52, 44 - rock.height))
+    hero = trim(sheet_frame("hero_small", 20, 20, 0))
+    img.alpha_composite(hero, (54, 44 - rock.height - hero.height + 1))
+    text(d, (86, 20), "Magma blobs hop at you. Stomp one: it")
+    text(d, (86, 30), "cools into a rock you can stand on for", fill=DIM)
+    text(d, (86, 40), "a while - it even floats on lava. Fire", fill=DIM)
+    text(d, (86, 50), "can't hurt it; a star or a shell can.", fill=DIM)
+    d.line((8, 64, 332, 64), fill=(60, 70, 110, 255))
+    sala = Image.open(os.path.join(GFX, "enemy_salamander.png")).convert("RGBA")
+    spit = trim(sala.crop((40, 0, 60, 11)))
+    img.alpha_composite(spit, (22, 90 - spit.height))
+    fl = Image.open(os.path.join(GFX, "boss_flame.png")).convert("RGBA").crop((0, 0, 18, 9))
+    fl = trim(fl.resize((12, 6), Image.NEAREST))
+    img.alpha_composite(fl, (8, 80))
+    text(d, (56, 70), "Salamanders spit fire along the ground")
+    text(d, (56, 80), "when you are ahead of them - jump over", fill=DIM)
+    text(d, (56, 90), "it. Stomp them or use fire.", fill=DIM)
+    d.line((8, 102, 332, 102), fill=(60, 70, 110, 255))
+    met = trim(Image.open(os.path.join(GFX, "meteor.png")).convert("RGBA").crop((0, 0, 16, 13)))
+    img.alpha_composite(met, (22, 108))
+    ring = (255, 110, 40, 255)
+    d.ellipse((12, 132, 30, 142), outline=ring, width=2)
+    d.line((17, 137, 25, 137), fill=ring, width=2)
+    text(d, (56, 110), "Meteor fields: burning rocks rain down.")
+    text(d, (56, 120), "A blinking ring on the ground shows", fill=DIM)
+    text(d, (56, 130), "where one will land - keep moving!", fill=DIM)
+    text(d, (8, 152), "The volcano lord is the final boss. Good luck!", fill=GOLD)
+    return img
+
+
 def page_map():
     img, d = new_page()
     text(d, (8, 6), "WORLD MAP", f8, GOLD)
@@ -606,7 +649,8 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     pages = {"controls": page_controls, "touch": page_touch, "map": page_map, "items": page_items,
              "dragon": page_dragon, "goal": page_goal, "worlds": page_worlds,
-             "sky": page_sky, "sea": page_sea, "water": page_water, "ghost": page_ghost, "castles": page_castles}
+             "sky": page_sky, "sea": page_sea, "water": page_water, "ghost": page_ghost,
+             "volcano": page_volcano, "castles": page_castles}
     for n, fn in pages.items():
         fn().save(os.path.join(OUT, n + ".png"))
     print("  help pages:", ", ".join(pages))

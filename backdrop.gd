@@ -23,7 +23,7 @@ const LAYERS := [
 ## LAYERS entry (same order) — OR "layers": own list of [texture, y, fx, fy,
 ## auto, tint] for biomes with their own scenery; world: CanvasModulate tint
 ## for tiles + actors; fx: screen-space particles ("snow", "motes", "sand",
-## "embers", "wind", "bubbles").
+## "embers", "wind", "bubbles", "fog", "ash").
 const THEMES := {
 	"grass": {
 		"sky": [Color("3b6bd6"), Color("73acf0"), Color("d8eefa"), 0.55, 0.0, 0.0],
@@ -238,6 +238,36 @@ const THEMES := {
 		"world": Color(0.84, 0.82, 1.0),
 		"fx": "fog",
 	},
+	# volcano (v1.5): ash slopes under a burning sky, inside the magma
+	# core, the inferno keep
+	"volcano": {
+		"sky": [Color("1a0806"), Color("5a1a10"), Color("d0502a"), 0.5, 0.0, 0.0],
+		"layers": [
+			["res://assets/graphics/bg_volcano_peak.png", 30.0, 0.12, 0.25, 0.0, Color.WHITE],
+			["res://assets/graphics/bg_volcano_fields.png", 150.0, 0.3, 0.6, 0.0, Color.WHITE],
+			["res://assets/graphics/bg_volcano_spires.png", 178.0, 0.55, 0.85, 0.0, Color.WHITE],
+		],
+		"world": Color(1.0, 0.9, 0.84),
+		"fx": "ash",
+	},
+	"volcano_core": {
+		"sky": [Color("0a0202"), Color("240804"), Color("5a1606"), 0.5, 0.0, 0.0],
+		"layers": [
+			["res://assets/graphics/bg_magma_far.png", 0.0, 0.18, 0.15, 0.0, Color.WHITE],
+			["res://assets/graphics/bg_magma_near.png", 206.0, 0.6, 0.9, 0.0, Color.WHITE],
+		],
+		"world": Color(1.0, 0.86, 0.78),
+		"fx": "embers",
+	},
+	"fortress_volcano": {
+		"sky": [Color("0e0202"), Color("3a0a04"), Color("902408"), 0.5, 0.0, 0.0],
+		"layers": [
+			["res://assets/graphics/bg_castle_wall.png", 50.0, 0.15, 0.15, 0.0, Color(0.72, 0.42, 0.4)],
+			["res://assets/graphics/bg_castle_pillars.png", 84.0, 0.42, 0.8, 0.0, Color(0.56, 0.32, 0.32)],
+		],
+		"world": Color(1.0, 0.8, 0.72),
+		"fx": "ash",
+	},
 	"snow_night": {
 		"sky": [Color("050a20"), Color("16285a"), Color("3a4f8a"), 0.55, 1.0, 1.0],
 		"layers": [
@@ -421,6 +451,24 @@ func _set_fx(kind: String) -> void:
 			p.scale_amount_min = 0.6
 			p.scale_amount_max = 1.0
 			p.color = Color(0.85, 0.95, 1.0, 0.7)
+		"ash":
+			# grey flakes drifting down, the odd one still glowing (volcano)
+			p.amount = 70
+			p.lifetime = 9.0
+			p.direction = Vector2(0.35, 1.0)
+			p.spread = 20.0
+			p.initial_velocity_min = 8.0
+			p.initial_velocity_max = 20.0
+			p.gravity = Vector2(0, 3)
+			p.scale_amount_min = 1.0
+			p.scale_amount_max = 2.0
+			var ga := Gradient.new()
+			ga.set_color(0, Color(1.0, 0.55, 0.2, 0.0))
+			ga.set_color(1, Color(0.5, 0.46, 0.46, 0.0))
+			ga.add_point(0.15, Color(1.0, 0.6, 0.3, 0.8))
+			ga.add_point(0.35, Color(0.6, 0.55, 0.55, 0.8))
+			ga.add_point(0.8, Color(0.5, 0.46, 0.46, 0.7))
+			p.color_ramp = ga
 		"fog":
 			# big soft wisps drifting slowly sideways (ghost house)
 			p.amount = 16
