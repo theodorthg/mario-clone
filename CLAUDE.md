@@ -736,6 +736,15 @@ Server: Uberspace **vega.uberspace.de**, Domain **broesel.net**.
   be replaced“ kommt erst vor etwas, das hier wirklich ein neues Spiel
   startet (`Menus._confirm_new()`: 1 Player, take turns, together, Host
   Wi-Fi/Online). Als Luigi beitreten fasst den Spielstand nie an.
+- **v1.9.2** (zweiter Test Browser ↔ RG552): der allererste WebSocket-
+  Aufbau nach App-Start scheiterte einmal („No connection to the online
+  server“, broesel.net nur IPv4 95.143.172.245, kein IPv6-Problem) →
+  `NetLink` versucht bis zu 3× still neu (`WS_TRIES`), solange der
+  Server nie erreicht wurde. Beitreten-Bildschirm: Enter ist keine
+  Beitreten-Taste mehr (drückt den gewählten Knopf), ein erneutes
+  Leertaste/A des schon beigetretenen Mario drückt den gewählten Knopf,
+  aber nie „Back“ (`_focus_is_cancel`); beim Fortsetzen steht der Fokus
+  auf „Luigi via Wi-Fi“/„Luigi online“.
 - Test mit dem RG552 ohne Zutun des Nutzers: Spiel per `monkey` starten
   (nur tagsüber!), Menüs per `adb shell input keyevent` (DPAD/ENTER),
   Code per `input text` + Tipp auf den Haken der Bildschirmtastatur,

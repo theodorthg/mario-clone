@@ -633,7 +633,7 @@ func _build_join() -> void:
 				_start_hosting(true)))
 		row.append(back)
 		_vbox.add_child(_hbox(row))
-		_default_focus = back
+		_default_focus = row[0] if row.size() > 1 else back
 
 func _apply_join() -> void:
 	CoopInput.reset()
@@ -644,6 +644,10 @@ func _apply_join() -> void:
 	elif lu.begins_with("pad:"):
 		CoopInput.luigi_pad = int(lu.get_slice(":", 1))
 	CoopInput.build()
+
+func _focus_is_cancel() -> bool:
+	var f := get_viewport().gui_get_focus_owner()
+	return f != null and f.get_meta("is_cancel", false)
 
 func _join_input(event: InputEvent) -> void:
 	if _join.mario != "" and _join.luigi != "":
@@ -657,7 +661,10 @@ func _join_input(event: InputEvent) -> void:
 		elif _join.mario != dev:
 			who = "luigi"
 		else:
-			get_viewport().set_input_as_handled()
+			# Mario's pad again: presses the selected button ("Luigi online"),
+			# but never "Back" by accident
+			if _focus_is_cancel():
+				get_viewport().set_input_as_handled()
 			return
 	elif event is InputEventKey and event.pressed and not event.echo:
 		var code: int = event.physical_keycode if event.physical_keycode != 0 else event.keycode
@@ -665,9 +672,8 @@ func _join_input(event: InputEvent) -> void:
 			who = "luigi"
 		elif code in CoopInput.JOIN_P1_KEYS and _join.mario == "":
 			who = "mario"
-		elif code in CoopInput.JOIN_P1_KEYS or code in CoopInput.JOIN_P2_KEYS:
-			get_viewport().set_input_as_handled()
-			return
+		elif code in CoopInput.JOIN_P2_KEYS or (code in CoopInput.JOIN_P1_KEYS and _focus_is_cancel()):
+			get_viewport().set_input_as_handled()   # no focus jump / no accidental Back
 		dev = "keys"
 	if who == "":
 		return

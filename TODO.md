@@ -51,8 +51,13 @@ Spezialversion auf eigenem Webspace):
       Verbindung, Karte, Kurs, Luigi-Steuerung, Game Over, Ende klappen.
       Gefunden + in v1.9.1 behoben: Codes mit S/5-Verwechslung; Beitreten
       lief über die Warnung „Spielstand wird ersetzt“.
-- [ ] Nutzer: `server/deploy_uberspace.sh` erneut ausführen (neue
-      Raum-Codes in relay.js + Web-Version 1.9.1).
+- [x] Nutzer: Deploy-Skript erneut ausgeführt (relay mit neuen Codes).
+- [x] Zweiter Test Browser ↔ RG552 (2026-10-02): Fortsetzen per „Luigi
+      online“, Code „RBJZ“, „New Game“ ohne Warnung, Spielen, Blase, Ende
+      — klappt. v1.9.2: Wiederholungsversuche beim Verbinden,
+      Beitreten-Bildschirm per Enter/A bedienbar.
+- [ ] Nutzer: Web-Version 1.9.2 auf broesel.net bringen (Deploy-Skript
+      erneut; relay.js unverändert).
 - [x] Nutzer: Vermittlungsdienst auf Uberspace einrichten
       (`server/deploy_uberspace.sh <benutzer>`, vega.uberspace.de,
       broesel.net) — danach Test über das Internet, auch Browser

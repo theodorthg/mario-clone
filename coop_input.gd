@@ -19,7 +19,8 @@ const BASE := {"left": "move_left", "right": "move_right", "down": "move_down", 
 const P2_KEYS := {"left": [KEY_LEFT], "right": [KEY_RIGHT], "down": [KEY_DOWN], "up": [KEY_UP],
 	"jump": [KEY_UP, KEY_K, KEY_KP_0], "run": [KEY_L, KEY_KP_PERIOD]}
 ## keys that make a player join on the join screen
-const JOIN_P1_KEYS := [KEY_SPACE, KEY_W, KEY_Z, KEY_ENTER]
+## (no Enter: it presses the selected button — "Back", "Luigi online")
+const JOIN_P1_KEYS := [KEY_SPACE, KEY_W, KEY_Z]
 const JOIN_P2_KEYS := [KEY_UP, KEY_K, KEY_KP_0]
 
 static var luigi_pad := -1

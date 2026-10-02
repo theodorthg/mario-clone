@@ -36,6 +36,11 @@ var connected := false
 var room_code := ""
 var _ws_open := false
 var _ws_hello := {}
+var _ws_url := ""
+## the first connection after the app starts sometimes fails (Wi-Fi power
+## saving, cold DNS, TLS) — seen on the RG552 — so try again quietly
+var _ws_tries := 0
+const WS_TRIES := 3
 
 static func relay_url() -> String:
 	var u := str(GameSettings.load_all().get("relay_url", ""))
@@ -60,6 +65,7 @@ func is_online() -> bool:
 func _ws_open_to(url: String, hello: Dictionary) -> int:
 	if url == "":
 		return ERR_UNCONFIGURED
+	_ws_url = url
 	ws = WebSocketPeer.new()
 	ws.inbound_buffer_size = 4 * 1024 * 1024
 	ws.outbound_buffer_size = 4 * 1024 * 1024
@@ -97,6 +103,10 @@ func _poll_ws() -> Array:
 			var msg = bytes_to_var(pkt)
 			if msg is Array and msg.size() == 2:
 				out.append(["msg", msg[0], msg[1]])
+	if st == WebSocketPeer.STATE_CLOSED and not _ws_open and _ws_tries + 1 < WS_TRIES:
+		_ws_tries += 1
+		_ws_open_to(_ws_url, _ws_hello)       # never reached the server: again
+		return out
 	if st == WebSocketPeer.STATE_CLOSED:
 		# the relay names the reason in the close frame ("Mario ended …")
 		var why := ws.get_close_reason()
