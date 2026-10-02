@@ -724,6 +724,24 @@ Server: Uberspace **vega.uberspace.de**, Domain **broesel.net**.
   als JSON-Text (host/join → room/joined/left/error), Grund beim Schließen
   im Close-Frame (`NetLink._poll_ws` → Ereignis „closed“ mit Text).
   Limits: 1 MB pro Nachricht, 200 Räume, Ping alle 20 s.
+- **Raum-Codes ohne Doppelgänger (v1.9.1)**: im ersten Test Browser ↔
+  RG552 (2026-10-02, über broesel.net) wurde „SV85“ als „5V85“ gelesen —
+  S und 5 sehen in der Pixelschrift gleich aus. `CODE_CHARS` =
+  `ABCDEFGHJKLMNPQRSTUVWXYZ3479` (keine 0 1 2 5 6 8, kein I O), und
+  `Menus.clean_code()` macht aus getippten 5/2/8/6/0/1 die Buchstaben
+  S/Z/B/G/O/I. **Nach Änderungen an relay.js das Deploy-Skript erneut
+  ausführen** (Nutzer).
+- **Beitreten ohne Spielstand-Warnung (v1.9.1)**: Titel „New Game“ führt
+  direkt zur Spielerauswahl; die Rückfrage „NEW GAME? Your saved run will
+  be replaced“ kommt erst vor etwas, das hier wirklich ein neues Spiel
+  startet (`Menus._confirm_new()`: 1 Player, take turns, together, Host
+  Wi-Fi/Online). Als Luigi beitreten fasst den Spielstand nie an.
+- Test mit dem RG552 ohne Zutun des Nutzers: Spiel per `monkey` starten
+  (nur tagsüber!), Menüs per `adb shell input keyevent` (DPAD/ENTER),
+  Code per `input text` + Tipp auf den Haken der Bildschirmtastatur,
+  Gamepad gedrückt halten per `sendevent /dev/input/event3`
+  (`retrogame_joypad`: ABS_HAT0X = 16 für links/rechts, BTN_SOUTH = 304 =
+  A) — `input keyevent --longpress` hält nicht.
 - Adresse: `application/config/relay_url` in project.godot
   (`wss://broesel.net/mario-relay`), Settings-Schlüssel `relay_url`
   überschreibt (Tests: `ws://127.0.0.1:8765`). Menüpunkt „2 Players -

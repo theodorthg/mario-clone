@@ -1489,14 +1489,14 @@ func _run() -> void:
 			var old_id := int(SaveGame.load_run().id)
 			game._to_title()
 			await _frames(3)
-			await _press_button("New Game")
+			await _press_button("New Game")             # v1.9.1: players first,
+			await _press_button("1 Player")             # then the question
 			await _frames(3)
 			var fo := game.get_viewport().gui_get_focus_owner()
 			print("SAVE new game dialog: screen=%d (NEWGAME=%d) focus=%s text=%s" % [game.menus.screen,
 				Menus.Screen.NEWGAME, fo.text if fo is Button else "?", _hints()])
 			await shot("newgame")
 			await _press_button("New Game")
-			await _press_button("1 Player")          # v1.6: players choice first
 			await _wait(0.8)
 			print("SAVE new run: state=%d score=%d save_replaced=%s" % [game.state, game.score,
 				int(SaveGame.load_run().id) != old_id])

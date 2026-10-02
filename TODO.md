@@ -47,7 +47,13 @@ Spezialversion auf eigenem Webspace):
 - [x] Stufe 2 v1.9.0 (2026-10-02): über das Internet mit Raum-Code,
       Vermittlungsdienst `server/relay.js`, auch im Browser; lokal mit
       Relay + zwei Fenstern getestet.
-- [ ] Nutzer: Vermittlungsdienst auf Uberspace einrichten
+- [x] Online-Test Browser (broesel.net, Mario) ↔ RG552 (Luigi) 2026-10-02:
+      Verbindung, Karte, Kurs, Luigi-Steuerung, Game Over, Ende klappen.
+      Gefunden + in v1.9.1 behoben: Codes mit S/5-Verwechslung; Beitreten
+      lief über die Warnung „Spielstand wird ersetzt“.
+- [ ] Nutzer: `server/deploy_uberspace.sh` erneut ausführen (neue
+      Raum-Codes in relay.js + Web-Version 1.9.1).
+- [x] Nutzer: Vermittlungsdienst auf Uberspace einrichten
       (`server/deploy_uberspace.sh <benutzer>`, vega.uberspace.de,
       broesel.net) — danach Test über das Internet, auch Browser
       (https://broesel.net/mario-clone/ bzw. itch.io) gegen Gerät.

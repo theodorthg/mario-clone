@@ -116,6 +116,9 @@ func _init() -> void:
 	CoopInput.build()
 	fails += _expect(codes.call("p2_jump").is_empty() and KEY_UP in codes.call("p1_jump"), "co-op: Luigi on a pad -> the whole keyboard is Mario's")
 	CoopInput.reset()
+	# v1.9.1: room codes — a typed lookalike digit finds the letter
+	fails += _expect(Menus.clean_code(" 5v85 ") == "SVBS", "room code: 5V85 -> SVBS")
+	fails += _expect(Menus.clean_code("k7qm") == "K7QM", "room code: lower case, 7 stays")
 	fails += _expect(Game._slot_from_save(Game._slot_to_save({"score": 7, "coins": 3, "lives": 2, "power": 1,
 		"has_dino": true, "level_index": 4, "_run_reach": 5, "_run_best": 4, "run_id": 99, "run_name": "AL",
 		"checkpoint_pos": Vector2(40, 272), "_in_course": true})) == {"run_id": 99, "run_name": "AL", "score": 7,

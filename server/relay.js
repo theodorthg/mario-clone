@@ -24,7 +24,9 @@ const { WebSocketServer } = require("ws");
 const PORT = parseInt(process.env.PORT || "8765", 10);
 const MAX_MSG = 1024 * 1024;        // 1 MB per message
 const MAX_ROOMS = 200;
-const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+// no digits that look like letters in the game's pixel font (5/S, 2/Z,
+// 8/B, 6/G, 0/O, 1/I) — the game maps a typed lookalike to the letter
+const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ3479";
 const PING_MS = 20000;
 
 const rooms = new Map();            // code -> {host, guest}

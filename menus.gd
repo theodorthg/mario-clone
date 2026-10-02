@@ -375,7 +375,10 @@ func _build_start() -> void:
 		else:
 			_vbox.add_child(_hint("%06d points  -  %d %s" % [int(save.score), int(save.lives),
 				"life" if int(save.lives) == 1 else "lives"]))
-		_vbox.add_child(_button("New Game", func(): _show_screen(Screen.NEWGAME)))
+		# v1.9: straight to the players choice — the "replace your saved run?"
+		# question only comes when a new game really starts here (joining
+		# someone else's game as Luigi never touches the saved run)
+		_vbox.add_child(_button("New Game", func(): _show_screen(Screen.PLAYERS)))
 	_vbox.add_child(_button("Settings", func():
 		_return_screen = Screen.START
 		_show_screen(Screen.SETTINGS)))
@@ -492,12 +495,27 @@ func _build_newgame() -> void:
 			var h := _hint("Its high score (#%d) stays in the list." % (rank + 1))
 			h.add_theme_color_override("font_color", UiStyle.ACCENT)
 			_vbox.add_child(h)
-	var back := _button("Back", func(): _show_screen(Screen.START), true)
+	var back := _button("Back", func(): _show_screen(Screen.PLAYERS), true)
 	_vbox.add_child(_hbox([
-		_button("New Game", func(): _show_screen(Screen.PLAYERS)),
+		_button("New Game", func():
+			var go := _pending_new
+			_pending_new = Callable()
+			if go.is_valid():
+				go.call()),
 		back,
 	]))
 	_default_focus = back
+
+## Runs `go` (something that starts a new run on this device) — after
+## asking first when a saved run would be replaced.
+var _pending_new := Callable()
+
+func _confirm_new(go: Callable) -> void:
+	if SaveGame.exists():
+		_pending_new = go
+		_show_screen(Screen.NEWGAME)
+	else:
+		go.call()
 
 ## Saved 2-player run on the title: both players' score and lives, the
 ## active one first.
@@ -521,16 +539,16 @@ func take_players() -> int:
 func _build_players() -> void:
 	_panel.custom_minimum_size = Vector2(300, 0)
 	_vbox.add_child(_heading("PLAYERS"))
-	_vbox.add_child(_button("1 Player", func():
+	_vbox.add_child(_button("1 Player", func(): _confirm_new(func():
 		_players_pending = 1
 		hide_all()
-		play_pressed.emit(-1)))
-	_vbox.add_child(_button("2 Players - take turns", func():
+		play_pressed.emit(-1))))
+	_vbox.add_child(_button("2 Players - take turns", func(): _confirm_new(func():
 		_players_pending = 2
 		hide_all()
-		play_pressed.emit(-1)))
+		play_pressed.emit(-1))))
 	if coop_possible():
-		_vbox.add_child(_button("2 Players - together", func(): _open_join(false)))
+		_vbox.add_child(_button("2 Players - together", func(): _confirm_new(func(): _open_join(false))))
 	if wifi_possible():
 		_vbox.add_child(_button("2 Players - Wi-Fi", func():
 			_net_continue = false
@@ -705,7 +723,7 @@ func _build_info() -> void:
 func _build_netmenu() -> void:
 	_panel.custom_minimum_size = Vector2(320, 0)
 	_vbox.add_child(_heading("WI-FI"))
-	_vbox.add_child(_button("Host a game  (Mario)", _start_hosting))
+	_vbox.add_child(_button("Host a game  (Mario)", func(): _confirm_new(func(): _start_hosting(false))))
 	_vbox.add_child(_button("Join a game  (Luigi)", func(): _show_screen(Screen.NETJOIN)))
 	var h := _hint("Both devices in the same Wi-Fi. Mario's device runs\nthe game, Luigi's shows it and sends his buttons.\nBoth need the same game version.")
 	h.add_theme_color_override("font_color", UiStyle.ACCENT)
@@ -729,7 +747,7 @@ func _start_hosting(online := false) -> void:
 func _build_onlinemenu() -> void:
 	_panel.custom_minimum_size = Vector2(320, 0)
 	_vbox.add_child(_heading("ONLINE"))
-	_vbox.add_child(_button("Host a game  (Mario)", func(): _start_hosting(true)))
+	_vbox.add_child(_button("Host a game  (Mario)", func(): _confirm_new(func(): _start_hosting(true))))
 	_vbox.add_child(_button("Join a game  (Luigi)", func(): _show_screen(Screen.ONLINEJOIN)))
 	var h := _hint("Play from anywhere: Mario gets a room code and tells\nit to Luigi. Mario's device runs the game, Luigi's shows\nit. Works in the browser, too. Same game version on both.")
 	h.add_theme_color_override("font_color", UiStyle.ACCENT)
@@ -761,8 +779,18 @@ func _build_onlinejoin() -> void:
 	_vbox.add_child(_button("Back", func(): _show_screen(Screen.ONLINEMENU), true))
 	_default_focus = _ip_edit
 
+## Room codes avoid letters that look alike in the pixel font (relay.js
+## CODE_CHARS); a typed lookalike still finds the room.
+const CODE_LOOKALIKE := {"5": "S", "2": "Z", "8": "B", "6": "G", "0": "O", "1": "I"}
+
+static func clean_code(code: String) -> String:
+	var out := ""
+	for ch in code.strip_edges().to_upper():
+		out += CODE_LOOKALIKE.get(ch, ch)
+	return out
+
 func _join_code(code: String) -> void:
-	code = code.strip_edges().to_upper()
+	code = clean_code(code)
 	if code.length() != 4 or Game.instance == null:
 		return
 	set_meta("net_ip", "room " + code)
