@@ -703,7 +703,7 @@ def page_players():
 
 def page_wifi():
     img, d = new_page()
-    text(d, (8, 5), "TWO PLAYERS - WI-FI", f8, GOLD)
+    text(d, (8, 5), "TWO PLAYERS - LAN / WI-FI", f8, GOLD)
     red, green = (255, 106, 90, 255), (106, 226, 106, 255)
 
     def device(x, y, hero, name, col, role):
@@ -723,16 +723,16 @@ def page_wifi():
         d.arc((112 - r, 46 - r, 112 + r, 46 + r), 140, 220, fill=GOLD)
         d.arc((96 - r, 46 - r, 96 + r, 46 + r), -40, 40, fill=GOLD)
     x = 212
-    rows = (("Both devices in the", WHITE), ("same Wi-Fi.", WHITE), ("", WHITE),
-            ("Mario: Play >", GOLD), ("2 Players - Wi-Fi >", GOLD), ("Host a game", GOLD), ("", WHITE),
+    rows = (("Both in the same", WHITE), ("network (cable or", WHITE), ("Wi-Fi).", WHITE),
+            ("Mario: Play >", GOLD), ("2 Players - LAN /", GOLD), ("Wi-Fi > Host a game", GOLD), ("", WHITE),
             ("Luigi: ... > Join a", GOLD), ("game, pick Mario's", GOLD), ("(or type the address", WHITE),
             ("Mario's screen shows).", WHITE))
     for k, (s_, col) in enumerate(rows):
         text(d, (x, 20 + k * 10), s_, fill=col)
     d.line((8, 132, 332, 132), fill=DIM)
-    text(d, (8, 137), "Mario's device runs the game, Luigi's shows it. Same game", fill=DIM)
-    text(d, (8, 147), "version on both. Pause from either side. Not in the browser.", fill=DIM)
-    text(d, (8, 157), "Luigi can leave and join again any time.", fill=DIM)
+    text(d, (8, 136), "Mario's device runs the game. Same version on both.", fill=DIM)
+    text(d, (8, 146), "Host PC with a firewall: allow UDP 47110-47111.", fill=GOLD)
+    text(d, (8, 156), "No admin rights (school network)? Online always works.", fill=GOLD)
     return img
 
 
@@ -769,7 +769,7 @@ def page_online():
     text(d, (8, 127), "Works on PC, phone and in the browser - mixed, too.", fill=DIM)
     text(d, (8, 137), "Mario's device runs the game. Same game version on both.", fill=DIM)
     text(d, (8, 147), "A slow connection makes Luigi a little late - in the", fill=DIM)
-    text(d, (8, 157), "same Wi-Fi, 2 Players - Wi-Fi is quicker.", fill=DIM)
+    text(d, (8, 157), "same network, 2 Players - LAN / Wi-Fi is quicker.", fill=DIM)
     return img
 
 

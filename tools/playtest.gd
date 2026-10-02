@@ -2555,6 +2555,22 @@ func _run() -> void:
 				await _wait(0.1)
 			await _wait(0.5)
 			print("ONLINEGUEST after host left: state=%d %s" % [game.state, _hints()])
+		"lanmenu":
+			# v1.9.3: LAN / Wi-Fi menus with the firewall / Online hints fit
+			await _wait(0.6)
+			game._to_title()
+			await _frames(3)
+			game.menus._show_screen(Menus.Screen.PLAYERS)
+			await _frames(3)
+			print("LANMENU players: ", _button_texts())
+			await shot("players")
+			await _press_button("2 Players - LAN / Wi-Fi")
+			print("LANMENU net menu: ", _hints())
+			await shot("netmenu")
+			await _press_button("Join a game  (Luigi)")
+			await _wait(0.5)
+			await shot("join")
+			game.menus._stop_search()
 		"starthop":
 			# v1.5.1: entering a course with A (also "jump") must not make the
 			# hero hop at the start

@@ -87,7 +87,8 @@ func _process(delta: float) -> void:
 	if not link.connected:
 		_wait_t += delta
 		if _wait_t > (15.0 if link.is_online() else 8.0):
-			_leave("No answer from %s." % host_ip)
+			_leave(("No answer from %s." % host_ip) if link.is_online() else
+				("No answer from %s.\nHost PC: allow UDP 47110-47111 in its firewall\n- or use Online, it always works." % host_ip))
 		return
 	_ping_t -= delta
 	if _ping_t <= 0.0:

@@ -713,6 +713,15 @@ Stufe 2 Internet (erst nach Freigabe durch einen Verbindungstest).
   Testprozess den Port 47111 hält (sonst „error 20“ und der Gast landet
   beim alten Host). Hilfeseite „Wi-Fi“.
 
+- **v1.9.3 (Nutzer)**: Menüpunkt heißt „2 Players - LAN / Wi-Fi“ (gemeint
+  ist das lokale Netz, Kabel oder WLAN; nicht: Gäste-WLAN/getrennte
+  Teilnetze). Hinweise im LAN-Menü, in der Host-Suche, bei „keine
+  Antwort“ und auf der Hilfeseite: Host-PC mit Firewall → UDP 47110–47111
+  freigeben; ohne Admin-Rechte (Schulnetz) geht „Online“ immer
+  (ausgehende Verbindung zum Relay, keine Freigabe nötig). Android-Hosts
+  und Gäste brauchen nie eine Freigabe, Windows fragt beim ersten Hosten.
+  Playtest `lanmenu` (passen die Hinweise auf den Schirm).
+
 ## Online-Coop (v1.9, Stufe 2)
 
 Freigabe nach dem Wi-Fi-Test (Nutzer 2026-10-02: „Klappt alles super“).

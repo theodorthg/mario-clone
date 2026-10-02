@@ -44,7 +44,7 @@ const HELP_DESKTOP := [
 	{"file": "volcano", "h": "Volcano"},
 	{"file": "castles", "h": "Castles & Secrets"},
 	{"file": "players", "h": "Two Players"},
-	{"file": "wifi", "h": "Wi-Fi"},
+	{"file": "wifi", "h": "LAN / Wi-Fi"},
 	{"file": "online", "h": "Online"},
 ]
 const HELP_TOUCH := [
@@ -61,7 +61,7 @@ const HELP_TOUCH := [
 	{"file": "volcano", "h": "Volcano"},
 	{"file": "castles", "h": "Castles & Secrets"},
 	{"file": "players", "h": "Two Players"},
-	{"file": "wifi", "h": "Wi-Fi"},
+	{"file": "wifi", "h": "LAN / Wi-Fi"},
 	{"file": "online", "h": "Online"},
 ]
 const HELP_FALLBACK := {
@@ -78,7 +78,7 @@ const HELP_FALLBACK := {
 	"ghost": "Doors: press down (or up) in front of one to go through.\nThey lead past walls - coins mark the right one.\nGhosts come closer while you look away and freeze\nwhen you face them; fire can't hurt them, a star can.\nBone turtles fall apart when stomped and rise again.\nThe phantom king fades out and appears elsewhere.",
 	"map": "Play opens the world map. Walk with left / right,\nA or Space plays the course you stand on.\nTouch: tap a course to walk there, tap it again to play.\nA check = cleared, a lock = not reached yet.\nAfter a course the road to the next one opens.\nYour run is saved all along: quit any time,\nthen Continue on the title screen.",
 	"players": "Take turns: Mario plays until he loses a life, then Luigi.\nTogether: both at once - each presses jump on his pad,\nor share a keyboard (Mario A D S W, Luigi arrows K L).\nFall behind or lose a life: you float back in a bubble.\nShared score, own lives, one team high score.",
-	"wifi": "Both devices in the same Wi-Fi.\nMario: Play > 2 Players - Wi-Fi > Host a game.\nLuigi: ... > Join a game, pick Mario's (or type the\naddress Mario's screen shows). Same game version on both.",
+	"wifi": "Both devices in the same network (cable or Wi-Fi).\nMario: Play > 2 Players - LAN / Wi-Fi > Host a game.\nLuigi: ... > Join a game, pick Mario's (or type the\naddress Mario's screen shows). Same game version on both.\nHost PC with a firewall: allow UDP 47110-47111.\nNo admin rights (school network)? Online always works.",
 	"online": "Play from anywhere (also in the browser).\nMario: Play > 2 Players - Online > Host a game.\nLuigi: ... > Join a game, type Mario's 4-letter room code.\nSame game version on both.",
 	"goal": "Stomp enemies from above.\nCoins: points, 100 coins = extra life.\nPipes marked by coins lead to bonus rooms.\nGrab the flag pole as high as you can!\nExtra lives for points: Settings > 1-UP points.",
 }
@@ -550,7 +550,7 @@ func _build_players() -> void:
 	if coop_possible():
 		_vbox.add_child(_button("2 Players - together", func(): _confirm_new(func(): _open_join(false))))
 	if wifi_possible():
-		_vbox.add_child(_button("2 Players - Wi-Fi", func():
+		_vbox.add_child(_button("2 Players - LAN / Wi-Fi", func():
 			_net_continue = false
 			_show_screen(Screen.NETMENU)))
 	if online_possible():
@@ -624,7 +624,7 @@ func _build_join() -> void:
 		var back := _button("Back", func(): _show_screen(Screen.START), true)
 		var row := []
 		if _join_continue and wifi_possible():
-			row.append(_button("Luigi via Wi-Fi", func():
+			row.append(_button("Luigi via LAN", func():
 				_net_continue = true
 				_start_hosting()))
 		if _join_continue and online_possible():
@@ -728,12 +728,13 @@ func _build_info() -> void:
 
 func _build_netmenu() -> void:
 	_panel.custom_minimum_size = Vector2(320, 0)
-	_vbox.add_child(_heading("WI-FI"))
+	_vbox.add_child(_heading("LAN / WI-FI"))
 	_vbox.add_child(_button("Host a game  (Mario)", func(): _confirm_new(func(): _start_hosting(false))))
 	_vbox.add_child(_button("Join a game  (Luigi)", func(): _show_screen(Screen.NETJOIN)))
-	var h := _hint("Both devices in the same Wi-Fi. Mario's device runs\nthe game, Luigi's shows it and sends his buttons.\nBoth need the same game version.")
+	var h := _hint("Both devices in the same network (cable or Wi-Fi).\nMario's device runs the game, Luigi's shows it.\nBoth need the same game version.")
 	h.add_theme_color_override("font_color", UiStyle.ACCENT)
 	_vbox.add_child(h)
+	_vbox.add_child(_hint("Host is a PC with a firewall: allow UDP ports 47110-47111.\nNo admin rights (school network)? Online always works."))
 	_vbox.add_child(_button("Back", func(): _show_screen(Screen.PLAYERS), true))
 
 func _start_hosting(online := false) -> void:
@@ -746,7 +747,7 @@ func _start_hosting(online := false) -> void:
 		if online:
 			show_info("ONLINE", "Could not reach the online server (error %d)." % err)
 		else:
-			show_info("WI-FI", "Could not open the game for Wi-Fi (error %d).\nIs another copy of the game already hosting?" % err)
+			show_info("LAN / WI-FI", "Could not open the game for the network (error %d).\nIs another copy of the game already hosting?\nOnline always works." % err)
 		return
 	_show_screen(Screen.NETHOST)
 
@@ -823,8 +824,8 @@ func _build_nethost() -> void:
 			_show_screen(Screen.START), true))
 		return
 	var ips := NetLink.local_ips()
-	var addr := ", ".join(ips) if not ips.is_empty() else "no Wi-Fi address found"
-	_vbox.add_child(_hint("On Luigi's device: Play > 2 Players - Wi-Fi > Join.\nThis game shows up there by itself, or type its address:"))
+	var addr := ", ".join(ips) if not ips.is_empty() else "no network address found"
+	_vbox.add_child(_hint("On Luigi's device: Play > 2 Players - LAN / Wi-Fi > Join.\nThis game shows up there by itself, or type its address:"))
 	var a := _hint(addr, 16)
 	a.add_theme_color_override("font_color", UiStyle.ACCENT)
 	_vbox.add_child(a)
@@ -843,7 +844,7 @@ func _build_netjoin() -> void:
 	var found: Dictionary = _net_disc.found
 	_net_found_sig = ",".join(found.keys())
 	if found.is_empty():
-		_vbox.add_child(_hint("Looking for games in this Wi-Fi ..."))
+		_vbox.add_child(_hint("Looking for games in this network ...\nNot found? The host's firewall may block UDP 47110-47111\n- or use Online, it always works."))
 	for ip in found:
 		var hb := _button("Mario on %s  (%s)" % [found[ip].name, ip], _connect_to.bind(ip))
 		_vbox.add_child(hb)
@@ -889,7 +890,7 @@ func _connect_to(ip: String) -> void:
 	GameSettings.save(c)
 	set_meta("net_ip", ip)
 	if Game.instance.net_join(ip) != OK:
-		show_info("WI-FI", "Could not connect to %s." % ip)
+		show_info("LAN / WI-FI", "Could not connect to %s.\nHost PC: allow UDP 47110-47111 - or use Online." % ip)
 		return
 	_show_screen(Screen.NETWAIT)
 
