@@ -56,8 +56,11 @@ Spezialversion auf eigenem Webspace):
       online“, Code „RBJZ“, „New Game“ ohne Warnung, Spielen, Blase, Ende
       — klappt. v1.9.2: Wiederholungsversuche beim Verbinden,
       Beitreten-Bildschirm per Enter/A bedienbar.
-- [ ] Nutzer: Web-Version 1.9.2 auf broesel.net bringen (Deploy-Skript
-      erneut; relay.js unverändert).
+- [x] Web-Version 1.9.2 auf broesel.net (Nutzer, Deploy-Skript) und
+      dritter Test Browser ↔ RG552 (2026-10-02): Fortsetzen nur per
+      Tastatur (Enter, Enter → Raum „J7M4“), frisch gestartetes RG552
+      verbindet ohne Fehlermeldung (Wiederholung greift, dauert ein paar
+      Sekunden), Spielen, Ende — alles in Ordnung.
 - [x] Nutzer: Vermittlungsdienst auf Uberspace einrichten
       (`server/deploy_uberspace.sh <benutzer>`, vega.uberspace.de,
       broesel.net) — danach Test über das Internet, auch Browser
