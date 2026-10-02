@@ -188,12 +188,13 @@ func _send_frame() -> void:
 	var raw := var_to_bytes(snap)
 	link.send("snap", raw.compress(FileAccess.COMPRESSION_DEFLATE), false)
 
-## Where the guest's camera looks: the host camera's center, clamped to the
-## same limits with the guest's own screen size (it may be wider).
+## Where the guest's camera looks: where the host camera wants to look,
+## clamped to the same limits with the guest's own screen size (it may be
+## wider or narrower — RG552 5:3 vs. a 2.2:1 phone).
 func _guest_camera() -> Vector2:
 	var c := game.camera
 	var half := guest_vp * 0.5
-	var p := c.global_position
+	var p := game.cam_wish
 	var lo := Vector2(c.limit_left + half.x, c.limit_top + half.y)
 	var hi := Vector2(c.limit_right - half.x, c.limit_bottom - half.y)
 	return Vector2(clampf(p.x, lo.x, maxf(lo.x, hi.x)), clampf(p.y, lo.y, maxf(lo.y, hi.y)))

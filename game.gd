@@ -1032,7 +1032,13 @@ func _update_camera(delta: float, snap: bool) -> void:
 			_cam_pos.y = p.y - 90.0
 	_apply_camera()
 
+## Where the camera wants to look before it is clamped to this screen's
+## level edges — a Wi-Fi/online guest with a narrower screen clamps it to
+## its own size instead (else heroes near a level edge fall out of its view).
+var cam_wish := Vector2.ZERO
+
 func _apply_camera() -> void:
+	cam_wish = _cam_pos
 	var vs := get_viewport_rect().size
 	var half := vs * 0.5
 	var lo := Vector2(camera.limit_left + half.x, camera.limit_top + half.y)

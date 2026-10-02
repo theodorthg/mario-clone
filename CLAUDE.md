@@ -722,6 +722,13 @@ Stufe 2 Internet (erst nach Freigabe durch einen Verbindungstest).
   und Gäste brauchen nie eine Freigabe, Windows fragt beim ersten Hosten.
   Playtest `lanmenu` (passen die Hinweise auf den Schirm).
 
+- **v1.9.4** (LAN-Test OnePlus 2,2:1 als Host ↔ RG552 5:3 als Gast): der
+  Gast bekam die schon an den Host-Bildschirm geklemmte Kameramitte →
+  am Levelrand fielen die Helden aus seinem (schmaleren) Bild. Jetzt
+  `Game.cam_wish` (Kamera-Ziel vor dem Klemmen), NetHost klemmt das mit
+  der Bildschirmgröße des Gasts. Mit gleich großen Testfenstern lokal
+  nicht zu sehen — nur auf Geräten mit verschiedenem Seitenverhältnis.
+
 ## Online-Coop (v1.9, Stufe 2)
 
 Freigabe nach dem Wi-Fi-Test (Nutzer 2026-10-02: „Klappt alles super“).

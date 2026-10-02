@@ -557,7 +557,8 @@ func _build_players() -> void:
 		_vbox.add_child(_button("2 Players - Online", func():
 			_net_continue = false
 			_show_screen(Screen.ONLINEMENU)))
-	var h := _hint("Take turns: Mario plays until he loses a life, then Luigi.\nTogether: both at once - two pads, or one keyboard\nfor two (Mario A D S W, Luigi arrow keys).")
+	var h := _hint("Take turns: Mario plays until he loses a life, then Luigi." + (
+		"\nTogether: both at once - two pads, or one keyboard\nfor two (Mario A D S W, Luigi arrow keys)." if coop_possible() else ""))
 	h.add_theme_color_override("font_color", UiStyle.ACCENT)
 	_vbox.add_child(h)
 	_vbox.add_child(_button("Back", func(): _show_screen(Screen.START), true))

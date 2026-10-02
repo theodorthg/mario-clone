@@ -56,6 +56,9 @@ Spezialversion auf eigenem Webspace):
       online“, Code „RBJZ“, „New Game“ ohne Warnung, Spielen, Blase, Ende
       — klappt. v1.9.2: Wiederholungsversuche beim Verbinden,
       Beitreten-Bildschirm per Enter/A bedienbar.
+- [x] LAN-Test OnePlus (Host) ↔ RG552 (Gast) 2026-10-02: automatisch
+      gefunden, verbunden, Karte/Kurs/Luigi ok; v1.9.4 behebt Helden
+      außerhalb des Bilds beim schmaleren Gast.
 - [x] Web-Version 1.9.2 auf broesel.net (Nutzer, Deploy-Skript) und
       dritter Test Browser ↔ RG552 (2026-10-02): Fortsetzen nur per
       Tastatur (Enter, Enter → Raum „J7M4“), frisch gestartetes RG552
