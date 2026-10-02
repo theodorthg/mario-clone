@@ -41,14 +41,14 @@ func _physics_process(delta: float) -> void:
 	if dead:
 		return
 	var game := Game.instance
-	if game == null or game.player == null:
+	if game == null or game.target_for(global_position) == null:
 		return
 	if not active:
 		if not game.is_near_view(global_position, 8.0):
 			return
 		active = true
 		_y0 = position.y
-		dir = -1.0 if game.player.global_position.x < global_position.x else 1.0
+		dir = -1.0 if game.target_for(global_position).global_position.x < global_position.x else 1.0
 	_t += delta
 	position.x += dir * SPEED * _speed_mul * delta
 	position.y = _y0 + sin(_t * 3.0) * 10.0

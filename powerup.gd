@@ -103,5 +103,5 @@ func _collect(p: Player) -> void:
 		return
 	_taken = true
 	if Game.instance:
-		Game.instance.collect_powerup(kind, global_position)
+		Game.instance.collect_powerup(kind, global_position, p)
 	queue_free()

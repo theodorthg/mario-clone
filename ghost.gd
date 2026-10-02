@@ -44,9 +44,9 @@ func _physics_process(delta: float) -> void:
 	if dead:
 		return
 	var game := Game.instance
-	if game == null or game.player == null:
+	if game == null or game.target_for(global_position) == null:
 		return
-	var p: Player = game.player
+	var p: Player = game.target_for(global_position)
 	if not active:
 		if not game.is_near_view(global_position, WAKE):
 			return

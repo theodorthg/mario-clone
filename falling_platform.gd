@@ -72,21 +72,26 @@ func _physics_process(delta: float) -> void:
 
 func _hero_on_top() -> bool:
 	var game := Game.instance
-	if game == null or game.player == null:
+	if game == null:
 		return false
-	var p: Player = game.player
-	if p.mode != Player.Mode.NORMAL or not p.is_on_floor():
-		return false
-	var feet := p.global_position
-	return feet.x > global_position.x - 5.0 and feet.x < global_position.x + W + 5.0 \
-		and absf(feet.y - global_position.y) < 3.0
+	for p in game.all_heroes():
+		if p.mode != Player.Mode.NORMAL or not p.is_on_floor():
+			continue
+		var feet: Vector2 = p.global_position
+		if feet.x > global_position.x - 5.0 and feet.x < global_position.x + W + 5.0 \
+				and absf(feet.y - global_position.y) < 3.0:
+			return true
+	return false
 
 func _hero_near_origin() -> bool:
 	var game := Game.instance
-	if game == null or game.player == null:
+	if game == null:
 		return false
-	var d := game.player.global_position - (_origin + Vector2(W * 0.5, 0.0))
-	return absf(d.x) < W and d.y > -40.0 and d.y < 24.0
+	for p in game.all_heroes():
+		var d: Vector2 = p.global_position - (_origin + Vector2(W * 0.5, 0.0))
+		if absf(d.x) < W and d.y > -40.0 and d.y < 24.0:
+			return true
+	return false
 
 func _snd(key: String) -> void:
 	var s := get_node_or_null("/root/Snd")

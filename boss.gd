@@ -108,9 +108,9 @@ func _physics_process(delta: float) -> void:
 	if dead:
 		return
 	var game := Game.instance
-	if game == null or game.player == null:
+	if game == null or game.target_for(global_position) == null:
 		return
-	var p: Player = game.player
+	var p: Player = game.target_for(global_position)
 	if not active:
 		if p.global_position.x > arena_left + 40.0 and p.mode == Player.Mode.NORMAL:
 			active = true
@@ -376,8 +376,8 @@ func take_hit() -> void:
 	sprite.play(&"hurt")
 	_stars.visible = true
 	_stretch(Vector2(1.2, 0.8))
-	if FLOWERS[difficulty] and game and game.player and game.player.power != Player.Power.FIRE:
-		_drop_flower(game.player)
+	if FLOWERS[difficulty] and game and game.target_for(global_position) and game.target_for(global_position).power != Player.Power.FIRE:
+		_drop_flower(game.target_for(global_position))
 
 ## Ammo: without fire power a hit makes the boss drop a fire flower, tossed
 ## to the side of the arena away from it (one at a time).

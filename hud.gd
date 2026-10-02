@@ -177,15 +177,23 @@ func set_lives(total: int) -> void:
 
 ## 2 players (v1.6): the score column is titled with the player's name in
 ## his color; hero < 0 = one player ("SCORE").
+## hero -2 = co-op team (v1.7): "TEAM", lives of both.
 func set_player(hero: int) -> void:
-	_score_title.text = "SCORE" if hero < 0 else Player.HERO_NAMES[hero]
+	_score_title.text = "TEAM" if hero == -2 else ("SCORE" if hero < 0 else Player.HERO_NAMES[hero])
 	_score_title.add_theme_color_override("font_color", Color("fff0c0") if hero < 0 else Player.HERO_COLORS[hero])
 	var icon: TextureRect = get_meta("card_icon")
 	var at: AtlasTexture = icon.texture
 	at.atlas = preload("res://assets/graphics/luigi_small.png") if hero == 1 \
 		else preload("res://assets/graphics/hero_small.png")
-	_card_player.text = "" if hero < 0 else Player.HERO_NAMES[hero]
+	_card_player.text = "MARIO & LUIGI" if hero == -2 else ("" if hero < 0 else Player.HERO_NAMES[hero])
 	_card_player.add_theme_color_override("font_color", Color.WHITE if hero < 0 else Player.HERO_COLORS[hero])
+
+## Co-op: reserve lives of both (M = Mario, L = Luigi, "-" = out).
+func set_coop_lives(l: Array) -> void:
+	var parts := []
+	for h in 2:
+		parts.append("%s%s" % ["ML"[h], "-" if int(l[h]) <= 0 else str(maxi(int(l[h]) - 1, 0))])
+	_lives.text = " ".join(parts)
 
 func set_muted(m: bool) -> void:
 	_mute_icon.set_muted(m)
@@ -242,11 +250,13 @@ func show_banner(text: String, duration: float) -> void:
 	_banner_tween.tween_property(_banner, "modulate:a", 0.0, 0.2)
 	_banner_tween.tween_callback(func(): _banner.visible = false)
 
-func show_card(world: String, name: String, lives_total: int) -> void:
+func show_card(world: String, name: String, lives_total: int, coop_lives := []) -> void:
 	_card_title.text = "WORLD " + world
 	_card_name.text = name
 	_card_lives.text = "   x %d" % maxi(lives_total, 0)
-	get_meta("card_icon").visible = true
+	get_meta("card_icon").visible = coop_lives.size() != 2
+	if coop_lives.size() == 2:
+		_card_lives.text = "MARIO x %d     LUIGI x %d" % [int(coop_lives[0]), int(coop_lives[1])]
 	_card_player.visible = true
 	_card.visible = true
 	queue_redraw()

@@ -13,6 +13,12 @@ extends Node2D
 ## checkpoint). Each has his own score, coins, lives, power, dragon, map spot
 ## and high score entry. The members below always hold the ACTIVE player's
 ## values; the waiting player's are parked in _other (_swap_turn).
+## v1.7: co-op (players == COOP): Mario and Luigi in the course at once
+## (`heroes`), shared score and coins, own lives (co_lives) and power
+## (co_power). The camera keeps both in view as long as it can; whoever
+## falls behind, or loses a life while the partner plays on, floats to the
+## partner in a bubble. `player` then is the hero that last mattered (the
+## one entering a pipe, grabbing the flag, …), enemies use target_for().
 ## Entities talk to it through Game.instance (add_score, add_coin,
 ## award_chain, collect_powerup, change_power, player_died, enter_warp,
 ## flag_reached, set_checkpoint, is_near_view, enemy_speed_mul).
@@ -126,6 +132,21 @@ var _other := {}
 ## the active player died in this course: when his turn comes back he
 ## resumes it at his checkpoint instead of starting on the map
 var _in_course := false
+const COOP := 3
+## co-op: [Mario, Luigi] (null = out of lives / not spawned)
+var heroes: Array = []
+var co_lives := [0, 0]
+var co_power := [0, 0]
+var _behind_t := [0.0, 0.0]
+## the area's own left edge (co-op: the screen edge is the limit too)
+var _limit_left := 0.0
+## co-op: Mario plays on the touch buttons (join screen)
+var coop_touch := false
+## co-op warp / flag: the partner who is carried along
+var _carried: Player = null
+var _carried_bubble := false
+## co-op: who rode the dragon when it was parked at the water
+var _dino_rider := 0
 const SLOT_FIELDS := ["score", "coins", "lives", "power", "has_dino", "level_index", "_run_reach",
 	"_run_best", "run_id", "run_name", "checkpoint_pos", "_in_course"]
 
@@ -159,8 +180,13 @@ func _ready() -> void:
 	menus.quit_to_menu_pressed.connect(_to_title)
 	menus.settings_changed.connect(func(c):
 		cfg = c
+		if players == COOP:
+			CoopInput.build()          # key rebinds reset the InputMap
 		apply_touch_layout())
-	Input.joy_connection_changed.connect(func(_id, _connected): apply_touch_layout())
+	Input.joy_connection_changed.connect(func(_id, _connected):
+		if players == COOP:
+			CoopInput.build()          # a new pad belongs to Mario
+		apply_touch_layout())
 	add_to_group("touch_layout_listeners")
 	get_window().size_changed.connect(_apply_display_mode)
 	_last_window = DisplayServer.window_get_size()
@@ -202,6 +228,8 @@ func _apply_display_mode() -> void:
 func apply_touch_layout() -> void:
 	var show := GameSettings.touch_buttons_visible(int(cfg.get("touch_buttons", 0)), _touch,
 		Input.get_connected_joypads().size())
+	if players == COOP and coop_touch:
+		show = true
 	touch.visible = show and state in [State.PLAYING, State.MAP] and not _paused
 	# help: touch-only pages unless a gamepad is there (RG552 has both)
 	menus.set_touch_context(_touch and Input.get_connected_joypads().is_empty())
@@ -299,7 +327,16 @@ func _new_run(cheat := false, from_select := false, n_players := 0) -> void:
 	if players == 2:
 		_other = _slot()
 		_other.run_id = run_id + 1        # its own high score entry
-	hud.set_player(turn if players == 2 else -1)
+	co_lives = [lives, lives]
+	co_power = [power, power]
+	heroes = []
+	if players == COOP:
+		lives = co_lives[0] + co_lives[1]
+		CoopInput.build()
+		touch.set_actions(CoopInput.action_names(0))
+	else:
+		touch.set_actions({})
+	hud.set_player(turn if players == 2 else (-2 if players == COOP else -1))
 
 ## Title "Play": a new run on the world map, the hero on the furthest
 ## course reached so far.
@@ -324,7 +361,243 @@ func hero_name(h := -1) -> String:
 
 ## Name of a high score entry that was not named yet.
 func _default_name(h: int) -> String:
+	if players == COOP:
+		return "MARIO+LUIGI"
 	return "YOU" if players == 1 else Player.HERO_NAMES[h]
+
+# ================================================================ co-op --
+## Every hero in the course (alive or not, valid nodes only).
+func all_heroes() -> Array:
+	if players != COOP:
+		return [player] if player and is_instance_valid(player) else []
+	return heroes.filter(func(h): return h != null and is_instance_valid(h))
+
+## The hero an enemy goes for: the nearest one that can be hit (co-op),
+## else the one hero.
+func target_for(pos: Vector2) -> Player:
+	if players != COOP:
+		return player
+	var best: Player = null
+	var bd := INF
+	for h in all_heroes():
+		if h.mode != Player.Mode.NORMAL:
+			continue
+		var d: float = h.global_position.distance_squared_to(pos)
+		if d < bd:
+			bd = d
+			best = h
+	if best:
+		return best
+	for h in all_heroes():
+		if h.mode != Player.Mode.DEAD:
+			return h
+	return player
+
+func _partner(p: Player) -> Player:
+	for h in all_heroes():
+		if h != p:
+			return h
+	return null
+
+func _make_hero(h: int, pw: int, pos: Vector2) -> Player:
+	var p: Player = PlayerScript.new()
+	p.name = "Player" if h == 0 else "Player2"
+	p.power = pw
+	p.hero = h
+	if players == COOP:
+		p.act = CoopInput.action_names(h)
+		p.base_mask = 3
+	level.add_child(p)
+	p.global_position = pos
+	p.fireball_requested.connect(_spawn_fireball.bind(h))
+	return p
+
+## Course start in co-op: both heroes that still have lives, Luigi a step
+## behind Mario (when there is room).
+func _spawn_coop(start: Vector2) -> void:
+	heroes = [null, null]
+	_behind_t = [0.0, 0.0]
+	var both: bool = co_lives[0] > 0 and co_lives[1] > 0
+	for h in 2:
+		if co_lives[h] <= 0:
+			continue
+		var pos := start
+		if h == 1 and both:
+			var c := Vector2i(int(floorf((start.x - 16.0) / Level.T)), int(floorf((start.y - 8.0) / Level.T)))
+			if level.tiles.get_cell_source_id(c) == -1 and level.tiles.get_cell_source_id(c + Vector2i(0, -1)) == -1:
+				pos.x -= 16.0
+		heroes[h] = _make_hero(h, co_power[h], pos)
+	player = heroes[0] if heroes[0] else heroes[1]
+	lives = co_lives[0] + co_lives[1]
+
+## A hero who is out of lives got one back (1UP): he joins in a bubble.
+func _revive(h: int) -> void:
+	if players != COOP or level == null or state not in [State.PLAYING, State.TRANSITION] \
+			or (heroes.size() == 2 and heroes[h] != null and is_instance_valid(heroes[h])):
+		return
+	if heroes.size() < 2:
+		heroes = [null, null]
+	var vs := get_viewport_rect().size
+	var p := _make_hero(h, co_power[h], camera.global_position + Vector2(0, -vs.y * 0.5 + 50.0))
+	p.left_limit = _limit_left
+	p.right_limit = camera.limit_right
+	heroes[h] = p
+	p.start_bubble()
+
+## Every physics frame while playing co-op: screen-edge limit, heroes left
+## behind go into a bubble, bubbles float to the partner and pop there.
+func _coop_tick(delta: float) -> void:
+	var vs := get_viewport_rect().size
+	var cam := camera.global_position
+	var left := cam.x - vs.x * 0.5
+	var bottom := cam.y + vs.y * 0.5
+	# nobody left to float to (every hero in a bubble): the course restarts
+	# at the checkpoint — the lives were already paid
+	var hs := all_heroes()
+	if state == State.PLAYING and not hs.is_empty() \
+			and hs.all(func(h): return h.mode == Player.Mode.BUBBLE):
+		state = State.DYING
+		_snd_call("stop_music")
+		hud.show_banner("TRY AGAIN!", 1.4)
+		var tw := create_tween()
+		tw.tween_interval(1.6)
+		tw.tween_callback(_begin_level)
+		return
+	for p in hs:
+		var partner := _partner(p)
+		var partner_ok := partner != null and partner.mode == Player.Mode.NORMAL
+		if p.mode == Player.Mode.NORMAL:
+			p.left_limit = maxf(_limit_left, left)
+			var off: bool = p.global_position.x < left - 4.0 or p.global_position.y - 30.0 > bottom
+			_behind_t[p.hero] = _behind_t[p.hero] + delta if off and partner_ok else 0.0
+			if _behind_t[p.hero] > 0.5:
+				_behind_t[p.hero] = 0.0
+				p.start_bubble()
+		elif p.mode == Player.Mode.BUBBLE:
+			_move_bubble(p, partner if partner_ok else null, delta)
+
+func _move_bubble(p: Player, partner: Player, delta: float) -> void:
+	p.queue_redraw()
+	if partner == null:
+		p.global_position.y += sin(Time.get_ticks_msec() * 0.004) * 6.0 * delta
+		return
+	# pop on the partner's head, else next to him — never inside him (two
+	# overlapping heroes shove each other through walls)
+	var spot := partner.global_position + Vector2(0, -partner.body_height() - 1.0)
+	if not _free_spot(spot, p):
+		spot = _side_spot(partner.global_position, p)
+	var to := spot - p.global_position
+	p.global_position += to.limit_length((90.0 + to.length() * 1.5) * delta)
+	if to.length() < 6.0 and state == State.PLAYING and _free_spot(p.global_position, p):
+		p.pop_bubble()
+		p.left_limit = partner.left_limit
+		p.right_limit = partner.right_limit
+		p.area_water = partner.area_water
+
+## Room for hero p's body at `pos` (world tiles and the other hero)?
+func _free_spot(pos: Vector2, p: Player) -> bool:
+	var params := PhysicsShapeQueryParameters2D.new()
+	var r := RectangleShape2D.new()
+	var h := 26.0 if p.is_big() else 14.0
+	r.size = Vector2(12, h)
+	params.shape = r
+	params.transform = Transform2D(0.0, pos + Vector2(0, -h * 0.5 - 0.5))
+	params.collision_mask = 1 | 2
+	params.exclude = [p.get_rid()]
+	return get_world_2d().direct_space_state.intersect_shape(params, 1).is_empty()
+
+## A free spot for hero p beside `pos` (behind first), else `pos`.
+func _side_spot(pos: Vector2, p: Player) -> Vector2:
+	for dx in [-14.0, 14.0, -28.0, 28.0]:
+		if _free_spot(pos + Vector2(dx, 0.0), p):
+			return pos + Vector2(dx, 0.0)
+	return pos
+
+## Co-op camera: the midpoint of both heroes while they fit on screen,
+## else it follows the one in front (the other one gets bubbled).
+func _update_camera_coop(delta: float, snap: bool) -> void:
+	var act := all_heroes().filter(func(h): return h.mode != Player.Mode.BUBBLE and h.mode != Player.Mode.DEAD)
+	if act.is_empty():
+		_apply_camera()
+		return
+	var lead: Player = act[0]
+	var minx: float = lead.global_position.x
+	for h in act:
+		if h.global_position.x > lead.global_position.x:
+			lead = h
+		minx = minf(minx, h.global_position.x)
+	var vw := get_viewport_rect().size.x
+	var spread: float = lead.global_position.x - minx
+	var want := (minx + lead.global_position.x) * 0.5 if spread < vw - 80.0 \
+		else lead.global_position.x - (vw * 0.5 - 40.0)
+	var dz := 12.0
+	if snap:
+		_cam_pos.x = want
+	elif want > _cam_pos.x + dz:
+		_cam_pos.x = want - dz
+	elif want < _cam_pos.x - dz:
+		_cam_pos.x = want + dz
+	var p := lead.global_position
+	var target_y := p.y - 36.0
+	if lead.is_on_floor() or snap:
+		_cam_pos.y = target_y if snap else lerpf(_cam_pos.y, target_y, minf(1.0, delta * 4.0))
+	else:
+		if p.y - 70.0 < _cam_pos.y - 60.0:
+			_cam_pos.y = p.y - 70.0 + 60.0
+		elif p.y > _cam_pos.y + 90.0:
+			_cam_pos.y = p.y - 90.0
+	_apply_camera()
+
+## Co-op: a hero lost a life. With the partner still playing he drops out
+## of the picture and comes back in a bubble (or is out without lives);
+## otherwise it is the team's death (course restarts / game over).
+func _coop_died(p: Player, pit: bool) -> bool:
+	var h := p.hero
+	co_lives[h] = maxi(co_lives[h] - 1, 0)
+	co_power[h] = Player.Power.BIG if cfg.start_big else Player.Power.SMALL
+	lives = co_lives[0] + co_lives[1]
+	_update_hud()
+	var partner := _partner(p)
+	if partner == null or partner.mode not in [Player.Mode.NORMAL, Player.Mode.SCRIPTED]:
+		return false              # the team's death: the normal sequence
+	if p.riding:
+		var d := p.riding
+		p.riding = null
+		d.queue_free()
+	p.mode = Player.Mode.DEAD
+	p.collision_mask = 0
+	p.collision_layer = 0
+	_snd_call("play", null, ["powerdown"])
+	var tw := create_tween()
+	if not pit:
+		p.set_power(Player.Power.SMALL)
+		p.play_anim(&"death")
+		p.z_index = 10
+		var y0 := p.global_position.y
+		tw.tween_interval(0.4)
+		tw.tween_property(p, "global_position:y", y0 - 40.0, 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+		tw.tween_property(p, "global_position:y", y0 + 260.0, 0.8).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	else:
+		tw.tween_interval(0.8)
+	tw.tween_callback(func(): _coop_after_death(p))
+	return true
+
+func _coop_after_death(p: Player) -> void:
+	if not is_instance_valid(p) or p.mode != Player.Mode.DEAD or state not in [State.PLAYING, State.TRANSITION]:
+		return
+	var h := p.hero
+	if co_lives[h] > 0:
+		var vs := get_viewport_rect().size
+		p.reset_state()
+		p.set_power(co_power[h])
+		p.global_position = camera.global_position + Vector2(0, -vs.y * 0.5 + 50.0)
+		p.start_bubble()
+	else:
+		hud.show_banner("%s IS OUT" % Player.HERO_NAMES[h], 1.8)
+		heroes[h] = null
+		if player == p:
+			player = _partner(p)
+		p.queue_free()
 
 ## The other player's turn: he resumes the course he died in, or starts on
 ## the map (first turn).
@@ -346,8 +619,8 @@ func _swap_turn() -> void:
 ## Both players for the game over screen / quit dialog (hero order).
 func player_entries() -> Array:
 	var out := []
-	for h in players:
-		var d: Dictionary = _slot() if h == turn or players == 1 else _other
+	for h in (2 if players == 2 else 1):          # co-op: one team entry
+		var d: Dictionary = _slot() if h == turn or players != 2 else _other
 		var best := maxi(int(d._run_best), int(d.level_index))
 		out.append({"hero": h, "score": int(d.score), "lives": int(d.lives), "run_id": int(d.run_id),
 			"name": str(d.run_name), "world": LEVELS[best].ID,
@@ -372,7 +645,7 @@ func continue_run() -> void:
 	if s.is_empty():
 		start_map_run()
 		return
-	_new_run(false, false, clampi(int(s.get("players", 1)), 1, 2))
+	_new_run(false, false, clampi(int(s.get("players", 1)), 1, COOP))
 	run_id = int(s.id)
 	run_name = str(s.name)
 	score = int(s.score)
@@ -382,6 +655,11 @@ func continue_run() -> void:
 	has_dino = bool(s.dino)
 	_run_best = maxi(level_of_id(str(s.best)), 0)
 	var at := maxi(level_of_id(str(s.at)), 0)
+	if players == COOP:
+		var co: Dictionary = s.get("co", {})
+		co_lives = [clampi(int(co.get("lives", [lives, lives])[0]), 0, 99), clampi(int(co.get("lives", [lives, lives])[1]), 0, 99)]
+		co_power = [int(co.get("power", [power, power])[0]), int(co.get("power", [power, power])[1])]
+		lives = co_lives[0] + co_lives[1]
 	if players == 2:
 		turn = clampi(int(s.get("turn", 0)), 0, 1)
 		_run_reach = maxi(level_of_id(str(s.get("reach", ""))), 0)
@@ -430,6 +708,13 @@ func save_run() -> Dictionary:
 	var in_course := state in [State.INTRO, State.PLAYING, State.TRANSITION]
 	var cur_power: int = player.power if player and state != State.DYING else power
 	var cur_dino: bool = (player.riding != null or _dino_parked) if player and in_course else has_dino
+	if players == COOP:
+		if in_course:
+			for p in all_heroes():
+				if p.mode != Player.Mode.DEAD:
+					co_power[p.hero] = p.power
+			cur_dino = _dino_parked or all_heroes().any(func(p): return p.riding != null)
+		cur_power = co_power[0]
 	var at := level_index
 	if state == State.MAP and world_map:
 		at = world_map.destination()
@@ -437,6 +722,8 @@ func save_run() -> Dictionary:
 		var run := {"id": run_id, "name": run_name, "score": score, "coins": coins,
 			"lives": lives, "power": cur_power, "dino": cur_dino, "at": LEVELS[at].ID,
 			"best": LEVELS[maxi(_run_best, at)].ID, "players": players}
+		if players == COOP:
+			run["co"] = {"lives": co_lives.duplicate(), "power": co_power.duplicate()}
 		if players == 2:
 			run["turn"] = turn
 			run["reach"] = LEVELS[maxi(_run_reach, at)].ID
@@ -481,6 +768,7 @@ func _show_map(at_idx: int, reveal_to := -1) -> void:
 		level.queue_free()
 		level = null
 	player = null
+	heroes = []
 	for n in get_tree().get_nodes_in_group("fireball"):
 		n.queue_free()
 	_set_world_active(true)
@@ -499,7 +787,8 @@ func _show_map(at_idx: int, reveal_to := -1) -> void:
 			_update_hud()
 			save_run())
 	world_map.hero_index = turn if players == 2 else 0
-	world_map.player_label = hero_name() if players == 2 else ""
+	world_map.player_label = hero_name() if players == 2 else ("MARIO+LUIGI" if players == COOP else "")
+	world_map.coop = players == COOP
 	world_map.setup(reveal_to - 1 if reveal_to >= 0 else _run_reach, at_idx, power)
 	if reveal_to >= 0:
 		world_map.reveal(reveal_to)
@@ -535,7 +824,7 @@ func _begin_level() -> void:
 		GameSettings.set_reached_world(world_of(level_index))
 		GameSettings.set_reached_level_id(data.ID, level_index, reached_level_index())
 	_run_best = maxi(_run_best, level_index)
-	hud.show_card(data.ID, data.NAME, lives)
+	hud.show_card(data.ID, data.NAME, lives, co_lives if players == COOP else [])
 	hud.set_boss(-1, 0)
 	_update_hud()
 	_set_world_active(false)
@@ -545,8 +834,8 @@ func _begin_level() -> void:
 	# fresh hero would still jump off here and fly on after the card
 	# (player 2026-09-29: "hops at the start of every level"). No input
 	# until the card is gone.
-	if player:
-		player.input_enabled = false
+	for p in all_heroes():
+		p.input_enabled = false
 	save_run()
 	time_left = GameSettings.level_time(cfg, data.TIME)
 	_time_acc = 0.0
@@ -557,9 +846,9 @@ func _begin_level() -> void:
 	tw.tween_callback(func():
 		hud.hide_card()
 		hud.set_buttons_visible(true)
-		if player:
-			player.input_enabled = true
-			player.jump_buffer_t = 0.0
+		for p in all_heroes():
+			p.input_enabled = true
+			p.jump_buffer_t = 0.0
 		_set_world_active(true)
 		state = State.PLAYING
 		apply_touch_layout()
@@ -570,6 +859,7 @@ func _build_level(idx: int, with_player: bool) -> void:
 		world.remove_child(level)
 		level.queue_free()
 	player = null
+	heroes = []
 	for n in get_tree().get_nodes_in_group("fireball"):
 		n.queue_free()
 	level = Level.new()
@@ -586,19 +876,17 @@ func _build_level(idx: int, with_player: bool) -> void:
 					cp.set_active_silent()
 		if _is_boss_spawn(start):
 			power = Player.Power.FIRE      # (re)start at the boss: always fire power
-		player = PlayerScript.new()
-		player.name = "Player"
-		player.power = power
-		player.hero = turn if players == 2 else 0
-		level.add_child(player)
-		player.global_position = start
-		player.fireball_requested.connect(_spawn_fireball)
+			co_power = [Player.Power.FIRE, Player.Power.FIRE]
+		if players == COOP:
+			_spawn_coop(start)
+		else:
+			player = _make_hero(turn if players == 2 else 0, power, start)
 		var water: bool = level.areas.get(level.area_at(start.x), {"theme": ""}).theme in Level.WATER_THEMES
 		_dino_parked = has_dino and water
-		if has_dino and not water:
+		if has_dino and not water and player:
 			var d := Dino.new()
 			level.add_child(d)
-			d.global_position = start
+			d.global_position = player.global_position
 			player.mount(d)
 	_enter_area(level.area_at(start.x), true)
 	_cam_pos = Vector2(start.x, start.y - 30.0)
@@ -620,21 +908,27 @@ func _enter_area(name: String, snap := false) -> void:
 	camera.limit_top = 0
 	camera.limit_bottom = int(r.end.y)
 	backdrop.set_theme(a.theme)
-	if player:
+	_limit_left = r.position.x
+	for p in all_heroes():
 		var water: bool = a.theme in Level.WATER_THEMES
-		player.area_water = water
-		player.swimming = water
-		player.left_limit = r.position.x
-		player.right_limit = r.end.x
+		p.area_water = water
+		p.swimming = water
+		p.left_limit = r.position.x
+		p.right_limit = r.end.x
 		# the dragon can't swim: it stays behind right away (no dragon in the
 		# pipe animation); _update_dino_water() brings it back on dry land
-		if water and player.park_dino():
+		var rode: bool = p.riding != null
+		if water and p.park_dino():
 			_dino_parked = true
+			_dino_rider = p.hero if rode else _dino_rider
 	if snap and player:
 		_cam_pos = player.global_position + Vector2(0, -30)
 
+func _any_star() -> bool:
+	return all_heroes().any(func(p): return p.star_t > 0.0)
+
 func _play_area_music() -> void:
-	if player and player.star_t > 0.0:
+	if _any_star():
 		_snd_call("play_music", null, ["music_star"])
 		return
 	var theme: String = level.areas.get(area, {"theme": "grass"}).theme
@@ -654,7 +948,7 @@ func _process(delta: float) -> void:
 			_attract(delta)
 		State.PLAYING:
 			_tick_time(delta)
-			if player and player.star_t <= 0.0 and _snd_call("current_music", "") == "music_star":
+			if player and not _any_star() and _snd_call("current_music", "") == "music_star":
 				_play_area_music()
 
 func _physics_process(delta: float) -> void:
@@ -668,22 +962,30 @@ func _physics_process(delta: float) -> void:
 	if state == State.PLAYING:
 		_update_dino_water()
 	_update_camera(delta, false)
+	if players == COOP and state in [State.PLAYING, State.TRANSITION, State.CLEAR]:
+		_coop_tick(delta)
 
 ## The dragon can't swim: diving into water (underwater area, bonus grotto,
 ## castle pool) it waits "off stage"; back on dry ground it is there again.
 func _update_dino_water() -> void:
-	if player == null or player.mode != Player.Mode.NORMAL:
+	var hs := all_heroes().filter(func(p): return p.mode == Player.Mode.NORMAL)
+	for p in hs:
+		if p.swimming and p.riding:
+			p.park_dino()
+			_dino_parked = true
+			_dino_rider = p.hero
+	if not _dino_parked:
 		return
-	if player.swimming and player.riding:
-		player.park_dino()
-		_dino_parked = true
-	elif _dino_parked and player.riding == null and not player.swimming and not player.area_water \
-			and player.is_on_floor():
-		_dino_parked = false
-		var d := Dino.new()
-		level.add_child(d)
-		d.global_position = player.global_position
-		player.mount(d)
+	# back on dry land: the dragon is there again (for its last rider first)
+	hs.sort_custom(func(a, b): return a.hero == _dino_rider and b.hero != _dino_rider)
+	for p in hs:
+		if p.riding == null and not p.swimming and not p.area_water and p.is_on_floor():
+			_dino_parked = false
+			var d := Dino.new()
+			level.add_child(d)
+			d.global_position = p.global_position
+			p.mount(d)
+			return
 
 func _attract(delta: float) -> void:
 	var vw := get_viewport_rect().size.x
@@ -696,6 +998,9 @@ func _attract(delta: float) -> void:
 	_apply_camera()
 
 func _update_camera(delta: float, snap: bool) -> void:
+	if players == COOP and state != State.MAP:
+		_update_camera_coop(delta, snap)
+		return
 	if player == null:
 		_apply_camera()
 		return
@@ -749,7 +1054,8 @@ func _tick_time(delta: float) -> void:
 			_snd_call("set_music_pitch", null, [1.2])
 		if time_left == 0:
 			hud.show_banner("TIME UP", 2.0)
-			player_died(false)
+			for p in all_heroes():
+				player_died(false, p)
 
 # ================================================================ scoring --
 func add_score(n: int, pos = null) -> void:
@@ -784,9 +1090,20 @@ func add_coin(_from_level: bool, pos: Vector2) -> void:
 		coins = 0
 	hud.set_coins(coins)
 
-func one_up(pos: Vector2) -> void:
-	lives = mini(lives + 1, 99)
-	hud.set_lives(lives)
+## Co-op: the life goes to hero p (or to the one with fewer lives); a hero
+## who was out comes back in a bubble.
+func one_up(pos: Vector2, p: Player = null) -> void:
+	if players == COOP:
+		var h: int = p.hero if p and is_instance_valid(p) else (0 if co_lives[0] <= co_lives[1] else 1)
+		var was_out: bool = co_lives[h] <= 0
+		co_lives[h] = mini(co_lives[h] + 1, 99)
+		lives = co_lives[0] + co_lives[1]
+		_update_hud()
+		if was_out:
+			_revive(h)
+	else:
+		lives = mini(lives + 1, 99)
+		hud.set_lives(lives)
 	_snd_call("play", null, ["oneup"])
 	_popup("1UP", pos)
 
@@ -795,59 +1112,67 @@ func award_chain(p: Player, pos: Vector2) -> void:
 	if i < CHAIN.size():
 		add_score(CHAIN[i], pos)
 	else:
-		one_up(pos)
+		one_up(pos, p)
 	p.stomp_chain += 1
 
 func block_bumped() -> void:
 	pass
 
-func collect_powerup(kind: int, pos: Vector2) -> void:
-	if player == null:
+func collect_powerup(kind: int, pos: Vector2, p: Player = null) -> void:
+	if p == null:
+		p = player
+	if p == null:
 		return
 	match kind:
 		PowerUp.Kind.MUSHROOM:
 			add_score(1000, pos)
-			if player.power == Player.Power.SMALL:
-				change_power(Player.Power.BIG, false)
+			if p.power == Player.Power.SMALL:
+				change_power(Player.Power.BIG, false, p)
 			else:
 				_snd_call("play", null, ["powerup"])
 		PowerUp.Kind.FLOWER:
 			add_score(1000, pos)
-			if player.power != Player.Power.FIRE:
-				change_power(Player.Power.FIRE, false)
+			if p.power != Player.Power.FIRE:
+				change_power(Player.Power.FIRE, false, p)
 			else:
 				_snd_call("play", null, ["powerup"])
 		PowerUp.Kind.ONEUP:
-			one_up(pos)
+			one_up(pos, p)
 		PowerUp.Kind.STAR:
 			add_score(1000, pos)
-			player.start_star(STAR_TIME)
+			p.start_star(STAR_TIME)
 			_snd_call("play_music", null, ["music_star"])
 
 ## Grow / shrink with the classic freeze + flicker between both looks.
-func change_power(new_power: int, hurt: bool) -> void:
-	if player == null:
+func change_power(new_power: int, hurt: bool, p: Player = null) -> void:
+	if p == null:
+		p = player
+	if p == null:
 		return
-	var old := player.power
-	power = new_power
+	var old := p.power
+	if players == COOP:
+		co_power[p.hero] = new_power
+	else:
+		power = new_power
 	_snd_call("play", null, ["powerdown" if hurt else "powerup"])
-	player.set_power(new_power)
+	p.set_power(new_power)
 	_set_world_active(false)
 	if _freeze_tween and _freeze_tween.is_valid():
 		_freeze_tween.kill()
 	_freeze_tween = create_tween()
 	for i in 10:
 		var show_p := old if i % 2 == 0 else new_power
-		_freeze_tween.tween_callback(func(): if player: player.show_power_frame(show_p))
+		_freeze_tween.tween_callback(func(): if is_instance_valid(p): p.show_power_frame(show_p))
 		_freeze_tween.tween_interval(0.07)
 	_freeze_tween.tween_callback(func():
-		if player:
-			player.show_power_frame(new_power)
+		if is_instance_valid(p):
+			p.show_power_frame(new_power)
 		if state == State.PLAYING or state == State.TRANSITION:
 			_set_world_active(true))
 
-func _spawn_fireball(pos: Vector2, dir: int) -> void:
+func _spawn_fireball(pos: Vector2, dir: int, h := 0) -> void:
 	var f := Fireball.new()
+	f.set_meta("hero", h)
 	f.dir = dir
 	f.position = pos
 	level.add_child(f)
@@ -856,13 +1181,25 @@ func _spawn_fireball(pos: Vector2, dir: int) -> void:
 func set_checkpoint(pos: Vector2) -> void:
 	checkpoint_pos = pos
 	_snd_call("play", null, ["checkpoint"])
-	if player and player.power == Player.Power.SMALL:
+	if players == COOP:
+		for p in all_heroes():
+			if p.mode == Player.Mode.NORMAL and p.power == Player.Power.SMALL:
+				p.set_power(Player.Power.BIG)
+				co_power[p.hero] = Player.Power.BIG
+				_snd_call("play", null, ["powerup"])
+	elif player and player.power == Player.Power.SMALL:
 		change_power(Player.Power.BIG, false)
 
 # ================================================================== death --
-func player_died(pit: bool) -> void:
-	if state != State.PLAYING or player == null:
+func player_died(pit: bool, who: Player = null) -> void:
+	if who == null:
+		who = player
+	if state != State.PLAYING or who == null or who.mode == Player.Mode.DEAD:
 		return
+	if players == COOP:
+		if _coop_died(who, pit):
+			return
+		player = who                # the last one standing: the team's death
 	state = State.DYING
 	touch.visible = false
 	_snd_call("stop_music")
@@ -892,6 +1229,13 @@ func player_died(pit: bool) -> void:
 
 func _after_death() -> void:
 	power = Player.Power.BIG if cfg.start_big else Player.Power.SMALL
+	if players == COOP:
+		# lives were paid in _coop_died
+		if co_lives[0] + co_lives[1] <= 0:
+			_game_over(false)
+		else:
+			_begin_level()
+		return
 	if players == 2:
 		_after_death_2p()
 		return
@@ -956,10 +1300,13 @@ func _game_over(victory: bool) -> void:
 		menus.show_gameover(score, data.ID, victory))
 
 # ================================================================== pipes --
-func enter_warp(zone: WarpZone) -> void:
+func enter_warp(zone: WarpZone, who: Player = null) -> void:
+	if who:
+		player = who
 	if state != State.PLAYING or player == null:
 		return
 	state = State.TRANSITION
+	_carry_partner()
 	var w: Dictionary = zone.warp
 	player.set_scripted(true)
 	player.collision_mask = 0
@@ -987,11 +1334,52 @@ func enter_warp(zone: WarpZone) -> void:
 	tw.tween_interval(0.25)
 	tw.tween_callback(func(): _arrive(w))
 
+## Co-op: the partner follows whoever takes a pipe / door / the flag —
+## he fades out now and turns up again at the other end.
+func _carry_partner() -> void:
+	_carried = null
+	if players != COOP:
+		return
+	var o := _partner(player)
+	if o == null or o.mode == Player.Mode.DEAD:
+		return
+	_carried = o
+	_carried_bubble = o.mode == Player.Mode.BUBBLE
+	if not _carried_bubble:
+		if o.riding:
+			o.park_dino()
+			_dino_parked = true
+			_dino_rider = o.hero
+		o.set_scripted(true)
+		o.collision_mask = 0
+	create_tween().tween_property(o, "modulate:a", 0.0, 0.3)
+
+func _place_carried(pos: Vector2) -> void:
+	if _carried == null or not is_instance_valid(_carried):
+		return
+	_carried.global_position = pos + Vector2(0, -30) if _carried_bubble else _side_spot(pos, _carried)
+	_carried.velocity = Vector2.ZERO
+	create_tween().tween_property(_carried, "modulate:a", 1.0, 0.3)
+
+func _release_carried() -> void:
+	if _carried == null or not is_instance_valid(_carried):
+		_carried = null
+		return
+	_carried.modulate.a = 1.0
+	if not _carried_bubble and _carried.mode == Player.Mode.SCRIPTED:
+		if not _free_spot(_carried.global_position, _carried):
+			_carried.global_position = _side_spot(player.global_position, _carried)
+		_carried.z_index = 0
+		_carried.collision_mask = _carried.base_mask
+		_carried.set_scripted(false)
+	_carried = null
+
 func _arrive(w: Dictionary) -> void:
 	if player == null:
 		return
 	var pos := level.arrive_position(w)
 	_enter_area(w["area"])
+	_place_carried(pos)
 	if w["arrive_kind"] == "up":
 		player.global_position = pos + Vector2(0, 34)
 		_cam_pos = pos + Vector2(0, -30)
@@ -1027,8 +1415,9 @@ func _finish_warp() -> void:
 		return
 	player.modulate.a = 1.0
 	player.z_index = 0
-	player.collision_mask = 1
+	player.collision_mask = player.base_mask
 	player.set_scripted(false)
+	_release_carried()
 	state = State.PLAYING
 
 # =============================================================== the goal --
@@ -1036,6 +1425,8 @@ func flag_reached(pole: Flagpole, p: Player) -> void:
 	if state != State.PLAYING:
 		return
 	state = State.CLEAR
+	player = p
+	_carry_partner()             # co-op: the partner goes into the castle too
 	touch.visible = false
 	_snd_call("stop_music")
 	_snd_call("play", null, ["flagpole"])
@@ -1067,7 +1458,7 @@ func flag_reached(pole: Flagpole, p: Player) -> void:
 	tw.tween_callback(func():
 		_snd_call("play", null, ["jingle_clear"])
 		p.global_position.x = pole.global_position.x + 15
-		p.collision_mask = 1
+		p.collision_mask = p.base_mask
 		p.set_scripted(false)
 		p.input_enabled = false
 		p.auto_walk = 1.0)
@@ -1102,6 +1493,10 @@ func _level_done() -> void:
 	level.raise_castle_flag()
 	_snd_call("play", null, ["checkpoint"])
 	power = player.power if player else power
+	if players == COOP:
+		for p in all_heroes():
+			if p.mode != Player.Mode.DEAD:
+				co_power[p.hero] = p.power
 	var tw := create_tween()
 	tw.tween_interval(2.0)
 	tw.tween_callback(func():
@@ -1132,14 +1527,15 @@ func start_boss(boss: Boss) -> void:
 	level.set_meta("boss_started", true)
 	camera.limit_left = int(boss.arena_left)
 	camera.limit_right = int(boss.arena_right)
-	if player:
-		player.left_limit = boss.arena_left
-		player.right_limit = boss.arena_right
+	_limit_left = boss.arena_left
 	var gate_c := int(boss.arena_left / Level.T)
 	# never wall anyone in: the hero (and a ridden dragon) must be clear of it
 	var gate_right := float(gate_c + 1) * Level.T
-	if player and player.global_position.x - 10.0 < gate_right:
-		player.global_position.x = gate_right + 12.0
+	for p in all_heroes():
+		p.left_limit = boss.arena_left
+		p.right_limit = boss.arena_right
+		if p.global_position.x - 10.0 < gate_right:
+			p.global_position.x = gate_right + 12.0
 	for r in range(0, Level.ROWS - 3):
 		var cell := Vector2i(gate_c, r)
 		if level.tiles.get_cell_source_id(cell) == -1:
@@ -1160,12 +1556,12 @@ func boss_defeated(_boss: Boss) -> void:
 	hud.set_boss(-1, 0)
 	_snd_call("stop_music")
 	_snd_call("play", null, ["jingle_world"])
-	has_dino = (player != null and player.riding != null) or _dino_parked
+	has_dino = all_heroes().any(func(p): return p.riding != null) or _dino_parked
 	_dino_parked = false
 	hud.show_banner("WORLD %d CLEAR!" % world_of(level_index), 3.0)
-	if player:
-		player.input_enabled = false
-		player.velocity.x = 0.0
+	for p in all_heroes():
+		p.input_enabled = false
+		p.velocity.x = 0.0
 	add_score(5000, player.global_position + Vector2(0, -40) if player else null)
 	var tw := create_tween()
 	# reward: an extra life for every boss beaten
@@ -1189,9 +1585,13 @@ func _toggle_pause() -> void:
 		menus.show_pause()
 	else:
 		menus.hide_all()
+		if players == COOP:
+			CoopInput.build()
 		apply_touch_layout()
 
 func _resume() -> void:
+	if players == COOP:
+		CoopInput.build()         # a key rebind in the pause menu reset the InputMap
 	_paused = false
 	get_tree().paused = false
 	_snd_call("pause_music", null, [false])
@@ -1203,7 +1603,10 @@ func _toggle_mute() -> void:
 func _update_hud() -> void:
 	hud.set_score(score)
 	hud.set_coins(coins)
-	hud.set_lives(lives)
+	if players == COOP:
+		hud.set_coop_lives(co_lives)
+	else:
+		hud.set_lives(lives)
 	hud.set_world(LEVELS[level_index].ID)
 
 ## Calls a method on the Snd autoload if present (it is absent under

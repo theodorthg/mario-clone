@@ -47,6 +47,10 @@ func _ready() -> void:
 	hero = AnimatedSprite2D.new()
 	hero.z_index = 2
 	add_child(hero)
+	partner = AnimatedSprite2D.new()
+	partner.z_index = 1
+	partner.visible = false
+	add_child(partner)
 	set_power(Player.Power.SMALL)
 	# course name banner at the bottom of the screen
 	_layer = CanvasLayer.new()
@@ -104,9 +108,15 @@ func hide_map() -> void:
 var hero_index := 0
 ## "MARIO" / "LUIGI" in front of the course name (2 players), else ""
 var player_label := ""
+## co-op (v1.7): Luigi walks along a step behind Mario
+var coop := false
+var partner: AnimatedSprite2D
 
 func set_power(p: int) -> void:
 	hero.sprite_frames = Player.frames_for(hero_index, p)
+	if partner:
+		partner.sprite_frames = Player.frames_for(1, p)
+		partner.offset = Vector2(0, -Player.CELL_H[p] * 0.5 + 2.0)
 	hero.offset = Vector2(0, -Player.CELL_H[p] * 0.5 + 2.0)
 
 ## Unlock course `to` (the one after a cleared course): the road to it draws
@@ -120,6 +130,15 @@ func reveal(to: int) -> void:
 	var s := get_node_or_null("/root/Snd")
 	if s:
 		s.play("sprout")
+
+func _update_partner() -> void:
+	partner.visible = coop
+	if not coop:
+		return
+	partner.position = hero.position + Vector2(10.0 if hero.flip_h else -10.0, 0.0)
+	partner.flip_h = hero.flip_h
+	if partner.animation != hero.animation:
+		partner.play(hero.animation)
 
 func hero_position() -> Vector2:
 	return hero.position
@@ -223,6 +242,7 @@ func _walk_to(target: int) -> void:
 func _process(delta: float) -> void:
 	if not visible:
 		return
+	_update_partner()
 	_delay = maxf(_delay - delta, 0.0)
 	if _reveal_seg >= 0:
 		_reveal_k = minf(_reveal_k + delta / REVEAL_TIME, 1.0)

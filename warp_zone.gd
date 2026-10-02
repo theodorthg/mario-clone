@@ -37,12 +37,12 @@ func _physics_process(_delta: float) -> void:
 		if p.mode != Player.Mode.NORMAL or not p.input_enabled or not p.is_on_floor():
 			continue
 		if kind == "down":
-			if Input.is_action_pressed("move_down") and absf(p.global_position.x - global_position.x) <= 9.0:
-				Game.instance.enter_warp(self)
+			if Input.is_action_pressed(p.act.down) and absf(p.global_position.x - global_position.x) <= 9.0:
+				Game.instance.enter_warp(self, p)
 		elif kind == "door":
 			# just_pressed: holding down after arriving must not go straight back
-			if (Input.is_action_just_pressed("move_down") or Input.is_action_just_pressed("ui_up")) \
+			if (Input.is_action_just_pressed(p.act.down) or Input.is_action_just_pressed(p.act.up)) \
 					and absf(p.global_position.x - global_position.x) <= 8.0:
-				Game.instance.enter_warp(self)
-		elif Input.is_action_pressed("move_right"):
-			Game.instance.enter_warp(self)
+				Game.instance.enter_warp(self, p)
+		elif Input.is_action_pressed(p.act.right):
+			Game.instance.enter_warp(self, p)

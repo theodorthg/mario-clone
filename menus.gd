@@ -17,7 +17,7 @@ signal quit_to_menu_pressed
 signal settings_changed(cfg: Dictionary)
 
 enum Screen { NONE, START, SETTINGS, SOUND, PAUSE, GAMEOVER, HELP, HIGHSCORES, VICTORY, CONTROLS, LEVELS,
-	QUIT, NEWGAME, CLEARHOF, PLAYERS }
+	QUIT, NEWGAME, CLEARHOF, PLAYERS, JOIN }
 
 const PANEL_W := 250.0
 const BTN_H := 22.0
@@ -72,7 +72,7 @@ const HELP_FALLBACK := {
 	"volcano": "Magma blobs hop at you. Stomp one: it cools into a rock\nyou can stand on - it even floats on lava. Fire can't hurt it.\nSalamanders spit fire along the ground - jump over it.\nMeteor fields: a blinking ring shows where a rock will land.\nThe volcano lord is the final boss. Good luck!",
 	"ghost": "Doors: press down (or up) in front of one to go through.\nThey lead past walls - coins mark the right one.\nGhosts come closer while you look away and freeze\nwhen you face them; fire can't hurt them, a star can.\nBone turtles fall apart when stomped and rise again.\nThe phantom king fades out and appears elsewhere.",
 	"map": "Play opens the world map. Walk with left / right,\nA or Space plays the course you stand on.\nTouch: tap a course to walk there, tap it again to play.\nA check = cleared, a lock = not reached yet.\nAfter a course the road to the next one opens.\nYour run is saved all along: quit any time,\nthen Continue on the title screen.",
-	"players": "Title: Play > 2 Players - take turns.\nMario plays until he loses a life, then it's Luigi's turn.\nEach has his own lives, score, power, dragon and map;\nthe next turn starts at your checkpoint.\nLuigi jumps a little higher. One high score entry each.",
+	"players": "Take turns: Mario plays until he loses a life, then Luigi.\nTogether: both at once - each presses jump on his pad,\nor share a keyboard (Mario A D S W, Luigi arrows K L).\nFall behind or lose a life: you float back in a bubble.\nShared score, own lives, one team high score.",
 	"goal": "Stomp enemies from above.\nCoins: points, 100 coins = extra life.\nPipes marked by coins lead to bonus rooms.\nGrab the flag pole as high as you can!\nExtra lives for points: Settings > 1-UP points.",
 }
 
@@ -173,6 +173,8 @@ func _rebuild() -> void:
 			_build_clearhof()
 		Screen.PLAYERS:
 			_build_players()
+		Screen.JOIN:
+			_build_join()
 	_panel.reset_size()
 	_recenter_panel.call_deferred()
 	# again once wrapped hint labels know their real width (before that they
@@ -336,9 +338,16 @@ func _build_start() -> void:
 	else:
 		# v1.2: the saved run first; a new game asks before replacing it
 		_vbox.add_child(_button("Continue  " + str(save.at), func():
+			if int(save.get("players", 1)) == 3:
+				_open_join(true)         # co-op: who plays with what (devices)
+				return
 			hide_all()
 			continue_pressed.emit()))
-		if int(save.get("players", 1)) == 2:
+		if int(save.get("players", 1)) == 3:
+			var co: Dictionary = save.get("co", {})
+			var ls: Array = co.get("lives", [0, 0])
+			_vbox.add_child(_hint("Co-op  %06d points  -  MARIO x%d  LUIGI x%d" % [int(save.score), int(ls[0]), int(ls[1])]))
+		elif int(save.get("players", 1)) == 2:
 			_vbox.add_child(_hint(_two_player_line(save)))
 		else:
 			_vbox.add_child(_hint("%06d points  -  %d %s" % [int(save.score), int(save.lives),
@@ -497,16 +506,124 @@ func _build_players() -> void:
 		_players_pending = 2
 		hide_all()
 		play_pressed.emit(-1)))
-	var h := _hint("Take turns: Mario plays until he loses a life, then it's\nLuigi's turn. Each has his own lives, score and map.\nLuigi jumps a little higher.")
+	if coop_possible():
+		_vbox.add_child(_button("2 Players - together", func(): _open_join(false)))
+	var h := _hint("Take turns: Mario plays until he loses a life, then Luigi.\nTogether: both at once - two pads, or one keyboard\nfor two (Mario A D S W, Luigi arrow keys).")
 	h.add_theme_color_override("font_color", UiStyle.ACCENT)
 	_vbox.add_child(h)
 	_vbox.add_child(_button("Back", func(): _show_screen(Screen.START), true))
+
+# ------------------------------------------------------------------- join --
+## Co-op (v1.7) needs two input devices: two gamepads, a keyboard for two,
+## keyboard + pad or touch + pad. Not offered on a phone without a pad.
+static func coop_possible() -> bool:
+	var mobile := OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")
+	return not mobile or not Input.get_connected_joypads().is_empty()
+
+## Who plays with what: each player presses jump on his own device.
+var _join := {"mario": "", "luigi": ""}
+var _join_continue := false
+
+func _open_join(cont: bool) -> void:
+	_join = {"mario": "", "luigi": ""}
+	_join_continue = cont
+	_show_screen(Screen.JOIN)
+
+func _join_label(who: String) -> String:
+	var v: String = _join[who]
+	if v == "":
+		return "-"
+	if v == "touch":
+		return "touch buttons"
+	if v == "keys":
+		return "keyboard"
+	return "gamepad " + v.get_slice(":", 1)
+
+func _build_join() -> void:
+	_panel.custom_minimum_size = Vector2(330, 0)
+	_vbox.add_child(_heading("JOIN IN"))
+	var ready: bool = _join.mario != "" and _join.luigi != ""
+	var m := _button("MARIO:  " + (_join_label("mario") if _join.mario != "" else "press A / Space  (or tap)"), func():
+		if _join.mario == "":
+			_join.mario = "touch"
+			_rebuild())
+	m.add_theme_color_override("font_color", Player.HERO_COLORS[0])
+	m.focus_mode = Control.FOCUS_NONE
+	_vbox.add_child(m)
+	var l := _button("LUIGI:  " + (_join_label("luigi") if _join.luigi != "" else "press A on another pad / Up"), Callable())
+	l.add_theme_color_override("font_color", Player.HERO_COLORS[1])
+	l.focus_mode = Control.FOCUS_NONE
+	_vbox.add_child(l)
+	if ready:
+		_apply_join()
+		var h := _hint(CoopInput.describe())
+		h.add_theme_color_override("font_color", UiStyle.ACCENT)
+		_vbox.add_child(h)
+		var go := _button("Start!", func():
+			hide_all()
+			if Game.instance:
+				Game.instance.coop_touch = _join.mario == "touch"
+			if _join_continue:
+				continue_pressed.emit()
+			else:
+				_players_pending = 3
+				play_pressed.emit(-1))
+		_vbox.add_child(_hbox([go, _button("Back", func(): _show_screen(Screen.START), true)]))
+		_default_focus = go
+	else:
+		_vbox.add_child(_hint("Each player presses jump on his own controller:\npad A - keyboard Space (Mario) or Up arrow (Luigi)\n- Mario can also tap here to play with the touch buttons."))
+		var back := _button("Back", func(): _show_screen(Screen.START), true)
+		_vbox.add_child(back)
+		_default_focus = back
+
+func _apply_join() -> void:
+	CoopInput.reset()
+	var lu: String = _join.luigi
+	if lu == "keys":
+		CoopInput.split = _join.mario == "keys"
+		CoopInput.luigi_keys = not CoopInput.split
+	elif lu.begins_with("pad:"):
+		CoopInput.luigi_pad = int(lu.get_slice(":", 1))
+	CoopInput.build()
+
+func _join_input(event: InputEvent) -> void:
+	if _join.mario != "" and _join.luigi != "":
+		return
+	var who := ""
+	var dev := ""
+	if event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_A:
+		dev = "pad:%d" % event.device
+		if _join.mario == "":
+			who = "mario"
+		elif _join.mario != dev:
+			who = "luigi"
+		else:
+			get_viewport().set_input_as_handled()
+			return
+	elif event is InputEventKey and event.pressed and not event.echo:
+		var code: int = event.physical_keycode if event.physical_keycode != 0 else event.keycode
+		if code in CoopInput.JOIN_P2_KEYS and _join.luigi == "":
+			who = "luigi"
+		elif code in CoopInput.JOIN_P1_KEYS and _join.mario == "":
+			who = "mario"
+		elif code in CoopInput.JOIN_P1_KEYS or code in CoopInput.JOIN_P2_KEYS:
+			get_viewport().set_input_as_handled()
+			return
+		dev = "keys"
+	if who == "":
+		return
+	get_viewport().set_input_as_handled()
+	_join[who] = dev
+	var snd := get_node_or_null("/root/Snd")
+	if snd:
+		snd.play("coin")
+	_rebuild()
 
 func _make_name_edit(text := "") -> LineEdit:
 	var e := LineEdit.new()
 	e.placeholder_text = "Your name"
 	e.text = text if text != "YOU" else ""
-	e.max_length = 8
+	e.max_length = 12 if Game.instance and Game.instance.players == 3 else 8
 	e.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	e.custom_minimum_size = Vector2(120, BTN_H)
 	e.add_theme_font_size_override("font_size", FONT)
@@ -937,6 +1054,9 @@ func _start_listen(action: String, kind: String, b: Button) -> void:
 			_refresh_slots())
 
 func _input(event: InputEvent) -> void:
+	if screen == Screen.JOIN:
+		_join_input(event)
+		return
 	if screen == Screen.START:
 		_cheat_input(event)
 		return

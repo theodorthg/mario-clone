@@ -36,12 +36,15 @@ func _physics_process(delta: float) -> void:
 	# "standing on it" by position, not is_on_floor(): on a steep plank the
 	# hero stops counting as grounded, but it must keep tipping until they
 	# slide off (else it settles right at the 45° floor limit)
-	if game and game.player and game.player.mode == Player.Mode.NORMAL and game.player.velocity.y > -20.0:
-		var local := to_local(game.player.global_position)
+	# (co-op: both heroes' weight adds up)
+	for p in (game.all_heroes() if game else []):
+		if p.mode != Player.Mode.NORMAL or p.velocity.y <= -20.0:
+			continue
+		var local := to_local(p.global_position)
 		# (on a slope the box corner touches, so the feet hover up to ~8 px above)
 		if local.y > -10.0 and local.y < 6.0 and absf(local.x) < W * 0.5 + 4.0:
 			on = true
-			off = clampf(local.x / (W * 0.5), -1.0, 1.0)
+			off = clampf(off + local.x / (W * 0.5), -1.0, 1.0)
 	if on:
 		rotation = move_toward(rotation, off * MAX_ANGLE, (TIP_SPEED * absf(off) + deg_to_rad(4.0)) * delta)
 	else:

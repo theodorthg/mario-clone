@@ -138,8 +138,8 @@ func _stand_up() -> void:
 	_body_shape.position = Vector2(0, -11)
 	position.y -= 0.5
 	var game := Game.instance
-	if game and game.player:
-		dir = 1 if game.player.global_position.x > global_position.x else -1
+	if game and game.target_for(global_position):
+		dir = 1 if game.target_for(global_position).global_position.x > global_position.x else -1
 
 func kill_flip(from_x: float, award := false) -> void:
 	if dead:

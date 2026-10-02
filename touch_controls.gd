@@ -41,6 +41,15 @@ func _make(tex: String, action: String, passby: bool) -> TouchScreenButton:
 	add_child(b)
 	return b
 
+## Co-op (v1.7): Mario on the touch buttons presses his own p1_* actions;
+## {} = the shared ones.
+func set_actions(names: Dictionary) -> void:
+	_left.action = names.get("left", "move_left")
+	_down.action = names.get("down", "move_down")
+	_right.action = names.get("right", "move_right")
+	_b.action = names.get("run", "run")
+	_a.action = names.get("jump", "jump")
+
 func relayout() -> void:
 	if _left == null:
 		return

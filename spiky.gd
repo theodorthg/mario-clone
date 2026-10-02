@@ -32,8 +32,8 @@ func _physics_process(delta: float) -> void:
 		if is_on_floor():
 			_falling = false
 			var game := Game.instance
-			if game and game.player:
-				dir = 1 if game.player.global_position.x > global_position.x else -1
+			if game and game.target_for(global_position):
+				dir = 1 if game.target_for(global_position).global_position.x > global_position.x else -1
 			sprite.play(&"walk")
 		elif global_position.y > Level.ROWS * Level.T + 40.0:
 			queue_free()

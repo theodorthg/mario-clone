@@ -94,11 +94,38 @@ func teleport(cell: Vector2i) -> void:
 const USER_FILES := ["user://savegame.cfg", "user://hall_of_fame.cfg", "user://settings.cfg"]
 var _user_backup := {}
 
+## The backup also goes to disk (user://_playtest_backup/): a scenario that
+## dies on a script error never reaches _restore_user_files(), so the next
+## run restores that copy first (v1.7: aborted co-op runs had left test
+## entries in the real high score list).
+const BACKUP_DIR := "user://_playtest_backup/"
+
 func _backup_user_files() -> void:
+	if FileAccess.file_exists(BACKUP_DIR + "pending"):
+		print("PLAYTEST: the last run was aborted - restoring its backup first")
+		for f in USER_FILES:
+			var b: String = BACKUP_DIR + String(f).get_file()
+			if FileAccess.file_exists(b):
+				var fa := FileAccess.open(f, FileAccess.WRITE)
+				fa.store_buffer(FileAccess.get_file_as_bytes(b))
+				fa.close()
+			elif FileAccess.file_exists(f):
+				DirAccess.remove_absolute(ProjectSettings.globalize_path(f))
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(BACKUP_DIR))
 	for f in USER_FILES:
 		_user_backup[f] = FileAccess.get_file_as_bytes(f) if FileAccess.file_exists(f) else null
+		var b: String = BACKUP_DIR + String(f).get_file()
+		if _user_backup[f] == null:
+			if FileAccess.file_exists(b):
+				DirAccess.remove_absolute(ProjectSettings.globalize_path(b))
+		else:
+			var fa := FileAccess.open(b, FileAccess.WRITE)
+			fa.store_buffer(_user_backup[f])
+			fa.close()
+	FileAccess.open(BACKUP_DIR + "pending", FileAccess.WRITE).close()
 
 func _restore_user_files() -> void:
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(BACKUP_DIR + "pending"))
 	for f in USER_FILES:
 		if _user_backup.get(f) == null:
 			if FileAccess.file_exists(f):
@@ -129,6 +156,25 @@ func _hints() -> String:
 		if l.visible and l.get_parent() == game.menus._vbox:
 			out.append(l.text.replace("\n", " / "))
 	return " | ".join(out)
+
+## A key press + release as real events (join screen reads them).
+func _key(code: int) -> void:
+	for down in [true, false]:
+		var ev := InputEventKey.new()
+		ev.physical_keycode = code
+		ev.keycode = code
+		ev.pressed = down
+		Input.parse_input_event(ev)
+		await _frames(2)
+
+func _keys(action: String) -> Array:
+	return InputMap.action_get_events(action).filter(func(e): return e is InputEventKey).map(
+		func(e): return OS.get_keycode_string(e.physical_keycode if e.physical_keycode else e.keycode))
+
+func teleport_hero(p: Player, cell: Vector2i) -> void:
+	p.global_position = Vector2(cell.x * 16 + 8, (cell.y + 1) * 16)
+	p.velocity = Vector2.ZERO
+	await _frames(3)
 
 ## Peak height (px) of a held jump from standing on flat ground.
 func _jump_height() -> float:
@@ -246,10 +292,10 @@ func _run() -> void:
 			game.player.velocity = Vector2(160, -310)
 			Input.action_press("run")
 			Input.action_press("move_right")
-			for i in 120:
+			for i in 150:                      # physics frames: ~2.5 s
 				if game.state != Game.State.PLAYING:
 					break
-				await _frames(1)
+				await physics_frame
 			Input.action_release("move_right")
 			Input.action_release("run")
 			await _wait(0.3)
@@ -2082,6 +2128,180 @@ func _run() -> void:
 			await _press_button("Enter names")
 			print("TURNS hof named: ", HallOfFame.load_list().map(func(e): return "%s %s" % [e.name, e.score]))
 			await shot("gameover_named")
+		"coop":
+			# v1.7: Mario + Luigi at once
+			SaveGame.clear()
+			var c := ConfigFile.new()
+			c.load(GameSettings.CFG_PATH)
+			c.set_value("progress", "level", "1-1")
+			c.set_value("progress", "world", 1)
+			c.save(GameSettings.CFG_PATH)
+			await _wait(0.6)
+			game._to_title()
+			await _frames(3)
+			await _press_button("Play")
+			print("COOP players: ", _button_texts())
+			await _press_button("2 Players - together")
+			await shot("join_empty")
+			await _key(KEY_SPACE)
+			await _key(KEY_UP)
+			print("COOP join: screen=%d (JOIN=%d) split=%s buttons=%s" % [game.menus.screen, Menus.Screen.JOIN,
+				CoopInput.split, _button_texts()])
+			print("COOP keys: p1_jump=%s p2_jump=%s p1_left=%s p2_left=%s p2_run=%s" % [_keys("p1_jump"),
+				_keys("p2_jump"), _keys("p1_left"), _keys("p2_left"), _keys("p2_run")])
+			await shot("join_ready")
+			await _press_button("Start!")
+			await _wait(1.0)
+			print("COOP map: state=%d players=%d partner=%s label=%s" % [game.state, game.players,
+				game.world_map.partner.visible, game.world_map.player_label])
+			await shot("map")
+			await _act("jump")
+			await _wait(0.6)
+			await shot("card")
+			await _wait(Game.CARD_TIME)
+			var m: Player = game.heroes[0]
+			var l: Player = game.heroes[1]
+			print("COOP course: mario=%s luigi=%s luigi frames=%s hud=%s lives=%s" % [m.global_position.round(),
+				l.global_position.round(), l.sprite.sprite_frames.resource_path.get_file(), game.hud._score_title.text,
+				game.hud._lives.text])
+			await hold("p1_right", 0.8)
+			print("COOP only Mario moved: mario x=%.0f luigi x=%.0f" % [m.global_position.x, l.global_position.x])
+			await hold("p2_right", 0.5)
+			print("COOP Luigi moved: luigi x=%.0f" % l.global_position.x)
+			await shot("both")
+			print("COOP target near Luigi is Luigi: ", game.target_for(l.global_position) == l)
+			# head bounce: Luigi drops onto Mario
+			l.global_position = m.global_position + Vector2(0, -40)
+			l.velocity = Vector2.ZERO
+			var pw := m.power
+			var bounced := false
+			var lowest := l.global_position.y
+			for i in 40:
+				await physics_frame
+				lowest = maxf(lowest, l.global_position.y)
+				if l.velocity.y < -100.0 and l.global_position.y < m.global_position.y - 8.0:
+					bounced = true
+			print("COOP head bounce: bounced=%s lowest feet y=%.0f (Mario head at %.0f) mario power %d->%d" % [bounced,
+				lowest, m.global_position.y - 14.0, pw, m.power])
+			# Luigi falls far behind: bubble, floats to Mario, pops
+			await _wait(0.5)
+			await teleport_hero(m, Vector2i(int(m.global_position.x / 16) + 14, 16))
+			await _wait(0.8)
+			print("COOP behind (dragged along by the screen edge): luigi x=%.0f mode=%d" % [l.global_position.x, l.mode])
+			# stuck behind a wall he goes into a bubble (forced here)
+			l.global_position.x = game.camera.global_position.x - 200.0
+			l.start_bubble()
+			await _wait(0.4)
+			print("COOP stuck behind: luigi mode=%d (BUBBLE=%d)" % [l.mode, Player.Mode.BUBBLE])
+			print("COOP dbg: mario=%s mode=%d cam=%s luigi=%s state=%d" % [m.global_position.round(), m.mode,
+				game.camera.global_position.round(), l.global_position.round(), game.state])
+			await _wait(0.3)
+			await shot("bubble")
+			await _wait(3.0)
+			print("COOP popped: luigi mode=%d dist to mario=%.0f" % [l.mode, l.global_position.distance_to(m.global_position)])
+			# both in bubbles: the course restarts (no life lost)
+			var lives_b: Array = game.co_lives.duplicate()
+			m.start_bubble()
+			l.start_bubble()
+			await _wait(0.3)
+			print("COOP all bubbled: state=%d (DYING=%d)" % [game.state, Game.State.DYING])
+			await _wait(1.6 + Game.CARD_TIME + 0.3)
+			m = game.heroes[0]
+			l = game.heroes[1]
+			print("COOP restarted: state=%d lives %s -> %s modes %d %d" % [game.state, lives_b, game.co_lives, m.mode, l.mode])
+			# Luigi loses a life, Mario plays on
+			var lv: int = game.co_lives[1]
+			l.invuln_t = 0.0
+			l.hurt()
+			await _wait(0.2)
+			print("COOP luigi died: state=%d (PLAYING=%d) luigi lives %d->%d mode=%d" % [game.state, Game.State.PLAYING,
+				lv, game.co_lives[1], l.mode])
+			await _wait(1.8)
+			print("COOP luigi back in a bubble: mode=%d" % l.mode)
+			await _wait(3.0)
+			print("COOP luigi popped again: mode=%d" % l.mode)
+			# the partner comes along through a pipe
+			var zone: WarpZone = null
+			for n in game.level.get_children():
+				if n is WarpZone and n.kind == "down" and n.warp.get("area", "") == "bonus":
+					zone = n
+					break
+			m.global_position = zone.global_position
+			m.velocity = Vector2.ZERO
+			l.global_position = zone.global_position + Vector2(-40, 0)
+			l.velocity = Vector2.ZERO
+			await _frames(4)
+			print("COOP before pipe: luigi mode=%d" % l.mode)
+			print("COOP at pipe: mario=%s zone=%s" % [m.global_position.round(), zone.global_position.round()])
+			Input.action_press("p1_down")
+			for i in 14:
+				await _wait(0.2)
+				print("  t=%.1f state=%d mario=%s mode=%d luigi=%s mode=%d area=%s" % [i * 0.2, game.state,
+					m.global_position.round(), m.mode, l.global_position.round(), l.mode, game.area])
+				if i == 1:
+					Input.action_release("p1_down")
+			print("COOP after pipe: state=%d carried=%s" % [game.state, game._carried])
+			print("COOP pipe: area=%s mario=%s luigi=%s luigi mode=%d visible=%.1f" % [game.area,
+				m.global_position.round(), l.global_position.round(), l.mode, l.modulate.a])
+			await shot("bonus_room")
+			# Luigi out of lives: out, then a 1UP brings him back
+			game.co_lives[1] = 1
+			l.invuln_t = 0.0
+			l.hurt()
+			await _wait(2.2)
+			print("COOP luigi out: heroes[1]=%s banner=%s hud lives=%s" % [game.heroes[1], game.hud._banner.text,
+				game.hud._lives.text])
+			game.one_up(m.global_position)
+			await _wait(0.2)
+			var l2: Player = game.heroes[1]
+			print("COOP revived: luigi=%s mode=%d lives=%s" % [l2 != null, l2.mode if l2 else -1, game.co_lives])
+			await _wait(3.5)
+			print("COOP revived popped: mode=%d" % l2.mode)
+			# team death: both lose a life, the course restarts
+			var before: Array = game.co_lives.duplicate()
+			game.player_died(false, m)
+			await _wait(0.1)
+			print("COOP mario died, luigi plays: state=%d" % game.state)
+			game.player_died(false, l2)
+			await _wait(4.5)
+			print("COOP team death: lives %s -> %s state=%d (INTRO=%d) heroes=%d" % [before, game.co_lives,
+				game.state, Game.State.INTRO, game.all_heroes().size()])
+			await _wait(Game.CARD_TIME)
+			# the flag: both clear the course
+			m = game.heroes[0]
+			var flag: Vector2i = Game.LEVELS[game.level_index].FLAG
+			await teleport_hero(m, Vector2i(flag.x - 1, flag.y - 7))
+			await hold("p1_right", 1.2)
+			await _wait(1.0)
+			await shot("flag")
+			print("COOP flag: state=%d (CLEAR=%d) luigi visible=%.1f" % [game.state, Game.State.CLEAR,
+				game.heroes[1].modulate.a if game.heroes[1] else -1.0])
+			await _wait(8.0)
+			print("COOP after clear: state=%d (MAP=%d) reach=%d" % [game.state, Game.State.MAP, game.world_map.reach])
+			var sv := SaveGame.load_run()
+			print("COOP save: players=%s co=%s score=%s" % [sv.players, sv.co, sv.score])
+			game._to_title()
+			await _frames(3)
+			print("COOP title: ", _hints())
+			await _press_button(_button_texts()[0])
+			print("COOP continue asks to join: screen=%d (JOIN=%d)" % [game.menus.screen, Menus.Screen.JOIN])
+			await _key(KEY_SPACE)
+			await _key(KEY_UP)
+			await _press_button("Start!")
+			await _wait(1.0)
+			print("COOP continued: players=%d co_lives=%s score=%d" % [game.players, game.co_lives, game.score])
+			# game over: one team entry
+			game.co_lives = [1, 1]
+			await _act("jump")
+			await _wait(Game.CARD_TIME + 0.4)
+			game.add_score(800000)
+			game.player_died(false, game.heroes[1])
+			await _wait(2.0)
+			game.player_died(false, game.heroes[0])
+			await _wait(7.0)
+			print("COOP game over: screen=%d hof=%s" % [game.menus.screen,
+				HallOfFame.load_list().map(func(e): return "%s %s run %s" % [e.name, e.score, e.get("run", 0)])])
+			await shot("gameover")
 		"starthop":
 			# v1.5.1: entering a course with A (also "jump") must not make the
 			# hero hop at the start

@@ -13,7 +13,8 @@ const KEYS := ["id", "name", "score", "coins", "lives", "power", "dino", "at", "
 ## players (1/2), turn (0 Mario / 1 Luigi = whose turn), reach (furthest
 ## course of this player, ID) and other (the waiting player: a Dictionary
 ## with the KEYS + reach, resume, cp).
-const OPT_KEYS := {"players": 1, "turn": 0, "reach": "", "other": {}}
+## v1.7 co-op (players 3): co = {lives: [m, l], power: [m, l]}.
+const OPT_KEYS := {"players": 1, "turn": 0, "reach": "", "other": {}, "co": {}}
 
 static func exists() -> bool:
 	return not load_run().is_empty()

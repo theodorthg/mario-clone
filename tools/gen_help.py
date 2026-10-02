@@ -647,35 +647,57 @@ def page_castles():
 
 def page_players():
     img, d = new_page()
-    text(d, (8, 6), "TWO PLAYERS - TAKE TURNS", f8, GOLD)
+    text(d, (8, 5), "TWO PLAYERS", f8, GOLD)
     red, green = (255, 106, 90, 255), (106, 226, 106, 255)
     mario = trim(sheet_frame("hero_big", 20, 32, 0))
     luigi = trim(sheet_frame("luigi_big", 20, 32, 4))
-    img.alpha_composite(mario, (14, 30))
-    img.alpha_composite(luigi, (44, 26))
-    text(d, (10, 66), "MARIO", fill=red)
-    text(d, (42, 66), "LUIGI", fill=green)
-    arrow = [(26, 82), (54, 82)]
-    d.line(arrow, fill=DIM)
-    d.polygon([(54, 79), (58, 82), (54, 85)], fill=DIM)
-    d.line([(54, 90), (26, 90)], fill=DIM)
-    d.polygon([(26, 87), (22, 90), (26, 93)], fill=DIM)
-    lines = (("Title: Play > 2 Players - take turns", GOLD),
-             ("Mario plays until he loses a life,", WHITE),
-             ("then it's Luigi's turn - and back.", WHITE),
-             ("", WHITE),
-             ("Each has his own lives, score, coins,", WHITE),
-             ("power, dragon and world map.", WHITE),
-             ("Your next turn starts at your checkpoint.", WHITE),
-             ("", WHITE),
-             ("Luigi jumps a little higher.", green),
-             ("Out of lives? The other plays on alone.", DIM),
-             ("High scores: one entry per player.", DIM))
-    for i, (s_, col) in enumerate(lines):
-        text(d, (80, 24 + i * 10), s_, fill=col)
-    d.line((8, 140, 332, 140), fill=DIM)
-    text(d, (8, 146), "Both play with the same controls - pass the pad", fill=DIM)
-    text(d, (8, 156), "or the phone when the turn changes.", fill=DIM)
+    img.alpha_composite(mario, (10, 22))
+    img.alpha_composite(luigi, (36, 18))
+    text(d, (6, 56), "MARIO", fill=red)
+    text(d, (36, 56), "LUIGI", fill=green)
+    # a hero in a bubble
+    small = trim(sheet_frame("luigi_small", 20, 20, 4))
+    cx, cy = 34, 92
+    d.ellipse((cx - 13, cy - 13, cx + 13, cy + 13), fill=(180, 230, 255, 60), outline=(215, 240, 255, 255))
+    img.alpha_composite(small, (cx - small.width // 2, cy - small.height // 2))
+    d.arc((cx - 10, cy - 10, cx + 10, cy + 10), 200, 250, fill=WHITE)
+    text(d, (14, 110), "bubble", fill=DIM)
+    x = 72
+    rows = (("TAKE TURNS", GOLD),
+            ("Mario plays until he loses a life, then", WHITE),
+            ("Luigi. Own lives, score and world map.", WHITE),
+            ("TOGETHER (co-op)", GOLD),
+            ("Both at once. Join in: each one presses", WHITE),
+            ("jump on his own pad (A) - or share a", WHITE),
+            ("keyboard. Shared score, own lives.", WHITE),
+            ("Fall behind or lose a life: you float to", WHITE),
+            ("your partner in a bubble. Stand on each", WHITE),
+            ("other - you can't hurt your partner.", WHITE))
+    for k, (s_, col) in enumerate(rows):
+        text(d, (x, 18 + k * 10 + (4 if k >= 3 else 0)), s_, fill=col)
+    d.line((8, 128, 332, 128), fill=DIM)
+    text(d, (8, 133), "MARIO", fill=red)
+    kx = 40
+    for lab in ("A", "D", "S"):
+        key(d, kx, 131, lab)
+        kx += 16
+    text(d, (kx + 2, 133), "move", fill=DIM)
+    key(d, kx + 30, 131, "W")
+    key(d, kx + 46, 131, "Space")
+    text(d, (kx + 82, 133), "jump", fill=DIM)
+    key(d, kx + 106, 131, "Shift")
+    text(d, (kx + 140, 133), "run", fill=DIM)
+    text(d, (8, 152), "LUIGI", fill=green)
+    kx = 40
+    for dirn in ("left", "right", "down"):
+        arrow_key(d, kx, 150, dirn)
+        kx += 16
+    text(d, (kx + 2, 152), "move", fill=DIM)
+    arrow_key(d, kx + 30, 150, "up")
+    key(d, kx + 46, 150, "K")
+    text(d, (kx + 82, 152), "jump", fill=DIM)
+    key(d, kx + 106, 150, "L")
+    text(d, (kx + 140, 152), "run", fill=DIM)
     return img
 
 

@@ -78,8 +78,8 @@ func _physics_process(delta: float) -> void:
 		if grounded:
 			velocity.x = 0.0
 			_wait -= delta
-			if _wait <= 0.0 and game and game.player:
-				_dir = 1 if game.player.global_position.x > global_position.x else -1
+			if _wait <= 0.0 and game and game.target_for(global_position):
+				_dir = 1 if game.target_for(global_position).global_position.x > global_position.x else -1
 				velocity = Vector2(_dir * HOP_X * _speed_mul, HOP_V)
 				_wait = randf_range(0.6, 1.1) / _speed_mul
 				_on_lava = false
@@ -121,11 +121,13 @@ func _rest_on_lava() -> void:
 
 func _hero_on_top() -> bool:
 	var game := Game.instance
-	if game == null or game.player == null:
+	if game == null:
 		return false
-	var p: Player = game.player
-	return absf(p.global_position.x - global_position.x) < 14.0 \
-		and absf(p.global_position.y - (global_position.y - ROCK_H)) < 4.0
+	for p in game.all_heroes():
+		if absf(p.global_position.x - global_position.x) < 14.0 \
+				and absf(p.global_position.y - (global_position.y - ROCK_H)) < 4.0:
+			return true
+	return false
 
 func _touch_player(p: Player) -> void:
 	if p.mode != Player.Mode.NORMAL:

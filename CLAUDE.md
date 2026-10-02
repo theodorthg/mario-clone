@@ -25,7 +25,7 @@ davon ist aus Nintendo-Spielen übernommen (Figuren nur „im Stil von“).
   (letzte Welt, Endboss). Damit ist die letzte Erweiterungsrunde (Nutzer
   2026-09-28) abgeschlossen — weitere Ideen nur, wenn der Nutzer welche
   hat. Stand: 8 Welten, 25 Kurse, 8 Bosse. v1.6.0 zwei Spieler
-  abwechselnd (Mario + Luigi), v1.7.0 Coop geplant (Nutzer 2026-10-02).
+  abwechselnd (Mario + Luigi), v1.7.0 Coop (Nutzer 2026-10-02).
 
 ## Design-Entscheidungen
 
@@ -327,7 +327,7 @@ Nintendo-Themen. Loops werden mit umgeklapptem Nachhall gerendert (nahtlos);
   Ruhe), polish (v1.2.1: Panzer-Limit, Boss je Schwierigkeit + nichts nach
   oben, alle zehn Bonusräume mit Screenshot, Drache an der Grotte,
   benannter Lauf ohne Namensfeld, „Clear list“), water (v1.3), ghost
-  (v1.4), volcano (v1.5), turns (v1.6). **Jedes Szenario sichert `savegame.cfg`, `hall_of_fame.cfg` und
+  (v1.4), volcano (v1.5), turns (v1.6), coop (v1.7). **Jedes Szenario sichert `savegame.cfg`, `hall_of_fame.cfg` und
   `settings.cfg` vorher und stellt sie danach wieder her** (Autosave/Game
   Over schreiben sonst in die echten Dateien des Entwicklungsrechners).
   Synthetische Mausklicks zählen in
@@ -569,7 +569,7 @@ Ducken und Absteigen auf Touch unmöglich.
   + Treffer + nichts außerhalb des Felds, 8-2-Ausgang, Boss mit allen
   Angriffen, Sieg nach 8-3, Karte Region 8).
 
-## Zwei Spieler: Mario + Luigi (v1.6 abwechselnd, v1.7 Coop geplant)
+## Zwei Spieler: Mario + Luigi (v1.6 abwechselnd, v1.7 Coop)
 
 Nutzerwunsch 2026-10-02 (angeregt von Mario Bros. 1983): auf Geräten mit
 zwei Controllern oder Tastatur gleichzeitig im Coop, sonst abwechselnd.
@@ -607,7 +607,56 @@ abwechselnd (läuft überall), v1.7.0 Coop (siehe `TODO.md`).
 - **Bestenliste abwechselnd: ein Eintrag pro Spieler** (eigene run_id,
   unbenannt „MARIO“/„LUIGI“ statt „YOU“); Game Over zeigt beide mit je
   einem Namensfeld (`_build_gameover_2p`, A springt zum nächsten Feld).
-- Hilfeseite „Two Players“; Playtest `turns`.
+- Hilfeseite „Two Players“ (beide Modi + Tastenaufteilung); Playtests
+  `turns`, `coop`.
+
+### Coop (v1.7, `players == Game.COOP` = 3)
+- **Beitreten** (`Menus.Screen.JOIN`, auch beim „Continue“ eines Coop-
+  Spielstands): jeder drückt Sprung auf SEINEM Gerät — Pad A, Tastatur
+  Space/W/Z/Enter (Mario) bzw. ↑/K/Num0 (Luigi), Mario kann auch tippen
+  (= Touch-Tasten). Grund: das RG552 meldet eingebautes D-Pad und Knöpfe
+  unter verschiedenen Geräte-IDs — darum bekommt **Luigi genau sein
+  Gerät, Mario alle anderen**. Angeboten nur, wenn möglich
+  (`Menus.coop_possible()`: nicht auf Handy/Handy-Browser ohne Pad).
+- **`CoopInput`** (`coop_input.gd`): baut aus den normalen Aktionen (inkl.
+  Umbelegungen) `p1_*`/`p2_*` (left/right/down/up/jump/run) mit
+  aufgeteilten Geräten; `Player.act` zeigt darauf. Tastatur zu zweit:
+  Mario A D S + W/Space/Z + Shift/J/X/Ctrl, Luigi Pfeile + ↑/K/Num0 +
+  L/Num. (K gehört dann Luigi). `ControlsConfig.apply()` lädt die InputMap
+  neu → nach Pause/Settings/Pad-Anschluss `CoopInput.build()` erneut.
+  Normale Aktionen bleiben für Menüs/Karte/Pause/Mute (alle Geräte).
+- **Spiel**: `heroes` [Mario, Luigi], `co_lives`/`co_power`, Punkte und
+  Münzen gemeinsam (HUD „TEAM“, Leben „M2 L1“, „-“ = raus). Die Helden
+  kollidieren miteinander (`Player.base_mask` 3): aufeinander stehen,
+  vom Kopf abprallen (`_check_partner_bounce`), kein Schaden. Gegner
+  zielen über `Game.target_for(pos)` auf den nächsten Helden; Plattformen,
+  Magma-Fels, Meteorfeld, Flammen prüfen `all_heroes()`. Feuerbälle max. 2
+  pro Held (Meta `hero`).
+- **Kamera** (`_update_camera_coop`): Mitte beider, solange der Abstand
+  < Breite − 80 px, sonst folgt sie dem Vorderen. Der linke Bildrand
+  schiebt den Hinteren mit (`left_limit`, Verschieben per
+  `move_and_collide` — nie in eine Wand teleportieren); hängt er hinter
+  einer Wand fest (0,5 s außerhalb des Bilds) → **Blase**
+  (`Player.Mode.BUBBLE`, `start_bubble`/`pop_bubble`, `_draw`): schwebt
+  zum Partner, platzt auf dessen Kopf bzw. daneben, wenn dort frei ist
+  (`_free_spot`, `_side_spot` — **nie in den Partner setzen**: zwei
+  überlappende Helden schoben sich gegenseitig durch Wände bis zur Fahne).
+- **Tod**: lebt der Partner, fällt nur dieser Held heraus (kein Einfrieren)
+  und kommt mit Restleben als Blase zurück, ohne Leben „IS OUT“ (ein 1UP
+  bringt ihn zurück, `_revive`; 1UPs ohne Empfänger gehen an den mit
+  weniger Leben). Stirbt der letzte → normale Todessequenz, Kurs neu am
+  Checkpoint (Game Over, wenn beide 0). Schweben alle in Blasen → „TRY
+  AGAIN!“, Neustart ohne weiteren Lebensverlust. Zeit abgelaufen → alle.
+- **Röhren/Türen/Fahne**: der Partner wird mitgenommen (`_carry_partner`,
+  `_place_carried`, `_release_carried`), Drache: einer, wer zuerst
+  aufsteigt; im Wasser geparkt für seinen letzten Reiter (`_dino_rider`).
+- **Bestenliste**: ein Team-Eintrag, unbenannt „MARIO+LUIGI“, Namensfeld
+  bis 12 Zeichen. Spielstand: `co` = {lives, power}; Karte mit Luigi
+  neben Mario (`WorldMap.coop`/`partner`).
+- `tools/playtest.gd` sichert die echten Spielstand-Dateien seit v1.7
+  zusätzlich nach `user://_playtest_backup/` und spielt sie beim nächsten
+  Start zurück, falls ein Lauf mit Skriptfehler abbrach (so waren Test-
+  Einträge in die echte Bestenliste geraten).
 
 ## Biom-Gegner (v0.9)
 

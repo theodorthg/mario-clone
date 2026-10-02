@@ -22,7 +22,7 @@ extends CharacterBody2D
 signal fireball_requested(pos: Vector2, dir: int)
 
 enum Power { SMALL, BIG, FIRE }
-enum Mode { NORMAL, DEAD, SCRIPTED }
+enum Mode { NORMAL, DEAD, SCRIPTED, BUBBLE }
 
 const WALK_MAX := 90.0
 const RUN_MAX := 155.0
@@ -79,6 +79,13 @@ const CELL_H := {Power.SMALL: 20.0, Power.BIG: 32.0, Power.FIRE: 32.0}
 var power: int = Power.SMALL
 ## 0 = Mario, 1 = Luigi (look + jump height)
 var hero := 0
+## Input actions this hero listens to (co-op v1.7: "p1_left"/"p2_left" …,
+## see CoopInput; otherwise the shared ones)
+var act := {"left": "move_left", "right": "move_right", "down": "move_down", "up": "ui_up",
+	"jump": "jump", "run": "run"}
+## world mask when not scripted: 1, in co-op 1 | 2 (the heroes collide —
+## stand on each other, bounce off a partner's head)
+var base_mask := 1
 var mode: int = Mode.NORMAL
 var facing := 1
 var crouching := false
@@ -112,7 +119,7 @@ var _star_hue := 0.0
 
 func _ready() -> void:
 	collision_layer = 2
-	collision_mask = 1
+	collision_mask = base_mask
 	floor_snap_length = 3.0
 	floor_constant_speed = true
 	safe_margin = 0.05
@@ -174,6 +181,9 @@ func _apply_shape() -> void:
 	_rect.size = Vector2(12, h)
 	shape.position = Vector2(0, -h * 0.5)
 
+func body_height() -> float:
+	return _rect.size.y
+
 func body_top() -> float:
 	return global_position.y - _rect.size.y
 
@@ -194,13 +204,13 @@ func _physics_process(delta: float) -> void:
 	if not input_enabled:
 		dir = auto_walk
 	else:
-		dir = Input.get_axis("move_left", "move_right")
-		run = Input.is_action_pressed("run")
-		down = Input.is_action_pressed("move_down")
-		if Input.is_action_just_pressed("jump"):
+		dir = Input.get_axis(act.left, act.right)
+		run = Input.is_action_pressed(act.run)
+		down = Input.is_action_pressed(act.down)
+		if Input.is_action_just_pressed(act.jump):
 			jump_buffer_t = JUMP_BUFFER
 			jump_now = true
-		if Input.is_action_just_pressed("run"):
+		if Input.is_action_just_pressed(act.run):
 			_action_pressed()
 	jump_buffer_t = maxf(jump_buffer_t - delta, 0.0)
 
@@ -272,7 +282,7 @@ func _physics_process(delta: float) -> void:
 			_air_jump(dir)
 
 		# gravity (variable height, but never shorter than JUMP_MIN_HOLD)
-		var released := not Input.is_action_pressed("jump") or not input_enabled
+		var released := not Input.is_action_pressed(act.jump) or not input_enabled
 		if jump_held_phase and (velocity.y >= 0.0 or (released and jump_min_t <= 0.0)):
 			jump_held_phase = false
 		var g := GRAVITY_HOLD if jump_held_phase else GRAVITY
@@ -287,18 +297,20 @@ func _physics_process(delta: float) -> void:
 		global_position.y = SWIM_TOP + _rect.size.y
 		velocity.y = maxf(velocity.y, 0.0)
 
-	# keep inside the current area horizontally
+	_check_partner_bounce(vy_before)
+	# keep inside the current area horizontally (co-op: also the screen's
+	# left edge) — pushed by a collision move, never into a wall
 	if global_position.x < left_limit + 6.0:
-		global_position.x = left_limit + 6.0
 		velocity.x = maxf(velocity.x, 0.0)
+		move_and_collide(Vector2(left_limit + 6.0 - global_position.x, 0.0))
 	if global_position.x > right_limit - 6.0:
-		global_position.x = right_limit - 6.0
 		velocity.x = minf(velocity.x, 0.0)
+		move_and_collide(Vector2(right_limit - 6.0 - global_position.x, 0.0))
 
 	_update_animation(on_floor, dir, run)
 
 	if global_position.y > Level.ROWS * Level.T + 24.0 and Game.instance:
-		Game.instance.player_died(true)
+		Game.instance.player_died(true, self)
 
 ## Underwater movement: slower, floaty; every jump press is a stroke up.
 func _swim(delta: float, dir: float, run: bool, on_floor: bool, stroke: bool) -> void:
@@ -358,7 +370,7 @@ func _double_jump_enabled() -> bool:
 	return game == null or bool(game.cfg.get("double_jump", true))
 
 func bounce(held_boost := true) -> void:
-	var held := Input.is_action_pressed("jump") and held_boost
+	var held := Input.is_action_pressed(act.jump) and held_boost
 	velocity.y = -(STOMP_BOUNCE_HELD if held else STOMP_BOUNCE)
 	if swimming:
 		velocity.y = -SWIM_STROKE
@@ -403,6 +415,20 @@ func _ceiling_blocked() -> bool:
 
 ## Head hit something while moving up: pick the block closest to the
 ## player's center (SMB behaviour when the head overlaps two blocks).
+## Co-op: landing on the partner's head is a small hop (no harm).
+func _check_partner_bounce(vy_before: float) -> void:
+	if vy_before <= 0.0 or base_mask == 1:
+		return
+	for i in get_slide_collision_count():
+		var col := get_slide_collision(i)
+		if col.get_collider() is Player and col.get_normal().y < -0.7:
+			velocity.y = -(STOMP_BOUNCE_HELD if Input.is_action_pressed(act.jump) else STOMP_BOUNCE)
+			jump_held_phase = Input.is_action_pressed(act.jump)
+			jump_min_t = 0.0
+			air_jumps = 1 if _double_jump_enabled() else 0
+			_snd("stomp")
+			return
+
 func _check_head_bump(vy_before: float) -> void:
 	if vy_before >= 0.0:
 		return
@@ -428,7 +454,7 @@ func _action_pressed() -> void:
 	if riding:
 		riding.tongue(facing)
 	elif power == Power.FIRE and not crouching:
-		if get_tree().get_nodes_in_group("fireball").size() < 2:
+		if get_tree().get_nodes_in_group("fireball").filter(func(f): return f.get_meta("hero", 0) == hero).size() < 2:
 			throw_t = 0.15
 			fireball_requested.emit(global_position + Vector2(facing * 6, -18), facing)
 
@@ -487,10 +513,10 @@ func hurt() -> bool:
 	var game := Game.instance
 	if power == Power.SMALL:
 		if game:
-			game.player_died(false)
+			game.player_died(false, self)
 		return true
 	if game:
-		game.change_power(power - 1, true)
+		game.change_power(power - 1, true, self)
 	invuln_t = 2.0
 	return true
 
@@ -543,6 +569,47 @@ func _snd(key: String) -> void:
 	if s:
 		s.play(key)
 
+# ----------------------------------------------------------------- bubble --
+## Co-op (v1.7): a hero who fell behind or lost a life floats in a bubble to
+## the partner (game.gd moves it and pops it there). No collisions, no
+## harm, enemies ignore him.
+func start_bubble() -> void:
+	if riding:
+		park_dino()
+	mode = Mode.BUBBLE
+	velocity = Vector2.ZERO
+	collision_layer = 0
+	collision_mask = 0
+	crouching = false
+	star_t = 0.0
+	_apply_shape()
+	sprite.visible = true
+	sprite.modulate = Color.WHITE
+	play_anim(&"jump", facing < 0)
+	z_index = 6
+	queue_redraw()
+
+func pop_bubble() -> void:
+	mode = Mode.NORMAL
+	collision_layer = 2
+	collision_mask = base_mask
+	z_index = 0
+	velocity = Vector2(0.0, -140.0)
+	invuln_t = 1.5
+	_fall_t = 0.0
+	_feet_hist.fill(global_position.y)
+	queue_redraw()
+	_snd("bump")
+
+func _draw() -> void:
+	if mode != Mode.BUBBLE:
+		return
+	var c := Vector2(0, -_rect.size.y * 0.5 - 2.0)
+	var r := 13.0 if power == Power.SMALL else 18.0
+	draw_circle(c, r, Color(0.7, 0.9, 1.0, 0.22))
+	draw_arc(c, r, 0.0, TAU, 28, Color(0.85, 0.95, 1.0, 0.85), 1.0)
+	draw_arc(c, r - 3.0, deg_to_rad(200), deg_to_rad(250), 6, Color(1, 1, 1, 0.9), 1.0)
+
 # ------------------------------------------------------- scripted helpers --
 func set_scripted(on: bool) -> void:
 	mode = Mode.SCRIPTED if on else Mode.NORMAL
@@ -571,7 +638,7 @@ func reset_state() -> void:
 	air_jumps = 0
 	_was_on_floor = true
 	facing = 1
-	collision_mask = 1
+	collision_mask = base_mask
 	z_index = 0
 	sprite.visible = true
 	sprite.modulate = Color.WHITE

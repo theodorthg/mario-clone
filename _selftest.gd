@@ -100,6 +100,22 @@ func _init() -> void:
 			"Luigi frames for power %d match Mario's animations" % pw)
 	fails += _expect(Player.frames_for(1, Player.Power.SMALL, true) == Player.LUIGI_SMALL_FIRE, "Luigi small-fire flicker frames")
 	fails += _expect(float(Player.JUMP_MUL[1]) > 1.0 and float(Player.JUMP_MUL[1]) < 1.06, "Luigi jumps a little higher")
+	# v1.7 co-op: one keyboard for two — Luigi gets the arrows / K / L
+	CoopInput.reset()
+	CoopInput.split = true
+	CoopInput.build()
+	var codes := func(action: String) -> Array:
+		return InputMap.action_get_events(action).filter(func(e): return e is InputEventKey).map(
+			func(e): return e.physical_keycode if e.physical_keycode else e.keycode)
+	fails += _expect(KEY_UP in codes.call("p2_jump") and not (KEY_UP in codes.call("p1_jump")), "co-op split: Up jumps for Luigi only")
+	fails += _expect(KEY_SPACE in codes.call("p1_jump") and not (KEY_SPACE in codes.call("p2_jump")), "co-op split: Space jumps for Mario only")
+	fails += _expect(KEY_A in codes.call("p1_left") and KEY_LEFT in codes.call("p2_left") and not (KEY_LEFT in codes.call("p1_left")), "co-op split: A / Left")
+	fails += _expect(KEY_L in codes.call("p2_run") and not (KEY_K in codes.call("p1_jump")), "co-op split: L runs for Luigi, K no longer Mario's")
+	CoopInput.reset()
+	CoopInput.luigi_pad = 5
+	CoopInput.build()
+	fails += _expect(codes.call("p2_jump").is_empty() and KEY_UP in codes.call("p1_jump"), "co-op: Luigi on a pad -> the whole keyboard is Mario's")
+	CoopInput.reset()
 	fails += _expect(Game._slot_from_save(Game._slot_to_save({"score": 7, "coins": 3, "lives": 2, "power": 1,
 		"has_dino": true, "level_index": 4, "_run_reach": 5, "_run_best": 4, "run_id": 99, "run_name": "AL",
 		"checkpoint_pos": Vector2(40, 272), "_in_course": true})) == {"run_id": 99, "run_name": "AL", "score": 7,

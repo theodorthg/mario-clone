@@ -47,9 +47,9 @@ func _physics_process(delta: float) -> void:
 	if dead:
 		return
 	var game := Game.instance
-	if game == null or game.player == null:
+	if game == null or game.target_for(global_position) == null:
 		return
-	var p: Player = game.player
+	var p: Player = game.target_for(global_position)
 	match _state:
 		0:
 			var dx := p.global_position.x - global_position.x

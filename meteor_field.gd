@@ -12,14 +12,18 @@ var _cd := 1.2
 
 func _physics_process(delta: float) -> void:
 	var game := Game.instance
-	if game == null or game.player == null or game.level == null or game.state != Game.State.PLAYING:
+	if game == null or game.level == null or game.state != Game.State.PLAYING:
 		return
-	var p: Player = game.player
-	if p.mode != Player.Mode.NORMAL:
+	# a hero inside the field (co-op: either one)
+	var p: Player = null
+	for h in game.all_heroes():
+		if h.mode == Player.Mode.NORMAL and h.global_position.x >= c0 * Level.T \
+				and h.global_position.x <= (c1 + 1) * Level.T:
+			p = h
+			break
+	if p == null:
 		return
 	var x := p.global_position.x
-	if x < c0 * Level.T or x > (c1 + 1) * Level.T:
-		return
 	_cd -= delta * game.enemy_speed_mul()
 	if _cd > 0.0:
 		return

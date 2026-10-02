@@ -29,9 +29,9 @@ func _physics_process(delta: float) -> void:
 	angle = wrapf(angle + speed * delta, 0.0, TAU)
 	_place()
 	var game := Game.instance
-	if game == null or game.player == null or not game.is_near_view(global_position, 60.0):
+	if game == null or game.target_for(global_position) == null or not game.is_near_view(global_position, 60.0):
 		return
-	var p: Player = game.player
+	var p: Player = game.target_for(global_position)
 	if p.mode != Player.Mode.NORMAL or p.star_t > 0.0:
 		return
 	var center := p.global_position + Vector2(0, -7.0 if not p.is_big() else -14.0)

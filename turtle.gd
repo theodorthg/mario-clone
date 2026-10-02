@@ -160,8 +160,8 @@ func _ground_ahead() -> bool:
 func _wake() -> void:
 	_set_state(State.WALK)
 	var game := Game.instance
-	if game and game.player:
-		dir = 1 if game.player.global_position.x > global_position.x else -1
+	if game and game.target_for(global_position):
+		dir = 1 if game.target_for(global_position).global_position.x > global_position.x else -1
 	sprite.flip_h = dir < 0
 	# stand up without getting stuck in a ceiling: shells never sit under
 	# anything lower than 2 tiles in the level design, so just nudge upward
@@ -207,8 +207,8 @@ func _shell_hit_wall() -> void:
 	for i in get_slide_collision_count():
 		var c := get_slide_collision(i)
 		var b := c.get_collider()
-		if b is Block and absf(c.get_normal().x) > 0.5 and game and game.player:
-			b.bump(game.player, true)
+		if b is Block and absf(c.get_normal().x) > 0.5 and game and game.target_for(global_position):
+			b.bump(game.target_for(global_position), true)
 			break
 
 func _touch_player(p: Player) -> void:

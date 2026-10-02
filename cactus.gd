@@ -77,8 +77,8 @@ func _physics_process(delta: float) -> void:
 			return
 	_t += delta
 	_sway()
-	if game and game.player:
-		dir = 1 if game.player.global_position.x > global_position.x else -1
+	if game and game.target_for(global_position):
+		dir = 1 if game.target_for(global_position).global_position.x > global_position.x else -1
 	velocity.x = dir * speed
 	velocity.y = minf(velocity.y + GRAVITY * delta, 320.0)
 	move_and_slide()

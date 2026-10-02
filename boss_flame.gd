@@ -135,15 +135,16 @@ func _hit_check(reach: Vector2) -> void:
 	var game := Game.instance
 	if game == null:
 		return
-	var p: Player = game.player
-	if p == null or p.mode != Player.Mode.NORMAL or p.star_t > 0.0:
-		return
-	var center := p.global_position + Vector2(0, -7.0 if not p.is_big() else -14.0)
-	var d := (global_position - center).abs()
-	if d.x < reach.x and d.y < reach.y + (0.0 if not p.is_big() else 7.0):
-		p.hurt()
-		if kind != "meteor":
-			queue_free()
+	for p in game.all_heroes():
+		if p.mode != Player.Mode.NORMAL or p.star_t > 0.0:
+			continue
+		var center: Vector2 = p.global_position + Vector2(0, -7.0 if not p.is_big() else -14.0)
+		var d := (global_position - center).abs()
+		if d.x < reach.x and d.y < reach.y + (0.0 if not p.is_big() else 7.0):
+			p.hurt()
+			if kind != "meteor":
+				queue_free()
+				return
 
 func _free_mark() -> void:
 	if _mark and is_instance_valid(_mark):

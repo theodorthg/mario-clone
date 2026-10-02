@@ -42,7 +42,7 @@ func _physics_process(delta: float) -> void:
 		if is_on_floor() and not _ground_ahead():
 			dir = -dir
 		velocity.x = dir * speed
-		if _spit_cd <= 0.0 and game and game.player and _hero_ahead(game.player):
+		if _spit_cd <= 0.0 and game and game.target_for(global_position) and _hero_ahead(game.target_for(global_position)):
 			_windup = WINDUP
 			sprite.play(&"spit")
 	sprite.flip_h = dir > 0
