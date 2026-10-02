@@ -18,6 +18,34 @@ Zwei Spieler (Nutzer 2026-10-02, angeregt von Mario Bros. 1983):
 - [ ] Coop auf dem RG552 mit einem zweiten (Bluetooth-)Pad testen
       (Nutzer: Pad vorhanden?) — eingebautes Pad = Mario, BT-Pad = Luigi.
 
+Zukunft — Online-/Netzwerk-Coop (Nutzer 2026-10-02: „zwei verschiedene
+Geräte am selben Spiel, unabhängig vom Ort oder vom Gerät“; zur Not als
+Spezialversion auf eigenem Webspace):
+- [ ] Vorab mit dem Nutzer klären: Server. itch.io liefert nur statische
+      Dateien, ein Online-Spiel braucht zusätzlich einen dauernd laufenden
+      Vermittlungs-/Relay-Dienst (WebSocket). Normaler Webspace (nur
+      HTML/PHP) reicht dafür meist NICHT — nötig ist ein kleiner VPS bzw.
+      ein Dienst, der ein Programm dauerhaft laufen lassen kann (Node oder
+      headless Godot). Das Spiel selbst kann weiter auf itch.io liegen.
+- [ ] Bluetooth: Godot hat keine Bluetooth-Schnittstelle (nur per eigenem
+      Android-Plugin, im Browser gar nicht) — stattdessen WLAN/LAN für
+      „im selben Raum“ vorschlagen.
+- [ ] Architektur: Host rechnet das ganze Spiel (die Coop-Logik von v1.7
+      bleibt), der zweite Spieler schickt nur seine Eingaben (landen in
+      Luigis p2_*-Aktionen) und bekommt regelmäßig den Zustand (Helden,
+      Gegner, Blöcke, Items, Punkte) zurück, mit Interpolation gegen
+      Ruckeln. Godot: MultiplayerAPI/RPC; WebSocketMultiplayerPeer läuft
+      überall inkl. Browser, ENet (schneller) nur nativ, WebRTC (direkt
+      von Gerät zu Gerät) braucht Vermittlungsserver + STUN/TURN.
+- [ ] Stufe 1 (v1.8?): Spiel im lokalen Netz (WLAN) — Host-Suche per
+      UDP-Broadcast, kein externer Server; Linux/Windows/Android.
+- [ ] Stufe 2 (v1.9?): über das Internet mit Raum-Code (Lobby/Relay-
+      Server), auch im Browser; Verbindungsabbruch, Pause, Spielstand und
+      Team-Highscore beim Host.
+- Aufwand: sehr groß (jede Spielfigur, jeder Gegner, jeder Block muss
+  übertragen werden); Verzögerung von 50–150 ms übers Internet ist bei
+  einem Jump'n'Run spürbar — Testen auf zwei echten Geräten nötig.
+
 Letzte Erweiterungsrunde (Nutzer 2026-09-28: „alle machen, dann ist mit
 Erweiterungen Schluss, bis mir etwas einfällt“), jede Stufe als eigene
 Version inkl. itch.io-Upload:
