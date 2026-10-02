@@ -45,6 +45,20 @@ func start(ip: String) -> int:
 	host_ip = ip
 	return link.join(ip)
 
+## Online (v1.9): join Mario's room at the relay.
+func start_online(url: String, code: String) -> int:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	host_ip = code
+	return link.join_online(url, code)
+
+var rtt_ms := -1
+var _ping_t := 0.0
+var _snap_dt := 1.0 / RATE
+var _last_snap := 0
+
+func ping_ms() -> int:
+	return link.ping_ms() if not link.is_online() else rtt_ms
+
 func close() -> void:
 	link.close()
 	_clear_scene()
@@ -67,11 +81,18 @@ func _process(delta: float) -> void:
 				return
 			"msg":
 				_on_msg(ev[1], ev[2])
+			"error", "closed":
+				_leave(str(ev[1]) if str(ev[1]) != "" else "The online connection ended.")
+				return
 	if not link.connected:
 		_wait_t += delta
-		if _wait_t > 8.0:
+		if _wait_t > (15.0 if link.is_online() else 8.0):
 			_leave("No answer from %s." % host_ip)
 		return
+	_ping_t -= delta
+	if _ping_t <= 0.0:
+		_ping_t = 2.0
+		link.send("ping", Time.get_ticks_msec())
 	_send_vp()
 	_send_input()
 	_glide(delta)
@@ -105,7 +126,9 @@ func _on_msg(type: String, p) -> void:
 			if v.get_slice(".", 0) + "." + v.get_slice(".", 1) != mine.get_slice(".", 0) + "." + mine.get_slice(".", 1):
 				_leave("Different game versions: Mario %s, Luigi %s.\nPlease install the same version." % [v, mine])
 		"bye":
-			_leave("Mario ended the Wi-Fi game.")
+			_leave("Mario ended the game.")
+		"pong":
+			rtt_ms = Time.get_ticks_msec() - int(p)
 		"str":
 			_strings[int(p[0])] = str(p[1])
 		"scene":
@@ -118,6 +141,11 @@ func _on_msg(type: String, p) -> void:
 			var raw: PackedByteArray = p
 			var data = bytes_to_var(raw.decompress_dynamic(4 * 1024 * 1024, FileAccess.COMPRESSION_DEFLATE))
 			if data is Dictionary and int(data.get("sc", -1)) == _scene_id:
+				# glide over the real time between snapshots (30/s Wi-Fi, 20/s online)
+				var now := Time.get_ticks_msec()
+				if _last_snap > 0:
+					_snap_dt = lerpf(_snap_dt, clampf((now - _last_snap) / 1000.0, 0.02, 0.2), 0.2)
+				_last_snap = now
 				_apply_snap(data)
 
 # ----------------------------------------------------------------- scenes --
@@ -202,12 +230,13 @@ func _apply_snap(d: Dictionary) -> void:
 		_apply_nodes(d.get("i", PackedInt32Array()), d.get("f", PackedFloat32Array()))
 
 func _glide(delta: float) -> void:
-	_cam_t = minf(_cam_t + delta * RATE, 1.0)
+	var rate := 1.0 / _snap_dt
+	_cam_t = minf(_cam_t + delta * rate, 1.0)
 	game.camera.global_position = _cam_from.lerp(_cam_to, _cam_t)
 	for nid in _puppets:
 		var pp: Dictionary = _puppets[nid]
 		if pp.t < 1.0 and is_instance_valid(pp.node):
-			pp.t = minf(pp.t + delta * RATE, 1.0)
+			pp.t = minf(pp.t + delta * rate, 1.0)
 			var pos: Vector2 = pp.from.lerp(pp.to, pp.t)
 			pp.node.position = pos
 

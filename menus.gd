@@ -17,7 +17,8 @@ signal quit_to_menu_pressed
 signal settings_changed(cfg: Dictionary)
 
 enum Screen { NONE, START, SETTINGS, SOUND, PAUSE, GAMEOVER, HELP, HIGHSCORES, VICTORY, CONTROLS, LEVELS,
-	QUIT, NEWGAME, CLEARHOF, PLAYERS, JOIN, NETMENU, NETHOST, NETJOIN, NETWAIT, NETPAUSE, INFO }
+	QUIT, NEWGAME, CLEARHOF, PLAYERS, JOIN, NETMENU, NETHOST, NETJOIN, NETWAIT, NETPAUSE, INFO,
+	ONLINEMENU, ONLINEJOIN }
 
 const PANEL_W := 250.0
 const BTN_H := 22.0
@@ -44,6 +45,7 @@ const HELP_DESKTOP := [
 	{"file": "castles", "h": "Castles & Secrets"},
 	{"file": "players", "h": "Two Players"},
 	{"file": "wifi", "h": "Wi-Fi"},
+	{"file": "online", "h": "Online"},
 ]
 const HELP_TOUCH := [
 	{"file": "touch", "h": "Touch Controls"},
@@ -60,6 +62,7 @@ const HELP_TOUCH := [
 	{"file": "castles", "h": "Castles & Secrets"},
 	{"file": "players", "h": "Two Players"},
 	{"file": "wifi", "h": "Wi-Fi"},
+	{"file": "online", "h": "Online"},
 ]
 const HELP_FALLBACK := {
 	"controls": "Move: Arrows / A D / D-pad\nJump: Space / Z / K / W / Up  (A)\nRun, fireball, tongue: Shift / X / J  (X/Y)\nDuck / enter pipe: Down\nPause: Esc / P (Start)   Mute: M (Select)\nScreenshot: F12\nChange keys: Settings > Controls",
@@ -76,6 +79,7 @@ const HELP_FALLBACK := {
 	"map": "Play opens the world map. Walk with left / right,\nA or Space plays the course you stand on.\nTouch: tap a course to walk there, tap it again to play.\nA check = cleared, a lock = not reached yet.\nAfter a course the road to the next one opens.\nYour run is saved all along: quit any time,\nthen Continue on the title screen.",
 	"players": "Take turns: Mario plays until he loses a life, then Luigi.\nTogether: both at once - each presses jump on his pad,\nor share a keyboard (Mario A D S W, Luigi arrows K L).\nFall behind or lose a life: you float back in a bubble.\nShared score, own lives, one team high score.",
 	"wifi": "Both devices in the same Wi-Fi.\nMario: Play > 2 Players - Wi-Fi > Host a game.\nLuigi: ... > Join a game, pick Mario's (or type the\naddress Mario's screen shows). Same game version on both.",
+	"online": "Play from anywhere (also in the browser).\nMario: Play > 2 Players - Online > Host a game.\nLuigi: ... > Join a game, type Mario's 4-letter room code.\nSame game version on both.",
 	"goal": "Stomp enemies from above.\nCoins: points, 100 coins = extra life.\nPipes marked by coins lead to bonus rooms.\nGrab the flag pole as high as you can!\nExtra lives for points: Settings > 1-UP points.",
 }
 
@@ -190,6 +194,10 @@ func _rebuild() -> void:
 			_build_netpause()
 		Screen.INFO:
 			_build_info()
+		Screen.ONLINEMENU:
+			_build_onlinemenu()
+		Screen.ONLINEJOIN:
+			_build_onlinejoin()
 	_panel.reset_size()
 	_recenter_panel.call_deferred()
 	# again once wrapped hint labels know their real width (before that they
@@ -527,6 +535,10 @@ func _build_players() -> void:
 		_vbox.add_child(_button("2 Players - Wi-Fi", func():
 			_net_continue = false
 			_show_screen(Screen.NETMENU)))
+	if online_possible():
+		_vbox.add_child(_button("2 Players - Online", func():
+			_net_continue = false
+			_show_screen(Screen.ONLINEMENU)))
 	var h := _hint("Take turns: Mario plays until he loses a life, then Luigi.\nTogether: both at once - two pads, or one keyboard\nfor two (Mario A D S W, Luigi arrow keys).")
 	h.add_theme_color_override("font_color", UiStyle.ACCENT)
 	_vbox.add_child(h)
@@ -592,12 +604,17 @@ func _build_join() -> void:
 	else:
 		_vbox.add_child(_hint("Each player presses jump on his own controller:\npad A - keyboard Space (Mario) or Up arrow (Luigi)\n- Mario can also tap here to play with the touch buttons."))
 		var back := _button("Back", func(): _show_screen(Screen.START), true)
+		var row := []
 		if _join_continue and wifi_possible():
-			_vbox.add_child(_hbox([_button("Luigi via Wi-Fi", func():
+			row.append(_button("Luigi via Wi-Fi", func():
 				_net_continue = true
-				_start_hosting()), back]))
-		else:
-			_vbox.add_child(back)
+				_start_hosting()))
+		if _join_continue and online_possible():
+			row.append(_button("Luigi online", func():
+				_net_continue = true
+				_start_hosting(true)))
+		row.append(back)
+		_vbox.add_child(_hbox(row))
 		_default_focus = back
 
 func _apply_join() -> void:
@@ -649,6 +666,18 @@ func _join_input(event: InputEvent) -> void:
 static func wifi_possible() -> bool:
 	return not OS.has_feature("web")
 
+## v1.9 stage 2: over the internet through the relay (also in the browser),
+## once its address is set (NetLink.relay_url()).
+static func online_possible() -> bool:
+	return NetLink.relay_url() != ""
+
+var _net_online := false
+var _room_code := ""
+
+func show_room_code(code: String) -> void:
+	_room_code = code
+	if screen == Screen.NETHOST:
+		_rebuild()
 var _net_continue := false
 var _net_disc: NetLink.Discovery
 var _net_found_sig := ""
@@ -683,18 +712,82 @@ func _build_netmenu() -> void:
 	_vbox.add_child(h)
 	_vbox.add_child(_button("Back", func(): _show_screen(Screen.PLAYERS), true))
 
-func _start_hosting() -> void:
+func _start_hosting(online := false) -> void:
 	if Game.instance == null:
 		return
-	var err := Game.instance.net_host_start()
+	_net_online = online
+	_room_code = ""
+	var err := Game.instance.net_host_start(online)
 	if err != OK:
-		show_info("WI-FI", "Could not open the game for Wi-Fi (error %d).\nIs another copy of the game already hosting?" % err)
+		if online:
+			show_info("ONLINE", "Could not reach the online server (error %d)." % err)
+		else:
+			show_info("WI-FI", "Could not open the game for Wi-Fi (error %d).\nIs another copy of the game already hosting?" % err)
 		return
 	_show_screen(Screen.NETHOST)
+
+func _build_onlinemenu() -> void:
+	_panel.custom_minimum_size = Vector2(320, 0)
+	_vbox.add_child(_heading("ONLINE"))
+	_vbox.add_child(_button("Host a game  (Mario)", func(): _start_hosting(true)))
+	_vbox.add_child(_button("Join a game  (Luigi)", func(): _show_screen(Screen.ONLINEJOIN)))
+	var h := _hint("Play from anywhere: Mario gets a room code and tells\nit to Luigi. Mario's device runs the game, Luigi's shows\nit. Works in the browser, too. Same game version on both.")
+	h.add_theme_color_override("font_color", UiStyle.ACCENT)
+	_vbox.add_child(h)
+	_vbox.add_child(_button("Back", func(): _show_screen(Screen.PLAYERS), true))
+
+func _build_onlinejoin() -> void:
+	_panel.custom_minimum_size = Vector2(320, 0)
+	_vbox.add_child(_heading("JOIN ONLINE"))
+	_vbox.add_child(_hint("Type the room code Mario's screen shows:"))
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 4)
+	_ip_edit = LineEdit.new()
+	_ip_edit.placeholder_text = "CODE"
+	_ip_edit.max_length = 4
+	_ip_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_ip_edit.custom_minimum_size = Vector2(96, BTN_H)
+	_ip_edit.add_theme_font_size_override("font_size", FONT)
+	_ip_edit.text_changed.connect(func(t: String):
+		var up := t.to_upper()
+		if up != t:
+			_ip_edit.text = up
+			_ip_edit.caret_column = up.length())
+	_ip_edit.text_submitted.connect(func(t: String): _join_code(t))
+	row.add_child(_ip_edit)
+	row.add_child(_button("Join", func(): _join_code(_ip_edit.text)))
+	_vbox.add_child(row)
+	_vbox.add_child(_button("Back", func(): _show_screen(Screen.ONLINEMENU), true))
+	_default_focus = _ip_edit
+
+func _join_code(code: String) -> void:
+	code = code.strip_edges().to_upper()
+	if code.length() != 4 or Game.instance == null:
+		return
+	set_meta("net_ip", "room " + code)
+	if Game.instance.net_join(code, true) != OK:
+		show_info("ONLINE", "Could not reach the online server.")
+		return
+	_show_screen(Screen.NETWAIT)
 
 func _build_nethost() -> void:
 	_panel.custom_minimum_size = Vector2(320, 0)
 	_vbox.add_child(_heading("WAITING FOR LUIGI"))
+	if _net_online:
+		if _room_code == "":
+			_vbox.add_child(_hint("Opening a room on the online server ..."))
+		else:
+			_vbox.add_child(_hint("Tell Luigi this room code:"))
+			var code := _heading(_room_code, 32)
+			code.add_theme_color_override("font_color", UiStyle.ACCENT)
+			_vbox.add_child(code)
+			_vbox.add_child(_hint("Luigi: Play > 2 Players - Online > Join a game."))
+		_vbox.add_child(_button("Cancel", func():
+			if Game.instance:
+				Game.instance.net_stop()
+			_show_screen(Screen.START), true))
+		return
 	var ips := NetLink.local_ips()
 	var addr := ", ".join(ips) if not ips.is_empty() else "no Wi-Fi address found"
 	_vbox.add_child(_hint("On Luigi's device: Play > 2 Players - Wi-Fi > Join.\nThis game shows up there by itself, or type its address:"))
@@ -768,7 +861,8 @@ func _connect_to(ip: String) -> void:
 
 func _build_netwait() -> void:
 	_vbox.add_child(_heading("CONNECTING"))
-	_vbox.add_child(_hint("to Mario's game at %s ..." % get_meta("net_ip", "")))
+	var t: String = get_meta("net_ip", "")
+	_vbox.add_child(_hint("to Mario's game %s ..." % (t if t.begins_with("room") else "at " + t)))
 	_vbox.add_child(_button("Cancel", func(): if Game.instance: Game.instance.net_leave(""), true))
 
 func _build_netpause() -> void:

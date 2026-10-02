@@ -16,6 +16,9 @@ extends Node
 
 signal guest_joined
 signal guest_left
+## online (v1.9): the relay gave us a room code / something went wrong
+signal room_ready(code: String)
+signal failed(msg: String)
 
 const RATE := 30.0
 const NI := 9
@@ -42,10 +45,23 @@ func start(host_name: String) -> int:
 	if err != OK:
 		return err
 	discovery.start_host(host_name)
+	_tap_sounds()
+	return OK
+
+## Online (v1.9): open a room at the relay instead of the local network.
+func start_online(url: String) -> int:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	discovery = null
+	var err := link.host_online(url)
+	if err != OK:
+		return err
+	_tap_sounds()
+	return OK
+
+func _tap_sounds() -> void:
 	var snd := get_node_or_null("/root/Snd")
 	if snd:
 		snd.net_tap = _on_sound
-	return OK
 
 func stop() -> void:
 	var snd := get_node_or_null("/root/Snd")
@@ -54,9 +70,9 @@ func stop() -> void:
 	_apply_mask(0)
 	if link.connected:
 		link.send("bye", "")
-		link.enet.flush()
 	link.close()
-	discovery.stop()
+	if discovery:
+		discovery.stop()
 
 func is_connected_guest() -> bool:
 	return link.connected
@@ -65,7 +81,8 @@ func _exit_tree() -> void:
 	stop()
 
 func _process(delta: float) -> void:
-	discovery.poll(delta)
+	if discovery:
+		discovery.poll(delta)
 	for ev in link.poll():
 		match ev[0]:
 			"connect":
@@ -79,11 +96,18 @@ func _process(delta: float) -> void:
 				guest_left.emit()
 			"msg":
 				_on_msg(ev[1], ev[2])
+			"room":
+				room_ready.emit(str(ev[1]))
+			"error", "closed":
+				_apply_mask(0)
+				failed.emit(str(ev[1]) if str(ev[1]) != "" else "The online connection ended.")
 	if not link.connected:
 		return
 	_tick -= delta
 	if _tick <= 0.0:
-		_tick = 1.0 / RATE
+		# over the internet 20 a second is plenty (and half the data);
+		# keep the remainder, else the rate drops to whole frames (15/s)
+		_tick = maxf(_tick + 1.0 / (20.0 if link.is_online() else RATE), 0.0)
 		_send_frame()
 
 func _on_msg(type: String, payload) -> void:
@@ -93,6 +117,8 @@ func _on_msg(type: String, payload) -> void:
 		"vp":
 			if payload is Vector2:
 				guest_vp = Vector2(clampf(payload.x, 200.0, 1200.0), clampf(payload.y, 150.0, 600.0))
+		"ping":
+			link.send("pong", payload)
 		"pause":
 			if game:
 				game.net_guest_pause(bool(payload))

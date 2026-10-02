@@ -2449,6 +2449,112 @@ func _run() -> void:
 					var id := str(game.hud._world.text).strip_edges()
 					await shot("guest_%s" % id)
 					print("NETWATCH %s puppets=%d theme=%s" % [id, game.net_client._puppets.size(), game.backdrop.theme])
+		"onlinehost":
+			# v1.9: host a room at a local relay (server/relay.js on :8765);
+			# "onlineguest" (2nd window) joins with the code from room.txt
+			var c := ConfigFile.new()
+			c.load(GameSettings.CFG_PATH)
+			c.set_value("s", "relay_url", "ws://127.0.0.1:8765")
+			c.set_value("progress", "level", "1-1")
+			c.save(GameSettings.CFG_PATH)
+			SaveGame.clear()
+			await _wait(0.6)
+			game._to_title()
+			await _frames(3)
+			await _press_button("Play")
+			print("ONLINEHOST players: ", _button_texts())
+			await _press_button("2 Players - Online")
+			await _press_button("Host a game  (Mario)")
+			for i in 50:
+				if game.menus._room_code != "":
+					break
+				await _wait(0.1)
+			print("ONLINEHOST room: ", game.menus._room_code, " | ", _hints())
+			await shot("room")
+			var f := FileAccess.open(outdir + "/room.txt", FileAccess.WRITE)
+			f.store_string(game.menus._room_code)
+			f.close()
+			for i in 300:
+				if game.net_host and game.net_host.is_connected_guest():
+					break
+				await _wait(0.1)
+			await _wait(1.0)
+			print("ONLINEHOST guest joined: state=%d players=%d" % [game.state, game.players])
+			await _wait(2.0)
+			for k in 10:
+				await _act("jump")
+				await _wait(0.5)
+				if game.state != Game.State.MAP:
+					break
+			await _wait(Game.CARD_TIME + 0.4)
+			var l: Player = game.heroes[1]
+			var lx := l.global_position.x
+			var lmax := lx
+			print("ONLINEHOST capture t=", Time.get_ticks_msec())
+			for i in 50:
+				await _wait(0.1)
+				lmax = maxf(lmax, l.global_position.x)
+			print("ONLINEHOST luigi moved by the guest: %.0f -> max %.0f" % [lx, lmax])
+			await shot("level")
+			await _wait(3.0)
+			game._to_title()
+			await _wait(2.0)
+		"onlineguest":
+			var c := ConfigFile.new()
+			c.load(GameSettings.CFG_PATH)
+			c.set_value("s", "relay_url", "ws://127.0.0.1:8765")
+			c.save(GameSettings.CFG_PATH)
+			var code := ""
+			for i in 200:
+				if FileAccess.file_exists(outdir + "/room.txt"):
+					code = FileAccess.get_file_as_string(outdir + "/room.txt").strip_edges()
+					if code != "":
+						break
+				await _wait(0.1)
+			game.menus.hide_all()
+			game.menus._show_screen(Menus.Screen.ONLINEJOIN)
+			await _frames(3)
+			game.menus._ip_edit.text = "zzzz"
+			await _press_button("Join")
+			for i in 50:
+				if game.menus.screen == Menus.Screen.INFO:
+					break
+				await _wait(0.1)
+			print("ONLINEGUEST wrong code: screen=%d (INFO=%d) %s" % [game.menus.screen, Menus.Screen.INFO, _hints()])
+			game.menus._show_screen(Menus.Screen.ONLINEJOIN)
+			await _frames(3)
+			game.menus._ip_edit.text = code.to_lower()
+			game.menus._ip_edit.text_changed.emit(game.menus._ip_edit.text)
+			print("ONLINEGUEST typed code: ", game.menus._ip_edit.text)
+			await shot("code")
+			await _press_button("Join")
+			for i in 100:
+				if game.net_client and game.net_client._scene_kind == "map":
+					break
+				await _wait(0.1)
+			print("ONLINEGUEST map: state=%d scene=%s" % [game.state, game.net_client._scene_kind if game.net_client else "-"])
+			for i in 150:
+				if game.net_client and game.net_client._scene_kind == "level":
+					break
+				await _wait(0.1)
+			await _wait(Game.CARD_TIME + 0.6)
+			Input.action_press("move_right")
+			await _wait(0.4)
+			Input.action_press("jump")
+			await _wait(0.5)
+			Input.action_release("jump")
+			await _wait(1.0)
+			Input.action_release("move_right")
+			await _wait(1.0)
+			print("ONLINEGUEST level: puppets=%d rtt=%d ms snap interval=%.3f s" % [game.net_client._puppets.size(),
+				game.net_client.ping_ms(), game.net_client._snap_dt])
+			await shot("level")
+			for i in 150:
+				if game.state != Game.State.NET:
+					break
+				await _wait(0.1)
+			await _wait(0.5)
+			print("ONLINEGUEST after host left: state=%d %s" % [game.state, _hints()])
 		"starthop":
 			# v1.5.1: entering a course with A (also "jump") must not make the
 			# hero hop at the start

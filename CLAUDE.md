@@ -25,8 +25,8 @@ davon ist aus Nintendo-Spielen übernommen (Figuren nur „im Stil von“).
   (letzte Welt, Endboss). Damit ist die letzte Erweiterungsrunde (Nutzer
   2026-09-28) abgeschlossen — weitere Ideen nur, wenn der Nutzer welche
   hat. Stand: 8 Welten, 25 Kurse, 8 Bosse. v1.6.0 zwei Spieler
-  abwechselnd (Mario + Luigi), v1.7.0 Coop, v1.8.0 Wi-Fi-Coop (Nutzer
-  2026-10-02; Internet = Stufe 2 nach Freigabe).
+  abwechselnd (Mario + Luigi), v1.7.0 Coop, v1.8.0 Wi-Fi-Coop, v1.9.0
+  Online-Coop über einen Vermittlungsdienst auf Uberspace (2026-10-02).
 
 ## Design-Entscheidungen
 
@@ -329,7 +329,8 @@ Nintendo-Themen. Loops werden mit umgeklapptem Nachhall gerendert (nahtlos);
   oben, alle zehn Bonusräume mit Screenshot, Drache an der Grotte,
   benannter Lauf ohne Namensfeld, „Clear list“), water (v1.3), ghost
   (v1.4), volcano (v1.5), turns (v1.6), coop (v1.7), nethost/netguest +
-  netshow/netwatch (v1.8, zwei Fenster). **Jedes Szenario sichert `savegame.cfg`, `hall_of_fame.cfg` und
+  netshow/netwatch (v1.8, zwei Fenster), onlinehost/onlineguest (v1.9,
+  + lokaler Relay). **Jedes Szenario sichert `savegame.cfg`, `hall_of_fame.cfg` und
   `settings.cfg` vorher und stellt sie danach wieder her** (Autosave/Game
   Over schreiben sonst in die echten Dateien des Entwicklungsrechners).
   Synthetische Mausklicks zählen in
@@ -711,6 +712,38 @@ Stufe 2 Internet (erst nach Freigabe durch einen Verbindungstest).
   Fenstern gleichzeitig (127.0.0.1); vorher sicherstellen, dass kein alter
   Testprozess den Port 47111 hält (sonst „error 20“ und der Gast landet
   beim alten Host). Hilfeseite „Wi-Fi“.
+
+## Online-Coop (v1.9, Stufe 2)
+
+Freigabe nach dem Wi-Fi-Test (Nutzer 2026-10-02: „Klappt alles super“).
+Server: Uberspace **vega.uberspace.de**, Domain **broesel.net**.
+- Gleiches Prinzip wie Wi-Fi (Host rechnet, Gast zeigt), nur der Weg ist
+  ein WebSocket zu einem **Vermittlungsdienst** (`server/relay.js`, Node +
+  `ws`): Raum öffnen → 4-stelliger Code (ohne 0/O/1/I), Beitreten mit
+  Code, danach reicht er Binär-Nachrichten 1:1 weiter; Steuer-Nachrichten
+  als JSON-Text (host/join → room/joined/left/error), Grund beim Schließen
+  im Close-Frame (`NetLink._poll_ws` → Ereignis „closed“ mit Text).
+  Limits: 1 MB pro Nachricht, 200 Räume, Ping alle 20 s.
+- Adresse: `application/config/relay_url` in project.godot
+  (`wss://broesel.net/mario-relay`), Settings-Schlüssel `relay_url`
+  überschreibt (Tests: `ws://127.0.0.1:8765`). Menüpunkt „2 Players -
+  Online“ nur, wenn eine Adresse gesetzt ist; läuft auch im Browser.
+- Online 20 statt 30 Snapshots/s (Takt mit Rest, sonst 15/s); der Gast
+  misst den Abstand und gleitet entsprechend (`_snap_dt`). Eigene
+  Ping-Messung (ping/pong alle 2 s, `NetClient.rtt_ms`). Schnelle Daten
+  werden verworfen, wenn > 256 KB im Sendepuffer warten.
+- **Einrichten/aktualisieren**: `server/deploy_uberspace.sh <benutzer>`
+  (kopiert relay + Web-Build nach `~/html/mario-clone/`, `npm install`,
+  supervisord-Dienst `~/etc/services.d/mario-relay.ini`,
+  `uberspace web backend set /mario-relay --http --port 8765`). Details
+  `server/README.md`. `server/` hat `.gdignore`, `node_modules` ist
+  gitignored.
+- Abschied: `NetLink.close()` gibt erst die Warteschlange ab (ENet:
+  `peer_disconnect` verwirft noch Wartendes, darum flush davor) → Gast
+  sieht „Mario ended the game.“
+- Tests: `onlinehost` + `onlineguest` (zwei Fenster + lokaler Relay
+  `cd server && PORT=8765 node relay.js`; Raum-Code über `room.txt` im
+  Ausgabeordner). Hilfeseite „Online“.
 
 ## Biom-Gegner (v0.9)
 

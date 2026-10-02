@@ -35,3 +35,6 @@ Claude Code transcript*.html
 
 # Python bytecode of the asset generators in tools/
 __pycache__/
+
+# online relay (server/): npm packages are installed on the server
+server/node_modules/

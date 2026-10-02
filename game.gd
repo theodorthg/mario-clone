@@ -1617,20 +1617,30 @@ func _toggle_mute() -> void:
 	hud.set_muted(_snd_call("toggle_mute", false))
 
 # ================================================================== Wi-Fi --
-## Host: listen for a guest (menus show the waiting screen).
-func net_host_start() -> int:
+## Host: listen for a guest (menus show the waiting screen). online: open
+## a room at the relay (v1.9) instead of the local network.
+func net_host_start(online := false) -> int:
 	net_stop()
 	net_host = NetHost.new()
 	net_host.name = "NetHost"
 	net_host.game = self
 	add_child(net_host)
 	var model := OS.get_model_name()
-	var err := net_host.start(model if model != "GenericDevice" else OS.get_name())
+	var err := net_host.start_online(NetLink.relay_url()) if online \
+		else net_host.start(model if model != "GenericDevice" else OS.get_name())
 	if err != OK:
 		net_host.queue_free()
 		net_host = null
 		return err
 	net_host.guest_joined.connect(_on_guest_joined)
+	net_host.room_ready.connect(menus.show_room_code)
+	net_host.failed.connect(func(msg: String):
+		var waiting := menus.screen == Menus.Screen.NETHOST
+		net_stop()
+		if waiting:
+			menus.show_info("ONLINE", msg)
+		elif state != State.TITLE:
+			hud.show_banner("ONLINE GAME ENDED", 2.5))
 	net_host.guest_left.connect(func():
 		if state in [State.PLAYING, State.MAP, State.INTRO, State.TRANSITION]:
 			hud.show_banner("LUIGI LEFT - WAITING", 2.5))
@@ -1657,14 +1667,15 @@ func net_guest_pause(on: bool) -> void:
 		menus.hide_all()
 		_resume()
 
-## Guest: connect to the host at `ip` and only show its game.
-func net_join(ip: String) -> int:
+## Guest: connect to the host at `ip` (Wi-Fi) or to room `ip` at the relay
+## (online) and only show its game.
+func net_join(ip: String, online := false) -> int:
 	net_stop()
 	net_client = NetClient.new()
 	net_client.name = "NetClient"
 	net_client.game = self
 	add_child(net_client)
-	var err := net_client.start(ip)
+	var err := net_client.start_online(NetLink.relay_url(), ip) if online else net_client.start(ip)
 	if err != OK:
 		net_client.queue_free()
 		net_client = null
@@ -1694,7 +1705,7 @@ func net_leave(reason := "") -> void:
 	state = State.TITLE
 	_to_title()
 	if reason != "":
-		menus.show_info("WI-FI GAME", reason)
+		menus.show_info("TWO PLAYERS", reason)
 
 func net_stop() -> void:
 	if net_host:

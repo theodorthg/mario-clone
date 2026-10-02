@@ -41,12 +41,16 @@ Spezialversion auf eigenem Webspace):
       rechnet, Gast zeigt (Snapshots), Host-Suche per Broadcast + Antwort,
       Adresse als Fallback; Linux/Windows/Android (nicht Browser).
       Lokal mit zwei Fenstern getestet (alle Welten, Pause, Abbruch).
-- [ ] Verbindungstest des Nutzers auf zwei echten Geräten (z. B. PC +
-      RG552 oder Handy) → Freigabe für Stufe 2. Rückmeldungen hier
-      eintragen (gefunden? Ruckeln? Verzögerung beim Springen?).
-- [ ] Stufe 2 (v1.9?): über das Internet mit Raum-Code (Lobby/Relay-
-      Server), auch im Browser; Verbindungsabbruch, Pause, Spielstand und
-      Team-Highscore beim Host.
+- [x] Verbindungstest des Nutzers (PC als Host per Linux-Build, RG552 als
+      Luigi, 2026-10-02): klappt nach Freigabe der UDP-Ports 47110–47111
+      in ufw („Klappt alles super“) → Freigabe Stufe 2.
+- [x] Stufe 2 v1.9.0 (2026-10-02): über das Internet mit Raum-Code,
+      Vermittlungsdienst `server/relay.js`, auch im Browser; lokal mit
+      Relay + zwei Fenstern getestet.
+- [ ] Nutzer: Vermittlungsdienst auf Uberspace einrichten
+      (`server/deploy_uberspace.sh <benutzer>`, vega.uberspace.de,
+      broesel.net) — danach Test über das Internet, auch Browser
+      (https://broesel.net/mario-clone/ bzw. itch.io) gegen Gerät.
 - Aufwand: sehr groß (jede Spielfigur, jeder Gegner, jeder Block muss
   übertragen werden); Verzögerung von 50–150 ms übers Internet ist bei
   einem Jump'n'Run spürbar — Testen auf zwei echten Geräten nötig.

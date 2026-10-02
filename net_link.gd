@@ -7,6 +7,11 @@ extends RefCounted
 ## Messages are var_to_bytes([type, payload]) — never objects. Channels:
 ## 0 reliable (scene changes, sounds, inputs, strings), 1 unreliable
 ## sequenced (snapshots, ~30 per second).
+## v1.9 (stage 2): the same messages over the internet — a WebSocket to the
+## relay (server/relay.js, e.g. on Uberspace) that pairs Mario and Luigi by
+## a 4-letter room code and passes the binary messages on. Works in the
+## browser too. Control frames from the relay are JSON text (room, joined,
+## left, error); game messages are binary frames.
 ## Discovery without typing an IP: the host broadcasts a beacon every
 ## second AND answers the guest's broadcast query with a unicast reply —
 ## so it works even where one side drops incoming broadcasts (Android
@@ -18,10 +23,88 @@ const MAGIC := "MCLONE-LAN-1"
 const CH_RELIABLE := 0
 const CH_FAST := 1
 
+## The relay's address (wss://…/mario-relay). Set in project settings
+## (application/config/relay_url) at build time; Settings key "relay_url"
+## overrides it (tests: ws://127.0.0.1:8765).
+const DEFAULT_RELAY := ""
+
 var enet: ENetConnection
 var peer: ENetPacketPeer          # guest: the host; host: the one guest
+var ws: WebSocketPeer             # online (relay) instead of ENet
 var is_host := false
 var connected := false
+var room_code := ""
+var _ws_open := false
+var _ws_hello := {}
+
+static func relay_url() -> String:
+	var u := str(GameSettings.load_all().get("relay_url", ""))
+	if u == "":
+		u = str(ProjectSettings.get_setting("application/config/relay_url", DEFAULT_RELAY))
+	return u
+
+## Online host: open a room at the relay (poll() then reports ["room", code]).
+func host_online(url: String) -> int:
+	is_host = true
+	return _ws_open_to(url, {"op": "host", "v": ProjectSettings.get_setting("application/config/version")})
+
+## Online guest: join room `code`.
+func join_online(url: String, code: String) -> int:
+	is_host = false
+	return _ws_open_to(url, {"op": "join", "code": code.strip_edges().to_upper(),
+		"v": ProjectSettings.get_setting("application/config/version")})
+
+func is_online() -> bool:
+	return ws != null
+
+func _ws_open_to(url: String, hello: Dictionary) -> int:
+	if url == "":
+		return ERR_UNCONFIGURED
+	ws = WebSocketPeer.new()
+	ws.inbound_buffer_size = 4 * 1024 * 1024
+	ws.outbound_buffer_size = 4 * 1024 * 1024
+	ws.max_queued_packets = 4096
+	_ws_hello = hello
+	_ws_open = false
+	return ws.connect_to_url(url)
+
+func _poll_ws() -> Array:
+	var out := []
+	ws.poll()
+	var st := ws.get_ready_state()
+	if st == WebSocketPeer.STATE_OPEN and not _ws_open:
+		_ws_open = true
+		ws.send_text(JSON.stringify(_ws_hello))
+	while ws.get_available_packet_count() > 0:
+		var pkt := ws.get_packet()
+		if ws.was_string_packet():
+			var m = JSON.parse_string(pkt.get_string_from_utf8())
+			if not (m is Dictionary):
+				continue
+			match str(m.get("op", "")):
+				"room":
+					room_code = str(m.get("code", ""))
+					out.append(["room", room_code])
+				"joined":
+					connected = true
+					out.append(["connect"])
+				"left":
+					connected = false
+					out.append(["disconnect"])
+				"error":
+					out.append(["error", str(m.get("msg", "error"))])
+		else:
+			var msg = bytes_to_var(pkt)
+			if msg is Array and msg.size() == 2:
+				out.append(["msg", msg[0], msg[1]])
+	if st == WebSocketPeer.STATE_CLOSED:
+		# the relay names the reason in the close frame ("Mario ended …")
+		var why := ws.get_close_reason()
+		ws = null
+		connected = false
+		out.append(["closed", why if why != "" else ("No connection to the online server." if not _ws_open \
+			else "The connection to the online server was lost.")])
+	return out
 
 ## -> OK or an error code
 func host(port := PORT) -> int:
@@ -41,6 +124,8 @@ func join(ip: String, port := PORT) -> int:
 ## Pumps the connection. Returns events: ["connect"], ["disconnect"],
 ## ["msg", type, payload].
 func poll() -> Array:
+	if ws:
+		return _poll_ws()
 	var out := []
 	if enet == null:
 		return out
@@ -74,6 +159,12 @@ func poll() -> Array:
 	return out
 
 func send(type: String, payload, reliable := true) -> void:
+	if ws:
+		# TCP: everything arrives; drop fast data if the line can't keep up
+		if connected and ws.get_ready_state() == WebSocketPeer.STATE_OPEN \
+				and (reliable or ws.get_current_outbound_buffered_amount() < 256 * 1024):
+			ws.send(var_to_bytes([type, payload]))
+		return
 	if not connected or peer == null:
 		return
 	var flags := ENetPacketPeer.FLAG_RELIABLE if reliable else ENetPacketPeer.FLAG_UNRELIABLE_FRAGMENT
@@ -85,8 +176,16 @@ func ping_ms() -> int:
 	return int(peer.get_statistic(ENetPacketPeer.PEER_ROUND_TRIP_TIME))
 
 func close() -> void:
+	if ws:
+		ws.poll()                     # hand queued messages ("bye") to the socket first
+		ws.close()
+		ws.poll()
+		ws = null
+		connected = false
+		return
 	if peer and connected:
-		peer.peer_disconnect()
+		enet.flush()                  # peer_disconnect() drops what is still queued
+		peer.peer_disconnect_later()
 		enet.flush()
 	if enet:
 		enet.destroy()

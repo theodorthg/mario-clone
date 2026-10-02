@@ -18,6 +18,7 @@ const DEF := {
 	"double_jump": true,    # press jump again in mid-air (assist, v0.11)
 	"touch_buttons": 0,     # index into TOUCH_NAMES: on-screen move/jump/run buttons
 	"last_host": "",        # Wi-Fi guest: the last address typed / joined (v1.8)
+	"relay_url": "",        # online relay override (tests); "" = the built-in one (v1.9)
 }
 
 const LIVES_MIN := 1

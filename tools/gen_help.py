@@ -736,13 +736,50 @@ def page_wifi():
     return img
 
 
+def page_online():
+    img, d = new_page()
+    text(d, (8, 5), "TWO PLAYERS - ONLINE", f8, GOLD)
+    red, green = (255, 106, 90, 255), (106, 226, 106, 255)
+
+    def device(x, y, hero, name, col, role):
+        d.rounded_rectangle((x, y, x + 64, y + 40), 4, fill=(30, 36, 70, 255), outline=KEY_EDGE)
+        d.rectangle((x + 5, y + 5, x + 59, y + 33), fill=(92, 148, 252, 255))
+        d.rectangle((x + 5, y + 28, x + 59, y + 33), fill=(110, 70, 40, 255))
+        spr = trim(sheet_frame(hero, 20, 20, 0))
+        img.alpha_composite(spr, (x + 32 - spr.width // 2, y + 28 - spr.height))
+        text(d, (x + 32, y + 44), name, fill=col, anchor="ma")
+        text(d, (x + 32, y + 54), role, fill=DIM, anchor="ma")
+
+    device(8, 22, "hero_small", "MARIO", red, "gets a code")
+    device(140, 22, "luigi_small", "LUIGI", green, "types it")
+    # the internet between them, the room code on it
+    d.ellipse((80, 26, 132, 58), fill=(40, 48, 90, 255), outline=KEY_EDGE)
+    text(d, (106, 30), "internet", fill=DIM, anchor="ma")
+    for k, ch in enumerate("K7QM"):
+        key(d, 84 + k * 11, 40, ch, w=10)
+    d.line((72, 42, 80, 42), fill=GOLD)
+    d.line((132, 42, 140, 42), fill=GOLD)
+    x = 216
+    rows = (("Play from anywhere:", WHITE), ("", WHITE),
+            ("Mario: Play >", GOLD), ("2 Players - Online >", GOLD), ("Host a game", GOLD), ("", WHITE),
+            ("Luigi: ... > Join a", GOLD), ("game, type Mario's", GOLD), ("4-letter room code.", GOLD))
+    for k, (s_, col) in enumerate(rows):
+        text(d, (x, 20 + k * 10), s_, fill=col)
+    d.line((8, 122, 332, 122), fill=DIM)
+    text(d, (8, 127), "Works on PC, phone and in the browser - mixed, too.", fill=DIM)
+    text(d, (8, 137), "Mario's device runs the game. Same game version on both.", fill=DIM)
+    text(d, (8, 147), "A slow connection makes Luigi a little late - in the", fill=DIM)
+    text(d, (8, 157), "same Wi-Fi, 2 Players - Wi-Fi is quicker.", fill=DIM)
+    return img
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     pages = {"controls": page_controls, "touch": page_touch, "map": page_map, "items": page_items,
              "dragon": page_dragon, "goal": page_goal, "worlds": page_worlds,
              "sky": page_sky, "sea": page_sea, "water": page_water, "ghost": page_ghost,
              "volcano": page_volcano, "castles": page_castles, "players": page_players,
-             "wifi": page_wifi}
+             "wifi": page_wifi, "online": page_online}
     for n, fn in pages.items():
         fn().save(os.path.join(OUT, n + ".png"))
     print("  help pages:", ", ".join(pages))
