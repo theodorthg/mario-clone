@@ -9,6 +9,11 @@ class_name SaveGame
 
 const PATH := "user://savegame.cfg"
 const KEYS := ["id", "name", "score", "coins", "lives", "power", "dino", "at", "best"]
+## v1.6 (2 players take turns), optional so older saves still load:
+## players (1/2), turn (0 Mario / 1 Luigi = whose turn), reach (furthest
+## course of this player, ID) and other (the waiting player: a Dictionary
+## with the KEYS + reach, resume, cp).
+const OPT_KEYS := {"players": 1, "turn": 0, "reach": "", "other": {}}
 
 static func exists() -> bool:
 	return not load_run().is_empty()
@@ -23,6 +28,8 @@ static func load_run() -> Dictionary:
 		if not c.has_section_key("run", k):
 			return {}
 		out[k] = c.get_value("run", k)
+	for k in OPT_KEYS:
+		out[k] = c.get_value("run", k, OPT_KEYS[k])
 	if int(out.lives) <= 0:
 		return {}
 	return out
@@ -31,6 +38,9 @@ static func store(run: Dictionary) -> void:
 	var c := ConfigFile.new()
 	for k in KEYS:
 		c.set_value("run", k, run[k])
+	for k in OPT_KEYS:
+		if run.has(k):
+			c.set_value("run", k, run[k])
 	c.save(PATH)
 
 static func clear() -> void:

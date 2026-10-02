@@ -8,6 +8,11 @@ extends Node2D
 ## course directly and joins the same flow afterwards.
 ## v1.2: the run is saved all along (save_run -> SaveGame + its high score
 ## entry); the title offers "Continue", quitting asks first.
+## v1.6: two players can take turns (Mario / Luigi, SMB1 rule: the turn
+## passes when a player loses a life; he later resumes that course at his
+## checkpoint). Each has his own score, coins, lives, power, dragon, map spot
+## and high score entry. The members below always hold the ACTIVE player's
+## values; the waiting player's are parked in _other (_swap_turn).
 ## Entities talk to it through Game.instance (add_score, add_coin,
 ## award_chain, collect_powerup, change_power, player_died, enter_warp,
 ## flag_reached, set_checkpoint, is_near_view, enemy_speed_mul).
@@ -112,6 +117,17 @@ var run_name := ""
 ## real run or fill up the list
 var practice := false
 var splash: Splash
+## 1 player, or 2 players taking turns (v1.6)
+var players := 1
+## whose turn: 0 Mario, 1 Luigi
+var turn := 0
+## the waiting player's values (SLOT_FIELDS), {} with one player
+var _other := {}
+## the active player died in this course: when his turn comes back he
+## resumes it at his checkpoint instead of starting on the map
+var _in_course := false
+const SLOT_FIELDS := ["score", "coins", "lives", "power", "has_dino", "level_index", "_run_reach",
+	"_run_best", "run_id", "run_name", "checkpoint_pos", "_in_course"]
 
 func _ready() -> void:
 	instance = self
@@ -130,7 +146,7 @@ func _ready() -> void:
 		snd.mute_changed.connect(hud.set_muted)     # also when muted in the Sound menu
 	menus.play_pressed.connect(func(i: int):
 		if i < 0:
-			start_map_run()           # "Play" / "New Game": the world map
+			start_map_run(menus.take_players())    # "Play" / "New Game": the world map
 		else:
 			_start_game(i, menus.take_cheat(), menus.take_boss()))
 	menus.continue_pressed.connect(continue_run)
@@ -247,7 +263,7 @@ static func first_level_of_world(w: int) -> int:
 ## at_boss (level select "Boss"): spawn right in front of the castle's boss
 ## arena — dying there respawns at the same spot (it acts as the checkpoint).
 func _start_game(start := 0, cheat := false, at_boss := false) -> void:
-	_new_run(cheat, true)
+	_new_run(cheat, true, 1)
 	level_index = clampi(start, 0, LEVELS.size() - 1)
 	_run_reach = maxi(_run_reach, level_index)
 	var arena = LEVELS[level_index].get_script_constant_map().get("ARENA")
@@ -257,7 +273,10 @@ func _start_game(start := 0, cheat := false, at_boss := false) -> void:
 
 ## Reset everything a run carries (score, coins, lives, power, dragon).
 ## from_select: a level select run (not saved, see `practice`).
-func _new_run(cheat := false, from_select := false) -> void:
+## n_players: 1 / 2 (take turns); 0 keeps the current count ("Play Again").
+func _new_run(cheat := false, from_select := false, n_players := 0) -> void:
+	if n_players > 0:
+		players = n_players
 	cheated = cheat
 	practice = cheat or from_select
 	run_id = SaveGame.new_id()
@@ -274,12 +293,78 @@ func _new_run(cheat := false, from_select := false) -> void:
 	_paused = false
 	get_tree().paused = false
 	_run_reach = reached_level_index()
+	turn = 0
+	_in_course = false
+	_other = {}
+	if players == 2:
+		_other = _slot()
+		_other.run_id = run_id + 1        # its own high score entry
+	hud.set_player(turn if players == 2 else -1)
 
 ## Title "Play": a new run on the world map, the hero on the furthest
 ## course reached so far.
-func start_map_run() -> void:
-	_new_run(false)
+func start_map_run(n_players := 1) -> void:
+	_new_run(false, false, n_players)
 	_show_map(_run_reach)
+
+# ============================================================ two players --
+func _slot() -> Dictionary:
+	var d := {}
+	for f in SLOT_FIELDS:
+		d[f] = get(f)
+	return d
+
+func _apply_slot(d: Dictionary) -> void:
+	for f in SLOT_FIELDS:
+		if d.has(f):
+			set(f, d[f])
+
+func hero_name(h := -1) -> String:
+	return Player.HERO_NAMES[turn if h < 0 else h]
+
+## Name of a high score entry that was not named yet.
+func _default_name(h: int) -> String:
+	return "YOU" if players == 1 else Player.HERO_NAMES[h]
+
+## The other player's turn: he resumes the course he died in, or starts on
+## the map (first turn).
+func _swap_turn() -> void:
+	var mine := _slot()
+	_apply_slot(_other)
+	_other = mine
+	turn = 1 - turn
+	hud.set_player(turn)
+	_update_hud()
+	if _in_course:
+		_in_course = false
+		_begin_level()
+	else:
+		checkpoint_pos = null
+		_show_map(level_index)
+		hud.show_banner("%s'S TURN" % hero_name(), 2.2)
+
+## Both players for the game over screen / quit dialog (hero order).
+func player_entries() -> Array:
+	var out := []
+	for h in players:
+		var d: Dictionary = _slot() if h == turn or players == 1 else _other
+		var best := maxi(int(d._run_best), int(d.level_index))
+		out.append({"hero": h, "score": int(d.score), "lives": int(d.lives), "run_id": int(d.run_id),
+			"name": str(d.run_name), "world": LEVELS[best].ID,
+			"rank": -1 if practice else HallOfFame.run_rank(int(d.run_id))})
+	return out
+
+## Names player h's high score entry (2 players: either one).
+func set_player_name(h: int, who: String) -> int:
+	if players == 1 or h == turn:
+		return set_run_name(who)
+	_other.run_name = who.strip_edges().to_upper()
+	var rank := -1
+	if not practice and int(_other.score) > 0:
+		rank = HallOfFame.record_run(int(_other.run_id), _other.run_name if _other.run_name != "" else _default_name(h),
+			int(_other.score), LEVELS[maxi(int(_other._run_best), int(_other.level_index))].ID)
+	save_run()
+	return rank
 
 ## Title "Continue": the saved run, back on the map where it was left.
 func continue_run() -> void:
@@ -287,7 +372,7 @@ func continue_run() -> void:
 	if s.is_empty():
 		start_map_run()
 		return
-	_new_run(false)
+	_new_run(false, false, clampi(int(s.get("players", 1)), 1, 2))
 	run_id = int(s.id)
 	run_name = str(s.name)
 	score = int(s.score)
@@ -297,8 +382,34 @@ func continue_run() -> void:
 	has_dino = bool(s.dino)
 	_run_best = maxi(level_of_id(str(s.best)), 0)
 	var at := maxi(level_of_id(str(s.at)), 0)
+	if players == 2:
+		turn = clampi(int(s.get("turn", 0)), 0, 1)
+		_run_reach = maxi(level_of_id(str(s.get("reach", ""))), 0)
+		var o: Dictionary = s.get("other", {})
+		_other = _slot_from_save(o) if not o.is_empty() else _other
+		hud.set_player(turn)
 	_run_reach = maxi(_run_reach, at)
 	_show_map(at)
+
+## The waiting player as stored by save_run (see SaveGame.OPT_KEYS).
+static func _slot_to_save(d: Dictionary) -> Dictionary:
+	var cp = d.checkpoint_pos
+	return {"id": int(d.run_id), "name": str(d.run_name), "score": int(d.score), "coins": int(d.coins),
+		"lives": int(d.lives), "power": int(d.power), "dino": bool(d.has_dino),
+		"at": LEVELS[int(d.level_index)].ID, "best": LEVELS[maxi(int(d._run_best), int(d.level_index))].ID,
+		"reach": LEVELS[int(d._run_reach)].ID, "resume": bool(d._in_course),
+		"cp": cp if cp != null else Vector2(-1, -1)}
+
+static func _slot_from_save(o: Dictionary) -> Dictionary:
+	var at := maxi(level_of_id(str(o.get("at", ""))), 0)
+	var cp: Vector2 = o.get("cp", Vector2(-1, -1))
+	return {"run_id": int(o.get("id", 0)), "run_name": str(o.get("name", "")), "score": int(o.get("score", 0)),
+		"coins": int(o.get("coins", 0)), "lives": clampi(int(o.get("lives", 0)), 0, 99),
+		"power": clampi(int(o.get("power", 0)), Player.Power.SMALL, Player.Power.FIRE),
+		"has_dino": bool(o.get("dino", false)), "level_index": at,
+		"_run_best": maxi(level_of_id(str(o.get("best", ""))), 0),
+		"_run_reach": maxi(maxi(level_of_id(str(o.get("reach", ""))), 0), at),
+		"_in_course": bool(o.get("resume", false)), "checkpoint_pos": cp if cp.x >= 0.0 else null}
 
 ## Index of the course with this ID ("2-3"), -1 if unknown.
 static func level_of_id(id: String) -> int:
@@ -323,12 +434,18 @@ func save_run() -> Dictionary:
 	if state == State.MAP and world_map:
 		at = world_map.destination()
 	if not practice and state != State.DYING:
-		SaveGame.store({"id": run_id, "name": run_name, "score": score, "coins": coins,
+		var run := {"id": run_id, "name": run_name, "score": score, "coins": coins,
 			"lives": lives, "power": cur_power, "dino": cur_dino, "at": LEVELS[at].ID,
-			"best": LEVELS[maxi(_run_best, at)].ID})
+			"best": LEVELS[maxi(_run_best, at)].ID, "players": players}
+		if players == 2:
+			run["turn"] = turn
+			run["reach"] = LEVELS[maxi(_run_reach, at)].ID
+			run["other"] = _slot_to_save(_other)
+		SaveGame.store(run)
 	return {"saved": not practice, "practice": practice, "in_course": state != State.MAP,
 		"score": score, "lives": lives, "coins": coins, "world": LEVELS[at].ID,
-		"rank": HallOfFame.run_rank(run_id), "name": run_name}
+		"rank": HallOfFame.run_rank(run_id), "name": run_name, "players": players, "hero": turn,
+		"all": player_entries()}
 
 ## Keep the run's high score entry up to date (created once it qualifies).
 ## Level select runs (practice) never get one (v1.2.1, player: "the high
@@ -337,7 +454,7 @@ func save_run() -> Dictionary:
 func _sync_hof() -> int:
 	if practice or run_id == 0 or score <= 0:
 		return -1
-	return HallOfFame.record_run(run_id, run_name if run_name != "" else "YOU", score,
+	return HallOfFame.record_run(run_id, run_name if run_name != "" else _default_name(turn), score,
 		LEVELS[maxi(_run_best, level_index)].ID)
 
 ## Quit dialog "Save & Exit".
@@ -381,6 +498,8 @@ func _show_map(at_idx: int, reveal_to := -1) -> void:
 			level_index = i
 			_update_hud()
 			save_run())
+	world_map.hero_index = turn if players == 2 else 0
+	world_map.player_label = hero_name() if players == 2 else ""
 	world_map.setup(reveal_to - 1 if reveal_to >= 0 else _run_reach, at_idx, power)
 	if reveal_to >= 0:
 		world_map.reveal(reveal_to)
@@ -470,6 +589,7 @@ func _build_level(idx: int, with_player: bool) -> void:
 		player = PlayerScript.new()
 		player.name = "Player"
 		player.power = power
+		player.hero = turn if players == 2 else 0
 		level.add_child(player)
 		player.global_position = start
 		player.fireball_requested.connect(_spawn_fireball)
@@ -772,6 +892,9 @@ func player_died(pit: bool) -> void:
 
 func _after_death() -> void:
 	power = Player.Power.BIG if cfg.start_big else Player.Power.SMALL
+	if players == 2:
+		_after_death_2p()
+		return
 	# global CLAUDE.md #16: check the reserve BEFORE decrementing
 	if lives - 1 <= 0:
 		lives = 0
@@ -780,6 +903,34 @@ func _after_death() -> void:
 		return
 	lives -= 1
 	_begin_level()
+
+## 2 players: a lost life passes the turn (if the other one still has lives).
+## A player without lives is out; the other plays on alone.
+func _after_death_2p() -> void:
+	var out := lives - 1 <= 0
+	lives = 0 if out else lives - 1
+	var other_alive := int(_other.get("lives", 0)) > 0
+	if out:
+		_sync_hof()
+		if not other_alive:
+			hud.set_lives(1)
+			_game_over(false)
+			return
+		_in_course = false
+		checkpoint_pos = null
+		hud.show_text_card("GAME OVER", "", turn)
+		_snd_call("play", null, ["jingle_gameover"])
+		var tw := create_tween()
+		tw.tween_interval(2.6)
+		tw.tween_callback(func():
+			hud.hide_card()
+			_swap_turn())
+		return
+	if other_alive:
+		_in_course = true          # keeps checkpoint_pos for his next turn
+		_swap_turn()
+	else:
+		_begin_level()
 
 func _game_over(victory: bool) -> void:
 	state = State.GAMEOVER

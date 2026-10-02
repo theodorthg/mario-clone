@@ -7,6 +7,23 @@ Git-Log.
 
 ## Offen
 
+Zwei Spieler (Nutzer 2026-10-02, angeregt von Mario Bros. 1983):
+- [x] v1.6.0 Luigi + abwechselnd spielen (SMB1-Regel: Wechsel bei
+      Lebensverlust, Weiterspielen am eigenen Checkpoint), eigene Leben/
+      Punkte/Karte, je ein Highscore-Eintrag, Hilfeseite „Two Players“.
+- [ ] v1.7.0 Coop (gleichzeitig): nur anbieten, wenn ≥ 2 Eingabegeräte
+      (2 Pads, oder Tastatur geteilt Mario WASD / Luigi Pfeile, oder
+      Tastatur + Pad); gemeinsame Kamera folgt dem Vorderen, Zurück-
+      gebliebene/Gestorbene schweben in einer Blase zum Partner (solange
+      der lebt); Röhren/Türen/Fahne nehmen den anderen mit; Gegner/Boss
+      zielen auf den Nächsten; aufeinander stehen/abspringen, kein
+      Schaden untereinander; ein Drache (wer zuerst aufsteigt); HUD zwei
+      Zeilen; jeder eigene Leben, Game Over wenn beide raus;
+      **Bestenliste per Team** (ein Eintrag, Name z. B. „ANNA+TOM“,
+      `max_length` dafür > 8). Test auf dem RG552 mit zweitem BT-Pad
+      (Nutzer fragen, ob eins da ist). Aufwand: `game.player` ist in
+      `game.gd` (100+) und 19 Gegner-Skripten (48 Stellen) Einzahl.
+
 Letzte Erweiterungsrunde (Nutzer 2026-09-28: „alle machen, dann ist mit
 Erweiterungen Schluss, bis mir etwas einfällt“), jede Stufe als eigene
 Version inkl. itch.io-Upload:

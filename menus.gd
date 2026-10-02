@@ -17,7 +17,7 @@ signal quit_to_menu_pressed
 signal settings_changed(cfg: Dictionary)
 
 enum Screen { NONE, START, SETTINGS, SOUND, PAUSE, GAMEOVER, HELP, HIGHSCORES, VICTORY, CONTROLS, LEVELS,
-	QUIT, NEWGAME, CLEARHOF }
+	QUIT, NEWGAME, CLEARHOF, PLAYERS }
 
 const PANEL_W := 250.0
 const BTN_H := 22.0
@@ -42,6 +42,7 @@ const HELP_DESKTOP := [
 	{"file": "ghost", "h": "Ghost House"},
 	{"file": "volcano", "h": "Volcano"},
 	{"file": "castles", "h": "Castles & Secrets"},
+	{"file": "players", "h": "Two Players"},
 ]
 const HELP_TOUCH := [
 	{"file": "touch", "h": "Touch Controls"},
@@ -56,6 +57,7 @@ const HELP_TOUCH := [
 	{"file": "ghost", "h": "Ghost House"},
 	{"file": "volcano", "h": "Volcano"},
 	{"file": "castles", "h": "Castles & Secrets"},
+	{"file": "players", "h": "Two Players"},
 ]
 const HELP_FALLBACK := {
 	"controls": "Move: Arrows / A D / D-pad\nJump: Space / Z / K / W / Up  (A)\nRun, fireball, tongue: Shift / X / J  (X/Y)\nDuck / enter pipe: Down\nPause: Esc / P (Start)   Mute: M (Select)\nScreenshot: F12\nChange keys: Settings > Controls",
@@ -70,6 +72,7 @@ const HELP_FALLBACK := {
 	"volcano": "Magma blobs hop at you. Stomp one: it cools into a rock\nyou can stand on - it even floats on lava. Fire can't hurt it.\nSalamanders spit fire along the ground - jump over it.\nMeteor fields: a blinking ring shows where a rock will land.\nThe volcano lord is the final boss. Good luck!",
 	"ghost": "Doors: press down (or up) in front of one to go through.\nThey lead past walls - coins mark the right one.\nGhosts come closer while you look away and freeze\nwhen you face them; fire can't hurt them, a star can.\nBone turtles fall apart when stomped and rise again.\nThe phantom king fades out and appears elsewhere.",
 	"map": "Play opens the world map. Walk with left / right,\nA or Space plays the course you stand on.\nTouch: tap a course to walk there, tap it again to play.\nA check = cleared, a lock = not reached yet.\nAfter a course the road to the next one opens.\nYour run is saved all along: quit any time,\nthen Continue on the title screen.",
+	"players": "Title: Play > 2 Players - take turns.\nMario plays until he loses a life, then it's Luigi's turn.\nEach has his own lives, score, power, dragon and map;\nthe next turn starts at your checkpoint.\nLuigi jumps a little higher. One high score entry each.",
 	"goal": "Stomp enemies from above.\nCoins: points, 100 coins = extra life.\nPipes marked by coins lead to bonus rooms.\nGrab the flag pole as high as you can!\nExtra lives for points: Settings > 1-UP points.",
 }
 
@@ -131,6 +134,7 @@ func _show_screen(s: int) -> void:
 
 func _rebuild() -> void:
 	_name_edit = null
+	_name_edits = []
 	_help_back_btn = null
 	_default_focus = null
 	_quit_btn = null
@@ -167,6 +171,8 @@ func _rebuild() -> void:
 			_build_newgame()
 		Screen.CLEARHOF:
 			_build_clearhof()
+		Screen.PLAYERS:
+			_build_players()
 	_panel.reset_size()
 	_recenter_panel.call_deferred()
 	# again once wrapped hint labels know their real width (before that they
@@ -325,16 +331,18 @@ func _build_start() -> void:
 	_vbox.add_child(_spacer(2))
 	var save := SaveGame.load_run()
 	if save.is_empty():
-		_vbox.add_child(_button("Play", func():
-			hide_all()
-			play_pressed.emit(-1)))           # -1: the world map (v1.1)
+		# -1: the world map (v1.1), after choosing 1 / 2 players (v1.6)
+		_vbox.add_child(_button("Play", func(): _show_screen(Screen.PLAYERS)))
 	else:
 		# v1.2: the saved run first; a new game asks before replacing it
 		_vbox.add_child(_button("Continue  " + str(save.at), func():
 			hide_all()
 			continue_pressed.emit()))
-		_vbox.add_child(_hint("%06d points  -  %d %s" % [int(save.score), int(save.lives),
-			"life" if int(save.lives) == 1 else "lives"]))
+		if int(save.get("players", 1)) == 2:
+			_vbox.add_child(_hint(_two_player_line(save)))
+		else:
+			_vbox.add_child(_hint("%06d points  -  %d %s" % [int(save.score), int(save.lives),
+				"life" if int(save.lives) == 1 else "lives"]))
 		_vbox.add_child(_button("New Game", func(): _show_screen(Screen.NEWGAME)))
 	_vbox.add_child(_button("Settings", func():
 		_return_screen = Screen.START
@@ -386,6 +394,11 @@ func _build_quit() -> void:
 		_vbox.add_child(_hint("SCORE %06d  -  WORLD %s" % [int(info.score), info.world], 16))
 		_vbox.add_child(_hint("%d %s  -  %d coins" % [int(info.lives),
 			"life" if int(info.lives) == 1 else "lives", int(info.coins)]))
+		if int(info.get("players", 1)) == 2:
+			for e in info.all:
+				if int(e.hero) != int(info.hero):
+					_vbox.add_child(_hint("%s: %06d  -  %d %s (saved too)" % [Player.HERO_NAMES[int(e.hero)],
+						int(e.score), int(e.lives), "life" if int(e.lives) == 1 else "lives"]))
 		var lines := ""
 		if info.saved:
 			lines = "Your run is saved: score, lives, coins, power and dragon.\n" \
@@ -401,6 +414,9 @@ func _build_quit() -> void:
 		# (v1.2.1, player: "asked again although nothing changed")
 		if int(info.rank) >= 0 and str(info.name) != "":
 			_vbox.add_child(_hint("High score #%d: %s" % [int(info.rank) + 1, info.name]))
+		elif int(info.rank) >= 0 and int(info.get("players", 1)) == 2:
+			_vbox.add_child(_hint("High score #%d: %s (rename it after the game)" % [int(info.rank) + 1,
+				Player.HERO_NAMES[int(info.hero)]]))
 		elif int(info.rank) >= 0:
 			_vbox.add_child(_hint("HIGH SCORE #%d!  Enter your name:" % (int(info.rank) + 1)))
 			_name_edit = _make_name_edit("")
@@ -446,12 +462,45 @@ func _build_newgame() -> void:
 			_vbox.add_child(h)
 	var back := _button("Back", func(): _show_screen(Screen.START), true)
 	_vbox.add_child(_hbox([
-		_button("New Game", func():
-			hide_all()
-			play_pressed.emit(-1)),
+		_button("New Game", func(): _show_screen(Screen.PLAYERS)),
 		back,
 	]))
 	_default_focus = back
+
+## Saved 2-player run on the title: both players' score and lives, the
+## active one first.
+func _two_player_line(save: Dictionary) -> String:
+	var t := int(save.get("turn", 0))
+	var o: Dictionary = save.get("other", {})
+	var parts := ["%s %06d x%d" % [Player.HERO_NAMES[t], int(save.score), int(save.lives)]]
+	if not o.is_empty():
+		parts.append("%s %06d x%d" % [Player.HERO_NAMES[1 - t], int(o.get("score", 0)), int(o.get("lives", 0))])
+	return "2 players:  " + "   ".join(parts)
+
+# ---------------------------------------------------------------- players --
+## v1.6: one player, or Mario and Luigi taking turns.
+var _players_pending := 1
+
+func take_players() -> int:
+	var n := _players_pending
+	_players_pending = 1
+	return n
+
+func _build_players() -> void:
+	_panel.custom_minimum_size = Vector2(300, 0)
+	_vbox.add_child(_heading("PLAYERS"))
+	_vbox.add_child(_button("1 Player", func():
+		_players_pending = 1
+		hide_all()
+		play_pressed.emit(-1)))
+	_vbox.add_child(_button("2 Players - take turns", func():
+		_players_pending = 2
+		hide_all()
+		play_pressed.emit(-1)))
+	var h := _hint("Take turns: Mario plays until he loses a life, then it's\nLuigi's turn. Each has his own lives, score and map.\nLuigi jumps a little higher.")
+	h.add_theme_color_override("font_color", UiStyle.ACCENT)
+	_vbox.add_child(h)
+	_vbox.add_child(_button("Back", func(): _show_screen(Screen.START), true))
 
 func _make_name_edit(text := "") -> LineEdit:
 	var e := LineEdit.new()
@@ -474,6 +523,9 @@ func _build_gameover(victory: bool) -> void:
 	# game.gd already entered the run's score (as "YOU" or its given name)
 	var rank := HallOfFame.run_rank(Game.instance.run_id) if Game.instance else -1
 	_vbox.add_child(_heading("YOU WIN!" if victory else "GAME OVER"))
+	if Game.instance and Game.instance.players == 2:
+		_build_gameover_2p(committed, practice)
+		return
 	var score_l := _hint("SCORE %06d  -  WORLD %s" % [score, world], 16)
 	_vbox.add_child(score_l)
 	if practice:
@@ -492,6 +544,53 @@ func _build_gameover(victory: bool) -> void:
 	var grid := _hof_grid()
 	_vbox.add_child(grid)
 	_render_hof(grid, HallOfFame.load_list(), rank)
+	_vbox.add_child(_gameover_buttons())
+
+## Two players (v1.6): both scores, a name field for each one in the list.
+var _name_edits: Array = []
+
+func _build_gameover_2p(committed: bool, practice: bool) -> void:
+	_name_edits = []
+	var entries: Array = Game.instance.player_entries()
+	var ranks := []
+	for e in entries:
+		var row := HBoxContainer.new()
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 6)
+		var l := Label.new()
+		l.text = "%s  %06d  WORLD %s" % [Player.HERO_NAMES[int(e.hero)], int(e.score), e.world]
+		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		l.add_theme_font_size_override("font_size", 8)
+		l.add_theme_color_override("font_color", Player.HERO_COLORS[int(e.hero)])
+		row.add_child(l)
+		if int(e.rank) >= 0:
+			ranks.append(int(e.rank))
+			if not committed:
+				var ed := _make_name_edit(str(e.name))
+				ed.placeholder_text = Player.HERO_NAMES[int(e.hero)]
+				ed.set_meta("hero", int(e.hero))
+				ed.text_submitted.connect(func(_t: String): _next_name_edit(ed))
+				_name_edits.append(ed)
+				row.add_child(ed)
+		_vbox.add_child(row)
+	if practice:
+		_vbox.add_child(_hint("Level select run - no high score entry."))
+	elif not _name_edits.is_empty():
+		_name_edit = _name_edits[0]
+		_vbox.add_child(_hbox([_button("Enter names", func(): _commit_score())]))
+	var grid := _hof_grid()
+	_vbox.add_child(grid)
+	_render_hof(grid, HallOfFame.load_list(), ranks)
+	_vbox.add_child(_gameover_buttons())
+
+func _next_name_edit(ed: LineEdit) -> void:
+	var i := _name_edits.find(ed)
+	if i >= 0 and i + 1 < _name_edits.size():
+		_name_edits[i + 1].grab_focus()
+	else:
+		_commit_score()
+
+func _gameover_buttons() -> HBoxContainer:
 	var btns := [
 		_button("Play Again", func():
 			_maybe_auto_commit()
@@ -506,10 +605,18 @@ func _build_gameover(victory: bool) -> void:
 		btns.append(_button("Exit", func():
 			_maybe_auto_commit()
 			get_tree().quit()))
-	_vbox.add_child(_hbox(btns))
+	return _hbox(btns)
 
 ## Names the run's high score entry (empty = keeps "YOU" / the earlier name).
 func _commit_score() -> void:
+	if not _name_edits.is_empty() and Game.instance:
+		for ed in _name_edits:
+			if is_instance_valid(ed) and ed.text.strip_edges() != "":
+				Game.instance.set_player_name(int(ed.get_meta("hero")), ed.text)
+		_name_edits = []
+		set_meta("go_committed", true)
+		_rebuild()
+		return
 	var who := (_name_edit.text if _name_edit else "").strip_edges()
 	if who != "" and Game.instance:
 		Game.instance.set_run_name(who)
@@ -536,7 +643,8 @@ func _cell(text: String, col: Color, align := HORIZONTAL_ALIGNMENT_LEFT) -> Labe
 	l.add_theme_color_override("font_color", col)
 	return l
 
-func _render_hof(grid: GridContainer, list: Array, highlight: int) -> void:
+func _render_hof(grid: GridContainer, list: Array, highlight) -> void:
+	var marks: Array = highlight if highlight is Array else [highlight]
 	if list.is_empty():
 		grid.columns = 1
 		var h := _hint("- no entries yet -")
@@ -545,7 +653,7 @@ func _render_hof(grid: GridContainer, list: Array, highlight: int) -> void:
 		return
 	for i in list.size():
 		var e = list[i]
-		var col := UiStyle.ACCENT if i == highlight else Color.WHITE
+		var col := UiStyle.ACCENT if i in marks else Color.WHITE
 		grid.add_child(_cell("%d." % (i + 1), col, HORIZONTAL_ALIGNMENT_RIGHT))
 		grid.add_child(_cell(str(e.name).to_upper(), col))
 		grid.add_child(_cell(str(e.get("world", "1-1")), Color(col.r, col.g, col.b, 0.7)))
@@ -969,6 +1077,12 @@ func _turn_help(d: int) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_open():
 		return
+	if event.is_action_pressed("ui_accept"):
+		for ed in _name_edits:
+			if is_instance_valid(ed) and ed.has_focus():
+				_next_name_edit(ed)
+				get_viewport().set_input_as_handled()
+				return
 	if _name_edit != null and is_instance_valid(_name_edit) and _name_edit.has_focus() \
 			and event.is_action_pressed("ui_accept"):
 		if screen == Screen.QUIT:

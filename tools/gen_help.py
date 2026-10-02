@@ -645,12 +645,46 @@ def page_castles():
     return img
 
 
+def page_players():
+    img, d = new_page()
+    text(d, (8, 6), "TWO PLAYERS - TAKE TURNS", f8, GOLD)
+    red, green = (255, 106, 90, 255), (106, 226, 106, 255)
+    mario = trim(sheet_frame("hero_big", 20, 32, 0))
+    luigi = trim(sheet_frame("luigi_big", 20, 32, 4))
+    img.alpha_composite(mario, (14, 30))
+    img.alpha_composite(luigi, (44, 26))
+    text(d, (10, 66), "MARIO", fill=red)
+    text(d, (42, 66), "LUIGI", fill=green)
+    arrow = [(26, 82), (54, 82)]
+    d.line(arrow, fill=DIM)
+    d.polygon([(54, 79), (58, 82), (54, 85)], fill=DIM)
+    d.line([(54, 90), (26, 90)], fill=DIM)
+    d.polygon([(26, 87), (22, 90), (26, 93)], fill=DIM)
+    lines = (("Title: Play > 2 Players - take turns", GOLD),
+             ("Mario plays until he loses a life,", WHITE),
+             ("then it's Luigi's turn - and back.", WHITE),
+             ("", WHITE),
+             ("Each has his own lives, score, coins,", WHITE),
+             ("power, dragon and world map.", WHITE),
+             ("Your next turn starts at your checkpoint.", WHITE),
+             ("", WHITE),
+             ("Luigi jumps a little higher.", green),
+             ("Out of lives? The other plays on alone.", DIM),
+             ("High scores: one entry per player.", DIM))
+    for i, (s_, col) in enumerate(lines):
+        text(d, (80, 24 + i * 10), s_, fill=col)
+    d.line((8, 140, 332, 140), fill=DIM)
+    text(d, (8, 146), "Both play with the same controls - pass the pad", fill=DIM)
+    text(d, (8, 156), "or the phone when the turn changes.", fill=DIM)
+    return img
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     pages = {"controls": page_controls, "touch": page_touch, "map": page_map, "items": page_items,
              "dragon": page_dragon, "goal": page_goal, "worlds": page_worlds,
              "sky": page_sky, "sea": page_sea, "water": page_water, "ghost": page_ghost,
-             "volcano": page_volcano, "castles": page_castles}
+             "volcano": page_volcano, "castles": page_castles, "players": page_players}
     for n, fn in pages.items():
         fn().save(os.path.join(OUT, n + ".png"))
     print("  help pages:", ", ".join(pages))

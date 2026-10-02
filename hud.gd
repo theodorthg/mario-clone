@@ -15,6 +15,8 @@ signal pause_pressed
 signal mute_pressed
 
 var _score: Label
+var _score_title: Label
+var _card_player: Label
 var _coins: Label
 var _world: Label
 var _time: Label
@@ -35,6 +37,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	_score = _column("SCORE", 10)
+	_score_title = get_child(get_child_count() - 2)
 	_coins = _column("COINS", 86)
 	_world = _column("WORLD", 150)
 	_time = _column("TIME", 206)
@@ -86,6 +89,7 @@ func _ready() -> void:
 	_card_name = _card_label(8, -6)
 	_card_name.add_theme_color_override("font_color", UiStyle.ACCENT)
 	_card_lives = _card_label(16, 14)
+	_card_player = _card_label(16, -62)
 	_card_lives.offset_left = -180
 	var icon := TextureRect.new()
 	var at_h := AtlasTexture.new()
@@ -171,6 +175,18 @@ func set_lives(total: int) -> void:
 	var reserve := maxi(total - 1, 0)
 	_lives.text = "x%d" % reserve if reserve < MANY_THRESHOLD else "x%d" % reserve
 
+## 2 players (v1.6): the score column is titled with the player's name in
+## his color; hero < 0 = one player ("SCORE").
+func set_player(hero: int) -> void:
+	_score_title.text = "SCORE" if hero < 0 else Player.HERO_NAMES[hero]
+	_score_title.add_theme_color_override("font_color", Color("fff0c0") if hero < 0 else Player.HERO_COLORS[hero])
+	var icon: TextureRect = get_meta("card_icon")
+	var at: AtlasTexture = icon.texture
+	at.atlas = preload("res://assets/graphics/luigi_small.png") if hero == 1 \
+		else preload("res://assets/graphics/hero_small.png")
+	_card_player.text = "" if hero < 0 else Player.HERO_NAMES[hero]
+	_card_player.add_theme_color_override("font_color", Color.WHITE if hero < 0 else Player.HERO_COLORS[hero])
+
 func set_muted(m: bool) -> void:
 	_mute_icon.set_muted(m)
 
@@ -231,14 +247,20 @@ func show_card(world: String, name: String, lives_total: int) -> void:
 	_card_name.text = name
 	_card_lives.text = "   x %d" % maxi(lives_total, 0)
 	get_meta("card_icon").visible = true
+	_card_player.visible = true
 	_card.visible = true
 	queue_redraw()
 
-func show_text_card(title: String, sub := "") -> void:
+## hero >= 0 (2 players): his name above the title, in his color.
+func show_text_card(title: String, sub := "", hero := -1) -> void:
 	_card_title.text = title
 	_card_name.text = sub
 	_card_lives.text = ""
 	get_meta("card_icon").visible = false
+	_card_player.visible = hero >= 0
+	if hero >= 0:
+		_card_player.text = Player.HERO_NAMES[hero]
+		_card_player.add_theme_color_override("font_color", Player.HERO_COLORS[hero])
 	_card.visible = true
 
 func hide_card() -> void:

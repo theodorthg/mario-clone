@@ -24,7 +24,8 @@ davon ist aus Nintendo-Spielen übernommen (Figuren nur „im Stil von“).
   Geister, Knochen-Schildkröten, Phantom-König), v1.5.0 Welt 8 Vulkan
   (letzte Welt, Endboss). Damit ist die letzte Erweiterungsrunde (Nutzer
   2026-09-28) abgeschlossen — weitere Ideen nur, wenn der Nutzer welche
-  hat. Stand: 8 Welten, 25 Kurse, 8 Bosse.
+  hat. Stand: 8 Welten, 25 Kurse, 8 Bosse. v1.6.0 zwei Spieler
+  abwechselnd (Mario + Luigi), v1.7.0 Coop geplant (Nutzer 2026-10-02).
 
 ## Design-Entscheidungen
 
@@ -326,7 +327,7 @@ Nintendo-Themen. Loops werden mit umgeklapptem Nachhall gerendert (nahtlos);
   Ruhe), polish (v1.2.1: Panzer-Limit, Boss je Schwierigkeit + nichts nach
   oben, alle zehn Bonusräume mit Screenshot, Drache an der Grotte,
   benannter Lauf ohne Namensfeld, „Clear list“), water (v1.3), ghost
-  (v1.4), volcano (v1.5). **Jedes Szenario sichert `savegame.cfg`, `hall_of_fame.cfg` und
+  (v1.4), volcano (v1.5), turns (v1.6). **Jedes Szenario sichert `savegame.cfg`, `hall_of_fame.cfg` und
   `settings.cfg` vorher und stellt sie danach wieder her** (Autosave/Game
   Over schreiben sonst in die echten Dateien des Entwicklungsrechners).
   Synthetische Mausklicks zählen in
@@ -567,6 +568,46 @@ Ducken und Absteigen auf Touch unmöglich.
   nicht schmelzen + Schmelzen, Fels auf Lava, Feuer-Immunität, Meteore
   + Treffer + nichts außerhalb des Felds, 8-2-Ausgang, Boss mit allen
   Angriffen, Sieg nach 8-3, Karte Region 8).
+
+## Zwei Spieler: Mario + Luigi (v1.6 abwechselnd, v1.7 Coop geplant)
+
+Nutzerwunsch 2026-10-02 (angeregt von Mario Bros. 1983): auf Geräten mit
+zwei Controllern oder Tastatur gleichzeitig im Coop, sonst abwechselnd.
+Entscheidungen des Nutzers: **jeder hat eigene Leben**; **Luigi sieht
+anders aus und springt minimal höher, rutscht aber NICHT mehr** (schlechte
+Erfahrung mit Rutschen — Bodenbremse also identisch); **Coop trägt sich
+als Team** in die Bestenliste ein. Umsetzung in zwei Stufen: v1.6.0
+abwechselnd (läuft überall), v1.7.0 Coop (siehe `TODO.md`).
+- **Luigi**: Palettentausch derselben Pixel-Maps (`gen_sprites.py`
+  `LUIGI_SWAP`: grüne Mütze/Hemd, dunkelblaue Latzhose; `LUIGI_FIRE_SWAP`:
+  weiß mit grüner Hose) → `luigi_{small,big,fire,small_fire}.tres`.
+  `Player.hero` (0/1), `Player.frames_for(hero, power)`, Sprung- und
+  Doppelsprung-Tempo × `JUMP_MUL[1]` = 1,035 (≈ +7 % Höhe, gemessen
+  63 → 67 px). `HERO_NAMES`/`HERO_COLORS` für HUD/Karte/Menüs.
+- **Abwechselnd (SMB1-Regel)**: der Zug wechselt, wenn ein Spieler ein
+  Leben verliert. `game.gd` hält immer die Werte des AKTIVEN Spielers
+  (score, coins, lives, power, has_dino, level_index, `_run_reach`,
+  `_run_best`, run_id, run_name, checkpoint_pos, `_in_course` =
+  `SLOT_FIELDS`), der wartende liegt in `_other`; `_swap_turn()` tauscht.
+  Wer im Kurs starb, macht beim nächsten Zug direkt dort am Checkpoint
+  weiter (Karte „MARIO/LUIGI WORLD x-y“), Luigis erster Zug beginnt auf
+  der Karte („LUIGI'S TURN“). Eigene Karte/Fortschritt pro Spieler.
+  Ohne Leben: Karte „MARIO GAME OVER“, der andere spielt allein weiter;
+  Game Over erst, wenn beide raus sind. Kurse geschafft → wie bisher
+  zurück zur Karte desselben Spielers (kein Wechsel).
+- Titel „Play“ / „New Game“ → Bildschirm `PLAYERS` („1 Player“ / „2
+  Players - take turns“, `menus.take_players()`). Levelauswahl immer 1
+  Spieler. „Play Again“ behält die Spielerzahl.
+- HUD: Spaltentitel SCORE → Name in Spielerfarbe (`Hud.set_player`),
+  Kurs-Karte mit Name + Luigi-Symbol; Karten-Banner „LUIGI:  1-1 …“
+  (`WorldMap.hero_index`/`player_label`).
+- **Spielstand**: `SaveGame.OPT_KEYS` players/turn/reach/other (alte
+  Spielstände laden weiter als 1 Spieler); `Game._slot_to_save()` /
+  `_slot_from_save()`. Titel zeigt beide Punktestände.
+- **Bestenliste abwechselnd: ein Eintrag pro Spieler** (eigene run_id,
+  unbenannt „MARIO“/„LUIGI“ statt „YOU“); Game Over zeigt beide mit je
+  einem Namensfeld (`_build_gameover_2p`, A springt zum nächsten Feld).
+- Hilfeseite „Two Players“; Playtest `turns`.
 
 ## Biom-Gegner (v0.9)
 

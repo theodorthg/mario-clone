@@ -72,6 +72,12 @@ HERO_PAL = {
 # fire power: white cap/shirt, red overalls
 FIRE_SWAP = {"#ff8a70": "#ffffff", "#e0302e": "#f4f0e8", "#a01c2c": "#b9b3c9",
              "#3868e0": "#e0302e", "#20388c": "#a01c2c", "#7aa6ff": "#ff8a70"}
+# Luigi (v1.6, 2 players): green cap/shirt, navy overalls; fire Luigi =
+# white cap/shirt, green overalls (palette swaps of the same pixel maps)
+LUIGI_SWAP = {"#ff8a70": "#9af07e", "#e0302e": "#38b03c", "#a01c2c": "#1c6e2a",
+              "#3868e0": "#2c4cb8", "#20388c": "#18286c", "#7aa6ff": "#6a8ce8"}
+LUIGI_FIRE_SWAP = {"#ff8a70": "#ffffff", "#e0302e": "#f4f0e8", "#a01c2c": "#b9b3c9",
+                   "#3868e0": "#38b03c", "#20388c": "#1c6e2a", "#7aa6ff": "#9af07e"}
 
 SMALL_HEAD = [
     ".....rrrrrr.....",
@@ -476,6 +482,13 @@ def hero():
     # small fire (only used for the shrink/grow flicker between fire and small)
     save_set("hero_small_fire", [(n, ol(recolor(parse(bottom(SMALL[n], 16, 16), HERO_PAL, n), FIRE_SWAP)))
                                  for n in SMALL_ORDER], 20, 20, HERO_ANIMS_SMALL)
+    # Luigi: the same frames, green
+    small_fill = [(n, parse(bottom(SMALL[n], 16, 16), HERO_PAL, "small." + n)) for n in SMALL_ORDER]
+    save_set("luigi_small", [(n, ol(recolor(im, LUIGI_SWAP))) for n, im in small_fill], 20, 20, HERO_ANIMS_SMALL)
+    save_set("luigi_big", [(n, ol(recolor(im, LUIGI_SWAP))) for n, im in big_fill], 20, 32, HERO_ANIMS_BIG)
+    save_set("luigi_fire", [(n, ol(recolor(im, LUIGI_FIRE_SWAP))) for n, im in big_fill], 20, 32, HERO_ANIMS_BIG)
+    save_set("luigi_small_fire", [(n, ol(recolor(im, LUIGI_FIRE_SWAP))) for n, im in small_fill],
+             20, 20, HERO_ANIMS_SMALL)
 
 
 # =========================================================================

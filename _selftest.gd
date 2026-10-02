@@ -92,6 +92,19 @@ func _init() -> void:
 	fails += _expect(GameSettings.boss_difficulty({"difficulty": 2, "boss_difficulty": 1}) == 0, "boss difficulty Easy despite a Hard game")
 	fails += _expect(GameSettings.boss_difficulty({"difficulty": 0}) == 0, "boss difficulty missing in old settings -> as game")
 	fails += _expect(GameSettings.level_time({"time_limit": 0, "difficulty": 1}, 400) == 0, "timer off -> 0")
+	# v1.6 two players: Luigi has every frame set, the same animations, jumps a bit higher
+	for pw in [Player.Power.SMALL, Player.Power.BIG, Player.Power.FIRE]:
+		var mf: SpriteFrames = Player.frames_for(0, pw)
+		var lf: SpriteFrames = Player.frames_for(1, pw)
+		fails += _expect(lf != null and lf != mf and Array(lf.get_animation_names()) == Array(mf.get_animation_names()),
+			"Luigi frames for power %d match Mario's animations" % pw)
+	fails += _expect(Player.frames_for(1, Player.Power.SMALL, true) == Player.LUIGI_SMALL_FIRE, "Luigi small-fire flicker frames")
+	fails += _expect(float(Player.JUMP_MUL[1]) > 1.0 and float(Player.JUMP_MUL[1]) < 1.06, "Luigi jumps a little higher")
+	fails += _expect(Game._slot_from_save(Game._slot_to_save({"score": 7, "coins": 3, "lives": 2, "power": 1,
+		"has_dino": true, "level_index": 4, "_run_reach": 5, "_run_best": 4, "run_id": 99, "run_name": "AL",
+		"checkpoint_pos": Vector2(40, 272), "_in_course": true})) == {"run_id": 99, "run_name": "AL", "score": 7,
+		"coins": 3, "lives": 2, "power": 1, "has_dino": true, "level_index": 4, "_run_best": 4, "_run_reach": 5,
+		"_in_course": true, "checkpoint_pos": Vector2(40, 272)}, "2-player slot survives the save game")
 	fails += _expect(GameSettings.level_time({"time_limit": 1, "difficulty": 1}, 400) == 400, "timer normal -> level value")
 
 	if fails == 0:

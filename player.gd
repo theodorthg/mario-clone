@@ -63,9 +63,22 @@ const FRAMES := {
 	Power.FIRE: preload("res://assets/graphics/hero_fire.tres"),
 }
 const FRAMES_SMALL_FIRE := preload("res://assets/graphics/hero_small_fire.tres")
+## Luigi (v1.6, 2 players): same frames in green; jumps a little higher
+## (JUMP_MUL; player wish: "minimal higher, but no extra sliding")
+const LUIGI_FRAMES := {
+	Power.SMALL: preload("res://assets/graphics/luigi_small.tres"),
+	Power.BIG: preload("res://assets/graphics/luigi_big.tres"),
+	Power.FIRE: preload("res://assets/graphics/luigi_fire.tres"),
+}
+const LUIGI_SMALL_FIRE := preload("res://assets/graphics/luigi_small_fire.tres")
+const HERO_NAMES := ["MARIO", "LUIGI"]
+const HERO_COLORS := [Color("ff6a5a"), Color("6ae26a")]
+const JUMP_MUL := [1.0, 1.035]
 const CELL_H := {Power.SMALL: 20.0, Power.BIG: 32.0, Power.FIRE: 32.0}
 
 var power: int = Power.SMALL
+## 0 = Mario, 1 = Luigi (look + jump height)
+var hero := 0
 var mode: int = Mode.NORMAL
 var facing := 1
 var crouching := false
@@ -122,7 +135,7 @@ func set_power(p: int) -> void:
 ## Visual-only swap, used by the grow/shrink flicker in game.gd.
 func _apply_visual_power(p: int, small_fire := false) -> void:
 	var anim := sprite.animation if sprite.sprite_frames else &"idle"
-	sprite.sprite_frames = FRAMES_SMALL_FIRE if small_fire else FRAMES[p]
+	sprite.sprite_frames = frames_for(hero, p, small_fire)
 	var h: float = 20.0 if small_fire else CELL_H[p]
 	sprite.offset = Vector2(0, -h * 0.5 - (Dino.RIDE_LIFT if riding else 0.0))
 	sprite.position.x = -Dino.RIDE_BACK * facing if riding else 0.0
@@ -130,6 +143,11 @@ func _apply_visual_power(p: int, small_fire := false) -> void:
 		sprite.play(anim)
 	else:
 		sprite.play(&"idle")
+
+static func frames_for(h: int, p: int, small_fire := false) -> SpriteFrames:
+	if h == 1:
+		return LUIGI_SMALL_FIRE if small_fire else LUIGI_FRAMES[p]
+	return FRAMES_SMALL_FIRE if small_fire else FRAMES[p]
 
 func show_power_frame(p: int) -> void:
 	_apply_visual_power(p)
@@ -313,7 +331,7 @@ func _jump() -> void:
 	jump_buffer_t = 0.0
 	coyote_t = 0.0
 	var bonus := JUMP_RUN_BONUS * clampf(absf(velocity.x) / RUN_MAX, 0.0, 1.0)
-	velocity.y = -(JUMP_V + bonus)
+	velocity.y = -(JUMP_V + bonus) * JUMP_MUL[hero]
 	jump_held_phase = true
 	jump_min_t = JUMP_MIN_HOLD
 	_snd("jump_big" if power != Power.SMALL or riding else "jump")
@@ -323,7 +341,7 @@ func _jump() -> void:
 func _air_jump(dir: float) -> void:
 	air_jumps -= 1
 	jump_buffer_t = 0.0
-	velocity.y = -AIR_JUMP_V
+	velocity.y = -AIR_JUMP_V * JUMP_MUL[hero]
 	if dir != 0.0 and signf(velocity.x) != signf(dir):
 		velocity.x = dir * minf(absf(velocity.x), WALK_MAX * 0.5)
 	jump_held_phase = true
@@ -427,7 +445,7 @@ func mount(d: Dino) -> void:
 func _dismount_jump() -> void:
 	var d := riding
 	_detach_dino(false)
-	velocity.y = -JUMP_V
+	velocity.y = -JUMP_V * JUMP_MUL[hero]
 	jump_held_phase = true
 	jump_min_t = JUMP_MIN_HOLD
 	jump_buffer_t = 0.0

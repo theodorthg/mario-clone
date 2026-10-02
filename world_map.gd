@@ -100,8 +100,13 @@ func hide_map() -> void:
 	visible = false
 	_layer.visible = false
 
+## Which hero walks the map (0 Mario, 1 Luigi — 2 players take turns).
+var hero_index := 0
+## "MARIO" / "LUIGI" in front of the course name (2 players), else ""
+var player_label := ""
+
 func set_power(p: int) -> void:
-	hero.sprite_frames = Player.FRAMES[p]
+	hero.sprite_frames = Player.frames_for(hero_index, p)
 	hero.offset = Vector2(0, -Player.CELL_H[p] * 0.5 + 2.0)
 
 ## Unlock course `to` (the one after a cleared course): the road to it draws
@@ -269,7 +274,8 @@ func _point_at(pts: Array, d: float) -> Vector2:
 func _update_banner() -> void:
 	var lv: Script = Game.LEVELS[at]
 	var done := at < reach
-	_title.text = "%s  %s%s" % [lv.ID, _names[at], "  *" if done else ""]
+	_title.text = "%s%s  %s%s" % [player_label + ":  " if player_label != "" else "", lv.ID, _names[at],
+		"  *" if done else ""]
 	var touch := Game.instance != null and Game.instance.touch.visible
 	_hint.text = ("tap again to play" if touch else "A / Space: play") if not is_busy() else ""
 

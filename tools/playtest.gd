@@ -130,6 +130,19 @@ func _hints() -> String:
 			out.append(l.text.replace("\n", " / "))
 	return " | ".join(out)
 
+## Peak height (px) of a held jump from standing on flat ground.
+func _jump_height() -> float:
+	await _wait(0.3)
+	var y0 := game.player.global_position.y
+	var top := y0
+	Input.action_press("jump")
+	for i in 60:
+		await physics_frame
+		top = minf(top, game.player.global_position.y)
+	Input.action_release("jump")
+	await _wait(0.8)
+	return y0 - top
+
 func _run() -> void:
 	# the game's _ready (which creates the splash) runs only once the tree
 	# is live — skip the splash from here, not from _init()
@@ -1437,6 +1450,7 @@ func _run() -> void:
 				Menus.Screen.NEWGAME, fo.text if fo is Button else "?", _hints()])
 			await shot("newgame")
 			await _press_button("New Game")
+			await _press_button("1 Player")          # v1.6: players choice first
 			await _wait(0.8)
 			print("SAVE new run: state=%d score=%d save_replaced=%s" % [game.state, game.score,
 				int(SaveGame.load_run().id) != old_id])
@@ -1979,6 +1993,95 @@ func _run() -> void:
 			var m := game.world_map
 			print("MAP 8: reach=%d at=%d banner='%s'" % [m.reach, m.at, m._title.text])
 			await shot("map_8")
+		"turns":
+			# v1.6: two players take turns (Mario / Luigi)
+			SaveGame.clear()
+			var c := ConfigFile.new()
+			c.load(GameSettings.CFG_PATH)
+			c.set_value("progress", "level", "1-1")
+			c.set_value("progress", "world", 1)
+			c.save(GameSettings.CFG_PATH)
+			await _wait(0.6)
+			game._to_title()
+			await _frames(3)
+			await _press_button("Play")
+			print("TURNS players screen: screen=%d (PLAYERS=%d) buttons=%s" % [game.menus.screen,
+				Menus.Screen.PLAYERS, _button_texts()])
+			await shot("players")
+			await _press_button("2 Players - take turns")
+			await _wait(1.0)
+			print("TURNS map: state=%d players=%d turn=%d map hero=%d label=%s other lives=%d ids differ=%s" % [
+				game.state, game.players, game.turn, game.world_map.hero_index, game.world_map.player_label,
+				int(game._other.lives), int(game._other.run_id) != game.run_id])
+			await shot("map_mario")
+			await _act("jump")
+			await _wait(0.6)
+			await shot("card_mario")
+			await _wait(Game.CARD_TIME)
+			print("TURNS course: hero=%d hud=%s" % [game.player.hero, game.hud._score_title.text])
+			var mario_jump := await _jump_height()
+			game.add_score(1234)
+			var cp := game.player.global_position + Vector2(64, 0)
+			game.checkpoint_pos = cp
+			game.player_died(false)
+			await _wait(4.0)
+			print("TURNS after Mario's death: state=%d (MAP=%d) turn=%d map hero=%d score=%d lives=%d | waiting Mario: score=%d lives=%d in_course=%s cp=%s" % [
+				game.state, Game.State.MAP, game.turn, game.world_map.hero_index, game.score, game.lives,
+				int(game._other.score), int(game._other.lives), game._other._in_course, game._other.checkpoint_pos])
+			await shot("map_luigi")
+			await _act("jump")
+			await _wait(0.6)
+			await shot("card_luigi")
+			await _wait(Game.CARD_TIME)
+			print("TURNS Luigi course: hero=%d frames=%s hud=%s" % [game.player.hero,
+				game.player.sprite.sprite_frames.resource_path.get_file(), game.hud._score_title.text])
+			var luigi_jump := await _jump_height()
+			print("TURNS jump height: Mario %.1f px, Luigi %.1f px (+%.0f%%)" % [mario_jump, luigi_jump,
+				(luigi_jump / mario_jump - 1.0) * 100.0])
+			await shot("luigi_play")
+			game.add_score(500)
+			var s := SaveGame.load_run()
+			print("TURNS save: players=%s turn=%s score=%s other=%s" % [s.players, s.turn, s.score, s.other])
+			game.player_died(false)
+			await _wait(3.6)
+			print("TURNS Mario resumes: state=%d turn=%d course=%s spawn=%s (cp %s) score=%d" % [game.state, game.turn,
+				Game.LEVELS[game.level_index].ID, game.player.global_position.round() if game.player else null,
+				cp.round(), game.score])
+			await _wait(Game.CARD_TIME)
+			# continue a saved 2-player run
+			game._to_title()
+			await _frames(3)
+			print("TURNS title: ", _hints())
+			await shot("title_2p")
+			await _press_button(_button_texts()[0])
+			await _wait(0.8)
+			print("TURNS continued: players=%d turn=%d score=%d other score=%d other in_course=%s" % [game.players,
+				game.turn, game.score, int(game._other.score), game._other._in_course])
+			# Mario runs out of lives: Luigi plays on alone
+			await _act("jump")
+			await _wait(Game.CARD_TIME + 0.4)
+			game.lives = 1
+			game.player_died(false)
+			await _wait(3.2)
+			await shot("mario_out")
+			await _wait(3.0)
+			print("TURNS Mario out: state=%d turn=%d mario lives=%d" % [game.state, game.turn, int(game._other.lives)])
+			await _wait(Game.CARD_TIME)
+			game.player_died(false)
+			await _wait(3.6)
+			print("TURNS Luigi alone: turn=%d state=%d lives=%d" % [game.turn, game.state, game.lives])
+			await _wait(Game.CARD_TIME)
+			game.lives = 1
+			game.player_died(false)
+			await _wait(6.0)
+			print("TURNS game over: screen=%d text=%s" % [game.menus.screen, _hints()])
+			await shot("gameover_2p")
+			var names := HallOfFame.load_list().map(func(e): return "%s %s" % [e.name, e.score])
+			print("TURNS hof: ", names)
+			game.menus._name_edits[1].text = "lu"
+			await _press_button("Enter names")
+			print("TURNS hof named: ", HallOfFame.load_list().map(func(e): return "%s %s" % [e.name, e.score]))
+			await shot("gameover_named")
 		"starthop":
 			# v1.5.1: entering a course with A (also "jump") must not make the
 			# hero hop at the start
