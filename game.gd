@@ -19,6 +19,9 @@ extends Node2D
 ## falls behind, or loses a life while the partner plays on, floats to the
 ## partner in a bubble. `player` then is the hero that last mattered (the
 ## one entering a pipe, grabbing the flag, …), enemies use target_for().
+## v1.8: Wi-Fi co-op — the host runs this co-op game with Luigi's buttons
+## coming from the network (NetHost); the guest only shows it (state NET,
+## NetClient does everything there).
 ## Entities talk to it through Game.instance (add_score, add_coin,
 ## award_chain, collect_powerup, change_power, player_died, enter_warp,
 ## flag_reached, set_checkpoint, is_near_view, enemy_speed_mul).
@@ -27,7 +30,7 @@ extends Node2D
 ## process_mode to DISABLED; this node itself always processes and drives
 ## those short sequences with its own tweens.
 
-enum State { TITLE, INTRO, PLAYING, TRANSITION, DYING, CLEAR, GAMEOVER, MAP }
+enum State { TITLE, INTRO, PLAYING, TRANSITION, DYING, CLEAR, GAMEOVER, MAP, NET }
 
 const THEME_MUSIC := {"cave": "music_cave", "cavern": "music_cave", "desert": "music_desert",
 	"desert_dusk": "music_desert", "snow": "music_snow", "snow_night": "music_snow", "fortress": "music_castle",
@@ -133,6 +136,8 @@ var _other := {}
 ## resumes it at his checkpoint instead of starting on the map
 var _in_course := false
 const COOP := 3
+var net_host: NetHost
+var net_client: NetClient
 ## co-op: [Mario, Luigi] (null = out of lives / not spawned)
 var heroes: Array = []
 var co_lives := [0, 0]
@@ -230,7 +235,9 @@ func apply_touch_layout() -> void:
 		Input.get_connected_joypads().size())
 	if players == COOP and coop_touch:
 		show = true
-	touch.visible = show and state in [State.PLAYING, State.MAP] and not _paused
+	var guest_playing := state == State.NET and net_client != null and net_client.is_playing() \
+		and not net_client.paused_local
+	touch.visible = show and (state in [State.PLAYING, State.MAP] or guest_playing) and not _paused
 	# help: touch-only pages unless a gamepad is there (RG552 has both)
 	menus.set_touch_context(_touch and Input.get_connected_joypads().is_empty())
 
@@ -239,8 +246,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if not _touch:
 			_touch = true
 			get_tree().call_group("touch_layout_listeners", "apply_touch_layout")
-	if event.is_action_pressed("pause") and state in [State.PLAYING, State.TRANSITION, State.INTRO, State.MAP] \
-			and not menus.is_open():
+	if event.is_action_pressed("pause") and state in [State.PLAYING, State.TRANSITION, State.INTRO, State.MAP,
+			State.NET] and not menus.is_open():
 		_toggle_pause()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("mute"):
@@ -249,6 +256,7 @@ func _unhandled_input(event: InputEvent) -> void:
 # =================================================================== flow --
 func _to_title() -> void:
 	save_run()
+	net_stop()
 	state = State.TITLE
 	get_tree().paused = false
 	_paused = false
@@ -292,6 +300,8 @@ static func first_level_of_world(w: int) -> int:
 ## arena — dying there respawns at the same spot (it acts as the checkpoint).
 func _start_game(start := 0, cheat := false, at_boss := false) -> void:
 	_new_run(cheat, true, 1)
+	if world_map:
+		world_map.hide_map()
 	level_index = clampi(start, 0, LEVELS.size() - 1)
 	_run_reach = maxi(_run_reach, level_index)
 	var arena = LEVELS[level_index].get_script_constant_map().get("ARENA")
@@ -941,7 +951,7 @@ func _process(delta: float) -> void:
 	if win != _last_window:
 		_last_window = win
 		_apply_display_mode()
-	if _paused:
+	if _paused or state == State.NET:
 		return
 	match state:
 		State.TITLE:
@@ -952,7 +962,7 @@ func _process(delta: float) -> void:
 				_play_area_music()
 
 func _physics_process(delta: float) -> void:
-	if _paused or state == State.TITLE:
+	if _paused or state == State.TITLE or state == State.NET:
 		return
 	if state == State.MAP:
 		if world_map:
@@ -1573,7 +1583,13 @@ func boss_defeated(_boss: Boss) -> void:
 		_tally_time())
 
 # ================================================================== pause --
+func is_paused() -> bool:
+	return _paused
+
 func _toggle_pause() -> void:
+	if state == State.NET:
+		_guest_pause_menu()
+		return
 	if state not in [State.PLAYING, State.TRANSITION, State.INTRO, State.MAP]:
 		return
 	_paused = not _paused
@@ -1599,6 +1615,109 @@ func _resume() -> void:
 
 func _toggle_mute() -> void:
 	hud.set_muted(_snd_call("toggle_mute", false))
+
+# ================================================================== Wi-Fi --
+## Host: listen for a guest (menus show the waiting screen).
+func net_host_start() -> int:
+	net_stop()
+	net_host = NetHost.new()
+	net_host.name = "NetHost"
+	net_host.game = self
+	add_child(net_host)
+	var model := OS.get_model_name()
+	var err := net_host.start(model if model != "GenericDevice" else OS.get_name())
+	if err != OK:
+		net_host.queue_free()
+		net_host = null
+		return err
+	net_host.guest_joined.connect(_on_guest_joined)
+	net_host.guest_left.connect(func():
+		if state in [State.PLAYING, State.MAP, State.INTRO, State.TRANSITION]:
+			hud.show_banner("LUIGI LEFT - WAITING", 2.5))
+	return OK
+
+func _on_guest_joined() -> void:
+	if menus.screen == Menus.Screen.NETHOST:
+		menus.hide_all()
+		coop_touch = _touch and Input.get_connected_joypads().is_empty()
+		CoopInput.reset()               # Luigi has no device here: his buttons come by Wi-Fi
+		if menus.take_net_continue():
+			continue_run()
+		else:
+			start_map_run(COOP)
+	elif state != State.TITLE:
+		hud.show_banner("LUIGI IS BACK", 1.6)
+
+## The guest's pause button: host pauses (and shows its pause menu).
+func net_guest_pause(on: bool) -> void:
+	if on and not _paused and state in [State.PLAYING, State.TRANSITION, State.INTRO, State.MAP]:
+		_toggle_pause()
+		hud.show_banner("LUIGI PAUSED", 1.6)
+	elif not on and _paused and menus.screen == Menus.Screen.PAUSE:
+		menus.hide_all()
+		_resume()
+
+## Guest: connect to the host at `ip` and only show its game.
+func net_join(ip: String) -> int:
+	net_stop()
+	net_client = NetClient.new()
+	net_client.name = "NetClient"
+	net_client.game = self
+	add_child(net_client)
+	var err := net_client.start(ip)
+	if err != OK:
+		net_client.queue_free()
+		net_client = null
+		return err
+	state = State.NET
+	_snd_call("stop_all")
+	if level:
+		world.remove_child(level)
+		level.queue_free()
+		level = null
+	player = null
+	heroes = []
+	if world_map:
+		world_map.hide_map()
+	hud.visible = false
+	touch.visible = false
+	touch.set_actions({})
+	net_client.scene_shown.connect(func():
+		if menus.screen == Menus.Screen.NETWAIT:
+			menus.hide_all())
+	net_client.left.connect(net_leave)
+	return OK
+
+## Guest: the session ended (host left, no answer, own choice).
+func net_leave(reason := "") -> void:
+	net_stop()
+	state = State.TITLE
+	_to_title()
+	if reason != "":
+		menus.show_info("WI-FI GAME", reason)
+
+func net_stop() -> void:
+	if net_host:
+		net_host.stop()
+		net_host.queue_free()
+		net_host = null
+	if net_client:
+		var c := net_client
+		net_client = null
+		c.close()
+		c.queue_free()
+
+func _guest_pause_menu() -> void:
+	if net_client == null:
+		return
+	net_client.send_pause(true)
+	touch.visible = false
+	menus.show_net_pause()
+
+func net_guest_resume() -> void:
+	if net_client:
+		net_client.send_pause(false)
+	apply_touch_layout()
 
 func _update_hud() -> void:
 	hud.set_score(score)

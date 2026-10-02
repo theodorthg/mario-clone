@@ -701,12 +701,48 @@ def page_players():
     return img
 
 
+def page_wifi():
+    img, d = new_page()
+    text(d, (8, 5), "TWO PLAYERS - WI-FI", f8, GOLD)
+    red, green = (255, 106, 90, 255), (106, 226, 106, 255)
+
+    def device(x, y, hero, name, col, role):
+        d.rounded_rectangle((x, y, x + 70, y + 44), 4, fill=(30, 36, 70, 255), outline=KEY_EDGE)
+        d.rectangle((x + 6, y + 5, x + 64, y + 37), fill=(92, 148, 252, 255))
+        d.rectangle((x + 6, y + 31, x + 64, y + 37), fill=(110, 70, 40, 255))
+        spr = trim(sheet_frame(hero, 20, 20, 0))
+        img.alpha_composite(spr, (x + 35 - spr.width // 2, y + 31 - spr.height))
+        text(d, (x + 35, y + 48), name, fill=col, anchor="ma")
+        text(d, (x + 35, y + 58), role, fill=DIM, anchor="ma")
+
+    device(14, 24, "hero_small", "MARIO", red, "hosts the game")
+    device(126, 24, "luigi_small", "LUIGI", green, "joins")
+    # radio waves between them
+    for k in range(3):
+        r = 6 + k * 6
+        d.arc((112 - r, 46 - r, 112 + r, 46 + r), 140, 220, fill=GOLD)
+        d.arc((96 - r, 46 - r, 96 + r, 46 + r), -40, 40, fill=GOLD)
+    x = 212
+    rows = (("Both devices in the", WHITE), ("same Wi-Fi.", WHITE), ("", WHITE),
+            ("Mario: Play >", GOLD), ("2 Players - Wi-Fi >", GOLD), ("Host a game", GOLD), ("", WHITE),
+            ("Luigi: ... > Join a", GOLD), ("game, pick Mario's", GOLD), ("(or type the address", WHITE),
+            ("Mario's screen shows).", WHITE))
+    for k, (s_, col) in enumerate(rows):
+        text(d, (x, 20 + k * 10), s_, fill=col)
+    d.line((8, 132, 332, 132), fill=DIM)
+    text(d, (8, 137), "Mario's device runs the game, Luigi's shows it. Same game", fill=DIM)
+    text(d, (8, 147), "version on both. Pause from either side. Not in the browser.", fill=DIM)
+    text(d, (8, 157), "Luigi can leave and join again any time.", fill=DIM)
+    return img
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     pages = {"controls": page_controls, "touch": page_touch, "map": page_map, "items": page_items,
              "dragon": page_dragon, "goal": page_goal, "worlds": page_worlds,
              "sky": page_sky, "sea": page_sea, "water": page_water, "ghost": page_ghost,
-             "volcano": page_volcano, "castles": page_castles, "players": page_players}
+             "volcano": page_volcano, "castles": page_castles, "players": page_players,
+             "wifi": page_wifi}
     for n, fn in pages.items():
         fn().save(os.path.join(OUT, n + ".png"))
     print("  help pages:", ", ".join(pages))

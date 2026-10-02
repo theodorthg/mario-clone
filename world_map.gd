@@ -110,6 +110,9 @@ var hero_index := 0
 var player_label := ""
 ## co-op (v1.7): Luigi walks along a step behind Mario
 var coop := false
+## Wi-Fi guest (v1.8): only shows what the host's map does (no input, no
+## walking of its own) — apply_net_state()
+var puppet := false
 var partner: AnimatedSprite2D
 
 func set_power(p: int) -> void:
@@ -155,6 +158,36 @@ func destination() -> int:
 	return at
 
 # ------------------------------------------------------------------ input --
+func net_state() -> Array:
+	return [reach, at, hero.position, hero.animation, hero.flip_h, hero_index, coop, _reveal_seg, _reveal_k,
+		_title.text, _hint.text, hero.sprite_frames.resource_path]
+
+func apply_net_state(a: Array) -> void:
+	if a.size() < 12:
+		return
+	puppet = true
+	active = false
+	visible = true
+	_layer.visible = true
+	reach = int(a[0])
+	at = int(a[1])
+	hero.position = a[2]
+	if hero.sprite_frames == null or hero.sprite_frames.resource_path != a[11]:
+		hero.sprite_frames = load(a[11])
+		hero.offset = Vector2(0, -hero.sprite_frames.get_frame_texture(&"front", 0).get_height() * 0.5 + 2.0)
+		partner.sprite_frames = load(String(a[11]).replace("hero_", "luigi_"))
+		partner.offset = hero.offset
+	if hero.animation != StringName(a[3]):
+		hero.play(StringName(a[3]))
+	hero.flip_h = a[4]
+	hero_index = int(a[5])
+	coop = a[6]
+	_reveal_seg = int(a[7])
+	_reveal_k = float(a[8])
+	_title.text = a[9]
+	_hint.text = a[10]
+	queue_redraw()
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not active or not visible or Game.instance == null or Game.instance.state != Game.State.MAP:
 		return
@@ -243,6 +276,8 @@ func _process(delta: float) -> void:
 	if not visible:
 		return
 	_update_partner()
+	if puppet:
+		return
 	_delay = maxf(_delay - delta, 0.0)
 	if _reveal_seg >= 0:
 		_reveal_k = minf(_reveal_k + delta / REVEAL_TIME, 1.0)

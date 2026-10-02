@@ -57,6 +57,7 @@ func _ready() -> void:
 	add_child(_area)
 	_tongue = Node2D.new()
 	_tongue.z_index = 1
+	_tongue.set_meta("net_tongue", true)
 	_tongue.draw.connect(_draw_tongue)
 	add_child(_tongue)
 	_tongue_area = Area2D.new()
@@ -225,12 +226,16 @@ func _eat(e: Node2D) -> void:
 		_tongue_t = TONGUE_TIME - _tongue_t
 
 func _draw_tongue() -> void:
-	if _tongue_len <= 0.5:
+	draw_tongue_on(_tongue, facing, _tongue_len)
+
+## Also used by the Wi-Fi guest (NetClient) to draw a remote dragon's tongue.
+static func draw_tongue_on(ci: CanvasItem, dir: int, length: float) -> void:
+	if length <= 0.5:
 		return
-	var mouth := Vector2(MOUTH.x * facing, MOUTH.y)
-	var tip := mouth + Vector2(facing * _tongue_len, 0)
+	var mouth := Vector2(MOUTH.x * dir, MOUTH.y)
+	var tip := mouth + Vector2(dir * length, 0)
 	var a := Vector2(minf(mouth.x, tip.x), mouth.y - 1)
-	_tongue.draw_rect(Rect2(a, Vector2(absf(tip.x - mouth.x), 3)), Color("#ff6a8a"))
-	_tongue.draw_rect(Rect2(a + Vector2(0, 2), Vector2(absf(tip.x - mouth.x), 1)), Color("#c0305a"))
-	_tongue.draw_rect(Rect2(tip - Vector2(3, 3), Vector2(6, 6)), Color("#ff6a8a"))
-	_tongue.draw_rect(Rect2(tip - Vector2(3, 3), Vector2(6, 6)), Color("#1a1018"), false, 1.0)
+	ci.draw_rect(Rect2(a, Vector2(absf(tip.x - mouth.x), 3)), Color("#ff6a8a"))
+	ci.draw_rect(Rect2(a + Vector2(0, 2), Vector2(absf(tip.x - mouth.x), 1)), Color("#c0305a"))
+	ci.draw_rect(Rect2(tip - Vector2(3, 3), Vector2(6, 6)), Color("#ff6a8a"))
+	ci.draw_rect(Rect2(tip - Vector2(3, 3), Vector2(6, 6)), Color("#1a1018"), false, 1.0)

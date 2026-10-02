@@ -17,7 +17,7 @@ signal quit_to_menu_pressed
 signal settings_changed(cfg: Dictionary)
 
 enum Screen { NONE, START, SETTINGS, SOUND, PAUSE, GAMEOVER, HELP, HIGHSCORES, VICTORY, CONTROLS, LEVELS,
-	QUIT, NEWGAME, CLEARHOF, PLAYERS, JOIN }
+	QUIT, NEWGAME, CLEARHOF, PLAYERS, JOIN, NETMENU, NETHOST, NETJOIN, NETWAIT, NETPAUSE, INFO }
 
 const PANEL_W := 250.0
 const BTN_H := 22.0
@@ -43,6 +43,7 @@ const HELP_DESKTOP := [
 	{"file": "volcano", "h": "Volcano"},
 	{"file": "castles", "h": "Castles & Secrets"},
 	{"file": "players", "h": "Two Players"},
+	{"file": "wifi", "h": "Wi-Fi"},
 ]
 const HELP_TOUCH := [
 	{"file": "touch", "h": "Touch Controls"},
@@ -58,6 +59,7 @@ const HELP_TOUCH := [
 	{"file": "volcano", "h": "Volcano"},
 	{"file": "castles", "h": "Castles & Secrets"},
 	{"file": "players", "h": "Two Players"},
+	{"file": "wifi", "h": "Wi-Fi"},
 ]
 const HELP_FALLBACK := {
 	"controls": "Move: Arrows / A D / D-pad\nJump: Space / Z / K / W / Up  (A)\nRun, fireball, tongue: Shift / X / J  (X/Y)\nDuck / enter pipe: Down\nPause: Esc / P (Start)   Mute: M (Select)\nScreenshot: F12\nChange keys: Settings > Controls",
@@ -73,6 +75,7 @@ const HELP_FALLBACK := {
 	"ghost": "Doors: press down (or up) in front of one to go through.\nThey lead past walls - coins mark the right one.\nGhosts come closer while you look away and freeze\nwhen you face them; fire can't hurt them, a star can.\nBone turtles fall apart when stomped and rise again.\nThe phantom king fades out and appears elsewhere.",
 	"map": "Play opens the world map. Walk with left / right,\nA or Space plays the course you stand on.\nTouch: tap a course to walk there, tap it again to play.\nA check = cleared, a lock = not reached yet.\nAfter a course the road to the next one opens.\nYour run is saved all along: quit any time,\nthen Continue on the title screen.",
 	"players": "Take turns: Mario plays until he loses a life, then Luigi.\nTogether: both at once - each presses jump on his pad,\nor share a keyboard (Mario A D S W, Luigi arrows K L).\nFall behind or lose a life: you float back in a bubble.\nShared score, own lives, one team high score.",
+	"wifi": "Both devices in the same Wi-Fi.\nMario: Play > 2 Players - Wi-Fi > Host a game.\nLuigi: ... > Join a game, pick Mario's (or type the\naddress Mario's screen shows). Same game version on both.",
 	"goal": "Stomp enemies from above.\nCoins: points, 100 coins = extra life.\nPipes marked by coins lead to bonus rooms.\nGrab the flag pole as high as you can!\nExtra lives for points: Settings > 1-UP points.",
 }
 
@@ -175,6 +178,18 @@ func _rebuild() -> void:
 			_build_players()
 		Screen.JOIN:
 			_build_join()
+		Screen.NETMENU:
+			_build_netmenu()
+		Screen.NETHOST:
+			_build_nethost()
+		Screen.NETJOIN:
+			_build_netjoin()
+		Screen.NETWAIT:
+			_build_netwait()
+		Screen.NETPAUSE:
+			_build_netpause()
+		Screen.INFO:
+			_build_info()
 	_panel.reset_size()
 	_recenter_panel.call_deferred()
 	# again once wrapped hint labels know their real width (before that they
@@ -508,6 +523,10 @@ func _build_players() -> void:
 		play_pressed.emit(-1)))
 	if coop_possible():
 		_vbox.add_child(_button("2 Players - together", func(): _open_join(false)))
+	if wifi_possible():
+		_vbox.add_child(_button("2 Players - Wi-Fi", func():
+			_net_continue = false
+			_show_screen(Screen.NETMENU)))
 	var h := _hint("Take turns: Mario plays until he loses a life, then Luigi.\nTogether: both at once - two pads, or one keyboard\nfor two (Mario A D S W, Luigi arrow keys).")
 	h.add_theme_color_override("font_color", UiStyle.ACCENT)
 	_vbox.add_child(h)
@@ -573,7 +592,12 @@ func _build_join() -> void:
 	else:
 		_vbox.add_child(_hint("Each player presses jump on his own controller:\npad A - keyboard Space (Mario) or Up arrow (Luigi)\n- Mario can also tap here to play with the touch buttons."))
 		var back := _button("Back", func(): _show_screen(Screen.START), true)
-		_vbox.add_child(back)
+		if _join_continue and wifi_possible():
+			_vbox.add_child(_hbox([_button("Luigi via Wi-Fi", func():
+				_net_continue = true
+				_start_hosting()), back]))
+		else:
+			_vbox.add_child(back)
 		_default_focus = back
 
 func _apply_join() -> void:
@@ -618,6 +642,152 @@ func _join_input(event: InputEvent) -> void:
 	if snd:
 		snd.play("coin")
 	_rebuild()
+
+# ------------------------------------------------------------------ Wi-Fi --
+## v1.8 stage 1: two devices in the same Wi-Fi (native builds; a browser
+## can't use the local network — stage 2 brings an internet relay).
+static func wifi_possible() -> bool:
+	return not OS.has_feature("web")
+
+var _net_continue := false
+var _net_disc: NetLink.Discovery
+var _net_found_sig := ""
+var _ip_edit: LineEdit
+var _info := ["", ""]
+
+func take_net_continue() -> bool:
+	var c := _net_continue
+	_net_continue = false
+	return c
+
+func show_info(title: String, text: String) -> void:
+	_info = [title, text]
+	_show_screen(Screen.INFO)
+
+func show_net_pause() -> void:
+	_show_screen(Screen.NETPAUSE)
+
+func _build_info() -> void:
+	_panel.custom_minimum_size = Vector2(320, 0)
+	_vbox.add_child(_heading(_info[0]))
+	_vbox.add_child(_hint(_info[1]))
+	_vbox.add_child(_button("OK", func(): _show_screen(Screen.START), true))
+
+func _build_netmenu() -> void:
+	_panel.custom_minimum_size = Vector2(320, 0)
+	_vbox.add_child(_heading("WI-FI"))
+	_vbox.add_child(_button("Host a game  (Mario)", _start_hosting))
+	_vbox.add_child(_button("Join a game  (Luigi)", func(): _show_screen(Screen.NETJOIN)))
+	var h := _hint("Both devices in the same Wi-Fi. Mario's device runs\nthe game, Luigi's shows it and sends his buttons.\nBoth need the same game version.")
+	h.add_theme_color_override("font_color", UiStyle.ACCENT)
+	_vbox.add_child(h)
+	_vbox.add_child(_button("Back", func(): _show_screen(Screen.PLAYERS), true))
+
+func _start_hosting() -> void:
+	if Game.instance == null:
+		return
+	var err := Game.instance.net_host_start()
+	if err != OK:
+		show_info("WI-FI", "Could not open the game for Wi-Fi (error %d).\nIs another copy of the game already hosting?" % err)
+		return
+	_show_screen(Screen.NETHOST)
+
+func _build_nethost() -> void:
+	_panel.custom_minimum_size = Vector2(320, 0)
+	_vbox.add_child(_heading("WAITING FOR LUIGI"))
+	var ips := NetLink.local_ips()
+	var addr := ", ".join(ips) if not ips.is_empty() else "no Wi-Fi address found"
+	_vbox.add_child(_hint("On Luigi's device: Play > 2 Players - Wi-Fi > Join.\nThis game shows up there by itself, or type its address:"))
+	var a := _hint(addr, 16)
+	a.add_theme_color_override("font_color", UiStyle.ACCENT)
+	_vbox.add_child(a)
+	_vbox.add_child(_button("Cancel", func():
+		if Game.instance:
+			Game.instance.net_stop()
+		_show_screen(Screen.START), true))
+
+func _build_netjoin() -> void:
+	_panel.custom_minimum_size = Vector2(330, 0)
+	_vbox.add_child(_heading("JOIN A GAME"))
+	if _net_disc == null:
+		_net_disc = NetLink.Discovery.new()
+		if _net_disc.start_search() != OK:
+			_vbox.add_child(_hint("(searching is not possible here - type the address)"))
+	var found: Dictionary = _net_disc.found
+	_net_found_sig = ",".join(found.keys())
+	if found.is_empty():
+		_vbox.add_child(_hint("Looking for games in this Wi-Fi ..."))
+	for ip in found:
+		var hb := _button("Mario on %s  (%s)" % [found[ip].name, ip], _connect_to.bind(ip))
+		_vbox.add_child(hb)
+		if _default_focus == null:
+			_default_focus = hb
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 4)
+	_ip_edit = LineEdit.new()
+	_ip_edit.placeholder_text = "192.168.x.x"
+	_ip_edit.text = str(GameSettings.load_all().get("last_host", ""))
+	_ip_edit.custom_minimum_size = Vector2(150, BTN_H)
+	_ip_edit.add_theme_font_size_override("font_size", FONT)
+	_ip_edit.text_submitted.connect(func(t: String): _connect_to(t.strip_edges()))
+	row.add_child(_ip_edit)
+	row.add_child(_button("Connect", func(): _connect_to(_ip_edit.text.strip_edges())))
+	_vbox.add_child(row)
+	var back := _button("Back", func():
+		_stop_search()
+		_show_screen(Screen.NETMENU), true)
+	_vbox.add_child(back)
+	if _default_focus == null:
+		_default_focus = back
+
+func _stop_search() -> void:
+	if _net_disc:
+		_net_disc.stop()
+		_net_disc = null
+
+func _process(delta: float) -> void:
+	if screen != Screen.NETJOIN or _net_disc == null:
+		return
+	_net_disc.poll(delta)
+	if ",".join(_net_disc.found.keys()) != _net_found_sig and not (_ip_edit and _ip_edit.has_focus()):
+		_rebuild()
+
+func _connect_to(ip: String) -> void:
+	if ip == "" or Game.instance == null:
+		return
+	_stop_search()
+	var c := GameSettings.load_all()
+	c["last_host"] = ip
+	GameSettings.save(c)
+	set_meta("net_ip", ip)
+	if Game.instance.net_join(ip) != OK:
+		show_info("WI-FI", "Could not connect to %s." % ip)
+		return
+	_show_screen(Screen.NETWAIT)
+
+func _build_netwait() -> void:
+	_vbox.add_child(_heading("CONNECTING"))
+	_vbox.add_child(_hint("to Mario's game at %s ..." % get_meta("net_ip", "")))
+	_vbox.add_child(_button("Cancel", func(): if Game.instance: Game.instance.net_leave(""), true))
+
+func _build_netpause() -> void:
+	_vbox.add_child(_heading("PAUSED"))
+	_vbox.add_child(_button("Resume", func():
+		hide_all()
+		if Game.instance:
+			Game.instance.net_guest_resume()))
+	_vbox.add_child(_button("Settings", func():
+		_return_screen = Screen.NETPAUSE
+		_show_screen(Screen.SETTINGS)))
+	_vbox.add_child(_button("How to Play", func():
+		_return_screen = Screen.NETPAUSE
+		_help_page = 0
+		_show_screen(Screen.HELP)))
+	_vbox.add_child(_button("Leave game", func():
+		if Game.instance:
+			Game.instance.net_leave("")))
+	_vbox.add_child(_hint("Mario's game is paused too."))
 
 func _make_name_edit(text := "") -> LineEdit:
 	var e := LineEdit.new()

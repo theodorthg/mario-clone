@@ -12,6 +12,14 @@ extends Node
 
 signal mute_changed(muted: bool)
 
+## Wi-Fi host (v1.8): every sound / music call is also sent to the guest
+## (NetHost sets this; the guest's own Snd plays it).
+var net_tap := Callable()
+
+func _tap(method: String, args := []) -> void:
+	if net_tap.is_valid():
+		net_tap.call(method, args)
+
 const CFG_PATH := "user://settings.cfg"
 const CALIB_VERSION := 1
 
@@ -107,16 +115,19 @@ func _find_stream(key: String) -> AudioStream:
 	return null
 
 func play(key: String) -> void:
+	_tap("play", [key])
 	var p = _players.get(key)
 	if p and p.stream:
 		p.play()
 
 func stop(key: String) -> void:
+	_tap("stop", [key])
 	var p = _players.get(key)
 	if p:
 		p.stop()
 
 func play_music(key: String, pitch := 1.0) -> void:
+	_tap("play_music", [key, pitch])
 	if _music == key and _players.has(key) and _players[key].playing:
 		set_music_pitch(pitch)
 		return
@@ -129,12 +140,14 @@ func play_music(key: String, pitch := 1.0) -> void:
 		p.play()
 
 func set_music_pitch(pitch: float) -> void:
+	_tap("set_music_pitch", [pitch])
 	_music_pitch = pitch
 	var p = _players.get(_music)
 	if p:
 		p.pitch_scale = pitch
 
 func stop_music() -> void:
+	_tap("stop_music", [])
 	for k in MUSIC_KEYS:
 		var p = _players.get(k)
 		if p:
@@ -142,6 +155,7 @@ func stop_music() -> void:
 	_music = ""
 
 func pause_music(paused: bool) -> void:
+	_tap("pause_music", [paused])
 	var p = _players.get(_music)
 	if p:
 		p.stream_paused = paused
@@ -150,6 +164,7 @@ func current_music() -> String:
 	return _music
 
 func stop_all() -> void:
+	_tap("stop_all", [])
 	for k in _players:
 		_players[k].stop()
 	_music = ""

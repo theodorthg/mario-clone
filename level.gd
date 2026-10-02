@@ -114,6 +114,10 @@ var _col_biome := PackedStringArray()
 var pools: Array[Rect2] = []
 var currents: Array = []             # [{rect: Rect2, dir: int}]
 var doors := {}                      # Vector2i cell -> Door (v1.4 ghost house)
+## Wi-Fi guest (v1.8): only the static look (tiles, water, decor, castle) —
+## everything that moves comes from the host (NetHost / NetClient). On the
+## host those static nodes carry the meta "net_static" so they are not sent.
+var visual_only := false
 
 static var _tileset_cache: TileSet
 
@@ -138,7 +142,7 @@ func setup(level_script: Script) -> void:
 	for cur in consts.get("CURRENTS", []):
 		var cr: Rect2i = cur[0]
 		currents.append({"rect": Rect2(Vector2(cr.position) * T, Vector2(cr.size) * T), "dir": int(cur[1])})
-	for m in consts.get("METEORS", []):
+	for m in ([] if visual_only else consts.get("METEORS", [])):
 		var mf := MeteorField.new()
 		mf.c0 = m.x
 		mf.c1 = m.y
@@ -194,6 +198,7 @@ func _build_water() -> void:
 		pool.z_index = 2
 		pool.collision_enabled = false
 		pool.modulate = Color(1, 1, 1, 0.55)
+		pool.set_meta("net_static", true)
 		add_child(pool)
 		for pr in pools:
 			var c0 := int(pr.position.x / T)
@@ -206,6 +211,7 @@ func _build_water() -> void:
 		var fx := CurrentFx.new()
 		fx.rect = cur.rect
 		fx.dir = cur.dir
+		fx.set_meta("net_static", true)
 		add_child(fx)
 
 func area_at(x: float) -> String:
@@ -266,6 +272,7 @@ func _build_tiles() -> void:
 	tiles.name = "Tiles"
 	tiles.tile_set = tileset()
 	tiles.z_index = 0
+	tiles.set_meta("net_static", true)
 	add_child(tiles)
 	# water sits in FRONT of actors (you sink behind the surface), see-through
 	water = TileMapLayer.new()
@@ -273,6 +280,7 @@ func _build_tiles() -> void:
 	water.tile_set = tiles.tile_set
 	water.z_index = 2
 	water.collision_enabled = false
+	water.set_meta("net_static", true)
 	add_child(water)
 	for r in ROWS:
 		for c in cols:
@@ -388,11 +396,19 @@ func _build_entities() -> void:
 	var decor_layer := Node2D.new()
 	decor_layer.name = "Decor"
 	decor_layer.z_index = -1
+	decor_layer.set_meta("net_static", true)
 	add_child(decor_layer)
 	move_child(decor_layer, 0)
 	for r in ROWS:
 		for c in cols:
 			var ch := grid[r][c]
+			if visual_only:
+				if DECOR.has(ch):
+					var dn: String = DECOR_BIOME.get(biome_at(c), {}).get(ch, DECOR[ch])
+					if ch == "f" and biome_at(c) == "grass":
+						dn = FLOWERS[rng.randi() % FLOWERS.size()]
+					_add_decor(decor_layer, dn, cell_feet(c, r))
+				continue
 			match ch:
 				"?":
 					_add_block(c, r, Block.Kind.QUESTION, "coin")
@@ -575,6 +591,14 @@ func _add_decor(parent: Node, name: String, feet: Vector2) -> Sprite2D:
 
 func _build_meta() -> void:
 	start_pos = cell_feet(data.START.x, data.START.y)
+	for name in data.AREAS:
+		var a0: Dictionary = data.AREAS[name]
+		areas[name] = {"rect": Rect2(a0["from"] * T, 0, (a0["to"] - a0["from"] + 1) * T, ROWS * T), "theme": a0["theme"]}
+	if visual_only:
+		if data.FLAG.x >= 0:
+			var vcs := _add_decor(self, "castle", Vector2(data.CASTLE.x * T + 40, (data.CASTLE.y + 1) * T))
+			vcs.z_index = -1
+		return
 	for cp in data.CHECKPOINTS:
 		checkpoints.append(cell_feet(cp.x, cp.y))
 		var marker := Checkpoint.new()
@@ -596,6 +620,7 @@ func _build_meta() -> void:
 	# castle: bottom-left at CASTLE cell's bottom-left
 	var cs := _add_decor(self, "castle", Vector2(data.CASTLE.x * T + 40, (data.CASTLE.y + 1) * T))
 	cs.z_index = -1
+	cs.set_meta("net_static", true)
 	castle_door = Vector2(data.CASTLE.x * T + 40, (data.CASTLE.y + 1) * T)
 	# flag hidden inside the tower top, raised by raise_castle_flag()
 	castle_flag = _add_decor(self, "castle_flag", Vector2(data.CASTLE.x * T + 46, cs.position.y + 22))

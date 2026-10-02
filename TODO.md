@@ -37,8 +37,13 @@ Spezialversion auf eigenem Webspace):
       Ruckeln. Godot: MultiplayerAPI/RPC; WebSocketMultiplayerPeer läuft
       überall inkl. Browser, ENet (schneller) nur nativ, WebRTC (direkt
       von Gerät zu Gerät) braucht Vermittlungsserver + STUN/TURN.
-- [ ] Stufe 1 (v1.8?): Spiel im lokalen Netz (WLAN) — Host-Suche per
-      UDP-Broadcast, kein externer Server; Linux/Windows/Android.
+- [x] Stufe 1 v1.8.0 (2026-10-02): Spiel im lokalen Netz (WLAN) — Host
+      rechnet, Gast zeigt (Snapshots), Host-Suche per Broadcast + Antwort,
+      Adresse als Fallback; Linux/Windows/Android (nicht Browser).
+      Lokal mit zwei Fenstern getestet (alle Welten, Pause, Abbruch).
+- [ ] Verbindungstest des Nutzers auf zwei echten Geräten (z. B. PC +
+      RG552 oder Handy) → Freigabe für Stufe 2. Rückmeldungen hier
+      eintragen (gefunden? Ruckeln? Verzögerung beim Springen?).
 - [ ] Stufe 2 (v1.9?): über das Internet mit Raum-Code (Lobby/Relay-
       Server), auch im Browser; Verbindungsabbruch, Pause, Spielstand und
       Team-Highscore beim Host.

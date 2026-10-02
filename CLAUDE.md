@@ -25,7 +25,8 @@ davon ist aus Nintendo-Spielen übernommen (Figuren nur „im Stil von“).
   (letzte Welt, Endboss). Damit ist die letzte Erweiterungsrunde (Nutzer
   2026-09-28) abgeschlossen — weitere Ideen nur, wenn der Nutzer welche
   hat. Stand: 8 Welten, 25 Kurse, 8 Bosse. v1.6.0 zwei Spieler
-  abwechselnd (Mario + Luigi), v1.7.0 Coop (Nutzer 2026-10-02).
+  abwechselnd (Mario + Luigi), v1.7.0 Coop, v1.8.0 Wi-Fi-Coop (Nutzer
+  2026-10-02; Internet = Stufe 2 nach Freigabe).
 
 ## Design-Entscheidungen
 
@@ -327,7 +328,8 @@ Nintendo-Themen. Loops werden mit umgeklapptem Nachhall gerendert (nahtlos);
   Ruhe), polish (v1.2.1: Panzer-Limit, Boss je Schwierigkeit + nichts nach
   oben, alle zehn Bonusräume mit Screenshot, Drache an der Grotte,
   benannter Lauf ohne Namensfeld, „Clear list“), water (v1.3), ghost
-  (v1.4), volcano (v1.5), turns (v1.6), coop (v1.7). **Jedes Szenario sichert `savegame.cfg`, `hall_of_fame.cfg` und
+  (v1.4), volcano (v1.5), turns (v1.6), coop (v1.7), nethost/netguest +
+  netshow/netwatch (v1.8, zwei Fenster). **Jedes Szenario sichert `savegame.cfg`, `hall_of_fame.cfg` und
   `settings.cfg` vorher und stellt sie danach wieder her** (Autosave/Game
   Over schreiben sonst in die echten Dateien des Entwicklungsrechners).
   Synthetische Mausklicks zählen in
@@ -657,6 +659,58 @@ abwechselnd (läuft überall), v1.7.0 Coop (siehe `TODO.md`).
   zusätzlich nach `user://_playtest_backup/` und spielt sie beim nächsten
   Start zurück, falls ein Lauf mit Skriptfehler abbrach (so waren Test-
   Einträge in die echte Bestenliste geraten).
+
+## Wi-Fi-Coop (v1.8, Stufe 1 von 2)
+
+Nutzer 2026-10-02: zwei Geräte am selben Spiel — Stufe 1 lokales WLAN,
+Stufe 2 Internet (erst nach Freigabe durch einen Verbindungstest).
+- **Prinzip: Host rechnet, Gast zeigt.** Mario-Gerät = Host spielt ein
+  normales Coop-Spiel (`players == COOP`, Luigi ohne lokales Gerät,
+  `CoopInput.reset()`); Luigis Tasten kommen per Netz und werden auf die
+  `p2_*`-Aktionen gedrückt (`NetHost._apply_mask`). Der Gast (`State.NET`)
+  rechnet nichts, er zeigt nur.
+- **`NetLink`** (`net_link.gd`): ENet (UDP) Port 47111, Kanal 0
+  zuverlässig (Szene, Sounds, Eingaben, String-Tabelle), Kanal 1
+  unzuverlässig (Snapshots); Nachrichten `var_to_bytes([typ, daten])`,
+  nie Objekte. `Discovery`: Host lauscht auf 47110 und schickt jede
+  Sekunde ein Beacon an 47112, der Gast lauscht auf 47112 und fragt per
+  Broadcast „FIND“ (+ 127.0.0.1 für Tests), der Host antwortet direkt —
+  klappt auch, wenn eine Seite eingehende Broadcasts verwirft (Android
+  ohne Multicast-Lock). Fallback: Adresse eintippen (der Host zeigt seine
+  WLAN-Adressen, `last_host` in den Settings). Nur nativ — der Browser
+  kann kein UDP (Menüpunkt dort ausgeblendet, `Menus.wifi_possible()`).
+- **`NetHost`** (30 Snapshots/s, deflate-komprimiert): Szene (`level`
+  mit Kursindex / `map` / `wait` mit Text), Kamera (für die Bildschirm-
+  größe des Gasts geklemmt), Theme, HUD (`Hud.net_state`), Karte
+  (`WorldMap.net_state`) bzw. alle sichtbaren beweglichen Dinge des
+  Kurses: Baum durchlaufen, Knoten mit Meta `net_static` überspringen
+  (Tiles, Wasser, Becken, Strömungs-Streifen, Deko, Burg), pro Ding 9
+  Ints + 12 Floats (Art, Ressource/Animation über String-Tabelle,
+  Frame, Flags, z, Transform, Offset, Farbe — Modulate-Kette
+  ausmultipliziert). Arten: AnimatedSprite2D, Sprite2D (Pfad oder
+  `atlas|pfad|region`), ScorePopup, Effekte (Sparkle, JumpPuff,
+  StunStars, MeteorMark — der Gast erzeugt dieselbe Klasse), Blase,
+  Drachenzunge (statische Zeichenfunktionen `Player.draw_bubble_on`,
+  `Dino.draw_tongue_on`). Nur was im Blickfeld des Gasts liegt (+96 px).
+  Unbekanntes meldet `push_warning("NetHost: can't send …")`.
+  Sounds: `SoundManager.net_tap` → alle play/music-Aufrufe gehen mit.
+- **`NetClient`**: baut den festen Teil selbst (`Level.visual_only` —
+  nur Tiles, Wasser, Deko, Burg), Puppets nach Netz-ID, gleitet
+  Positionen und Kamera von Snapshot zu Snapshot (Sprünge > 48 px ohne
+  Gleiten), eigene Lautstärke/Mute, sendet `in` (Bitmaske left, right,
+  down, up, jump, run bei Änderung), `vp` (Bildschirmgröße), `pause`.
+  Versionen müssen in Major.Minor gleich sein („hello“).
+- **Abläufe**: Titel > Play > „2 Players - Wi-Fi“ > Host / Join; ein
+  gespeichertes Coop-Spiel lässt sich per „Luigi via Wi-Fi“ fortsetzen.
+  Pause von beiden Seiten (Gast: eigenes Menü Resume / Settings / Help /
+  Leave). Gast weg → Banner „LUIGI LEFT - WAITING“, er kann wieder
+  beitreten. Host zum Titel → Hosting endet, Gast bekommt „Mario ended
+  the Wi-Fi game.“ Android: Berechtigungen internet, access_network_state,
+  access_wifi_state, change_wifi_multicast_state.
+- Tests: `nethost` + `netguest` bzw. `netshow` + `netwatch` in ZWEI
+  Fenstern gleichzeitig (127.0.0.1); vorher sicherstellen, dass kein alter
+  Testprozess den Port 47111 hält (sonst „error 20“ und der Gast landet
+  beim alten Host). Hilfeseite „Wi-Fi“.
 
 ## Biom-Gegner (v0.9)
 

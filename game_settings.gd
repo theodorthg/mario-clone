@@ -17,6 +17,7 @@ const DEF := {
 	"start_big": false,     # start every life as big hero (easier)
 	"double_jump": true,    # press jump again in mid-air (assist, v0.11)
 	"touch_buttons": 0,     # index into TOUCH_NAMES: on-screen move/jump/run buttons
+	"last_host": "",        # Wi-Fi guest: the last address typed / joined (v1.8)
 }
 
 const LIVES_MIN := 1

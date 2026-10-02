@@ -604,11 +604,15 @@ func pop_bubble() -> void:
 func _draw() -> void:
 	if mode != Mode.BUBBLE:
 		return
-	var c := Vector2(0, -_rect.size.y * 0.5 - 2.0)
-	var r := 13.0 if power == Power.SMALL else 18.0
-	draw_circle(c, r, Color(0.7, 0.9, 1.0, 0.22))
-	draw_arc(c, r, 0.0, TAU, 28, Color(0.85, 0.95, 1.0, 0.85), 1.0)
-	draw_arc(c, r - 3.0, deg_to_rad(200), deg_to_rad(250), 6, Color(1, 1, 1, 0.9), 1.0)
+	draw_bubble_on(self, _rect.size.y, power == Power.SMALL)
+
+## Also used by the Wi-Fi guest (NetClient) for a remote hero's bubble.
+static func draw_bubble_on(ci: CanvasItem, body_h: float, small: bool) -> void:
+	var c := Vector2(0, -body_h * 0.5 - 2.0)
+	var r := 13.0 if small else 18.0
+	ci.draw_circle(c, r, Color(0.7, 0.9, 1.0, 0.22))
+	ci.draw_arc(c, r, 0.0, TAU, 28, Color(0.85, 0.95, 1.0, 0.85), 1.0)
+	ci.draw_arc(c, r - 3.0, deg_to_rad(200), deg_to_rad(250), 6, Color(1, 1, 1, 0.9), 1.0)
 
 # ------------------------------------------------------- scripted helpers --
 func set_scripted(on: bool) -> void:

@@ -206,8 +206,12 @@ func set_buttons_visible(v: bool) -> void:
 # ----------------------------------------------------------------- banners --
 ## Boss health pips under the HUD row (hp < 0 hides them).
 var _boss_box: HBoxContainer
+var _boss_hp := -1
+var _boss_max := 0
 
 func set_boss(hp: int, max_hp: int) -> void:
+	_boss_hp = hp
+	_boss_max = max_hp
 	if _boss_box == null:
 		_boss_box = HBoxContainer.new()
 		_boss_box.anchor_left = 0.5
@@ -237,6 +241,44 @@ func set_boss(hp: int, max_hp: int) -> void:
 		pip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		pip.color = Color("e8402e") if i < hp else Color(0.2, 0.15, 0.2, 0.8)
 		_boss_box.add_child(pip)
+
+# ----------------------------------------------------------- Wi-Fi guest --
+## Everything the guest's HUD needs (NetHost sends it with every snapshot).
+func net_state() -> Array:
+	var icon: TextureRect = get_meta("card_icon")
+	return [_score.text, _score_title.text, _score_title.get_theme_color("font_color"), _coins.text, _world.text,
+		_time.text, _lives.text, _banner.text, _banner.visible, _banner.modulate.a, _card.visible,
+		_card_title.text, _card_name.text, _card_lives.text, _card_player.text,
+		_card_player.get_theme_color("font_color"), _card_player.visible, icon.visible,
+		(icon.texture as AtlasTexture).atlas.resource_path, _boss_hp, _boss_max]
+
+func apply_net_state(a: Array) -> void:
+	if a.size() < 21:
+		return
+	_score.text = a[0]
+	_score_title.text = a[1]
+	_score_title.add_theme_color_override("font_color", a[2])
+	_coins.text = a[3]
+	_world.text = a[4]
+	_time.text = a[5]
+	_lives.text = a[6]
+	_banner.text = a[7]
+	_banner.visible = a[8]
+	_banner.modulate.a = a[9]
+	_card.visible = a[10]
+	_card_title.text = a[11]
+	_card_name.text = a[12]
+	_card_lives.text = a[13]
+	_card_player.text = a[14]
+	_card_player.add_theme_color_override("font_color", a[15])
+	_card_player.visible = a[16]
+	var icon: TextureRect = get_meta("card_icon")
+	icon.visible = a[17]
+	var at: AtlasTexture = icon.texture
+	if at.atlas.resource_path != a[18] and ResourceLoader.exists(a[18]):
+		at.atlas = load(a[18])
+	if int(a[19]) != _boss_hp or int(a[20]) != _boss_max:
+		set_boss(int(a[19]), int(a[20]))
 
 func show_banner(text: String, duration: float) -> void:
 	if _banner_tween and _banner_tween.is_valid():

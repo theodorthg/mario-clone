@@ -2302,6 +2302,153 @@ func _run() -> void:
 			print("COOP game over: screen=%d hof=%s" % [game.menus.screen,
 				HallOfFame.load_list().map(func(e): return "%s %s run %s" % [e.name, e.score, e.get("run", 0)])])
 			await shot("gameover")
+		"nethost":
+			# v1.8 Wi-Fi: this window hosts (Mario); run "netguest" in a second one
+			SaveGame.clear()
+			var c := ConfigFile.new()
+			c.load(GameSettings.CFG_PATH)
+			c.set_value("progress", "level", "1-1")
+			c.set_value("progress", "world", 1)
+			c.save(GameSettings.CFG_PATH)
+			await _wait(0.6)
+			game._to_title()
+			await _frames(3)
+			game.menus._start_hosting()
+			print("NETHOST waiting: screen=%d (NETHOST=%d) text=%s" % [game.menus.screen, Menus.Screen.NETHOST, _hints()])
+			await shot("waiting")
+			for i in 200:
+				if game.net_host and game.net_host.is_connected_guest():
+					break
+				await _wait(0.1)
+			await _wait(1.0)
+			print("NETHOST guest joined: state=%d (MAP=%d) players=%d" % [game.state, Game.State.MAP, game.players])
+			await shot("map")
+			await _wait(2.0)
+			for k in 10:
+				await _act("jump")
+				await _wait(0.5)
+				if game.state != Game.State.MAP:
+					break
+			await _wait(Game.CARD_TIME + 0.4)
+			var m: Player = game.heroes[0]
+			var l: Player = game.heroes[1]
+			var lx := l.global_position.x
+			await hold("p1_right", 0.6)
+			print("NETHOST in course: mario x=%.0f luigi x=%.0f" % [m.global_position.x, l.global_position.x])
+			for i in 60:
+				await _wait(0.1)
+			print("NETHOST luigi moved by the guest: %.0f -> %.0f, top y %.0f" % [lx, l.global_position.x, l.global_position.y])
+			await shot("level")
+			for i in 80:
+				if game.is_paused():
+					break
+				await _wait(0.1)
+			print("NETHOST paused by the guest: ", game.is_paused())
+			for i in 80:
+				if not game.is_paused():
+					break
+				await _wait(0.1)
+			print("NETHOST resumed by the guest: ", not game.is_paused())
+			await _wait(2.0)
+			game._to_title()
+			print("NETHOST stopped hosting: ", game.net_host == null)
+			await _wait(2.0)
+		"netguest":
+			# v1.8 Wi-Fi: this window joins the "nethost" window as Luigi
+			await _wait(2.5)
+			game.menus.hide_all()
+			game.menus._show_screen(Menus.Screen.NETJOIN)
+			await _wait(3.0)
+			print("NETGUEST found: ", game.menus._net_disc.found if game.menus._net_disc else {})
+			await _wait(0.6)
+			print("NETGUEST join screen: ", _button_texts())
+			await shot("join")
+			game.menus._connect_to("127.0.0.1")
+			for i in 100:
+				if game.net_client and game.net_client._scene_kind == "map":
+					break
+				await _wait(0.1)
+			await _wait(1.0)
+			print("NETGUEST map: state=%d (NET=%d) scene=%s menu=%d" % [game.state, Game.State.NET,
+				game.net_client._scene_kind, game.menus.screen])
+			await shot("map")
+			for i in 100:
+				if game.net_client._scene_kind == "level":
+					break
+				await _wait(0.1)
+			await _wait(0.6)
+			await shot("card")
+			await _wait(Game.CARD_TIME + 0.8)
+			print("NETGUEST level: puppets=%d strings=%d ping=%d ms theme=%s hud=%s" % [game.net_client._puppets.size(),
+				game.net_client._strings.size(), game.net_client.link.ping_ms(), game.backdrop.theme,
+				game.hud._score_title.text])
+			await shot("level")
+			Input.action_press("move_right")
+			await _wait(1.2)
+			Input.action_press("jump")
+			await _wait(0.4)
+			Input.action_release("jump")
+			await _wait(0.6)
+			Input.action_release("move_right")
+			await _wait(0.4)
+			await shot("level_moved")
+			await _wait(2.5)
+			game._toggle_pause()
+			await _wait(1.0)
+			print("NETGUEST pause menu: screen=%d (NETPAUSE=%d) host paused=%s" % [game.menus.screen,
+				Menus.Screen.NETPAUSE, game.net_client._host_paused])
+			await shot("pause")
+			await _press_button("Resume")
+			await _wait(1.0)
+			print("NETGUEST resumed: host paused=%s" % game.net_client._host_paused)
+			for i in 150:
+				if game.state != Game.State.NET:
+					break
+				await _wait(0.1)
+			await _wait(0.5)
+			print("NETGUEST after host left: state=%d screen=%d (INFO=%d) text=%s" % [game.state, game.menus.screen,
+				Menus.Screen.INFO, _hints()])
+			await shot("left")
+		"netshow":
+			# v1.8: host cycles through the worlds; "netwatch" (2nd window)
+			# shows them — compare the screenshots pairwise
+			await _wait(0.6)
+			game._to_title()
+			await _frames(3)
+			game.menus._start_hosting()
+			for i in 200:
+				if game.net_host and game.net_host.is_connected_guest():
+					break
+				await _wait(0.1)
+			await _wait(1.5)
+			for step in [[3, true], [4, false], [13, false], [16, false], [19, false], [22, false], [24, true]]:
+				game.menus.hide_all()
+				game._start_game(step[0], true, step[1])
+				await _wait(Game.CARD_TIME + 1.3)
+				if not step[1]:
+					await hold("move_right", 0.8)
+				else:
+					await _wait(0.8)
+				await shot("host_%s" % Game.LEVELS[step[0]].ID)
+				print("NETSHOW %s nodes sent ~%d" % [Game.LEVELS[step[0]].ID, game.net_host._nids.size()])
+				await _wait(1.5)
+			game._to_title()
+			await _wait(2.0)
+		"netwatch":
+			await _wait(2.5)
+			game.menus.hide_all()
+			game.menus._connect_to("127.0.0.1")
+			var last := -1
+			for i in 600:
+				await _wait(0.1)
+				if game.net_client == null:
+					break
+				if game.net_client._scene_kind == "level" and game.net_client._scene_id != last:
+					last = game.net_client._scene_id
+					await _wait(Game.CARD_TIME + 1.3 + 0.8)
+					var id := str(game.hud._world.text).strip_edges()
+					await shot("guest_%s" % id)
+					print("NETWATCH %s puppets=%d theme=%s" % [id, game.net_client._puppets.size(), game.backdrop.theme])
 		"starthop":
 			# v1.5.1: entering a course with A (also "jump") must not make the
 			# hero hop at the start
