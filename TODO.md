@@ -7,6 +7,14 @@ Git-Log.
 
 ## Offen
 
+4:3-Geräte (Galaxy Tab S3, 2048×1536, gefunden 2026-10-03 beim LAN-Test
+Tablet ↔ RG552 — der LAN-Test selbst lief einwandfrei):
+- [ ] Sichtbereich ist dort 480×360, das Level nur 320 hoch: unter dem
+      Boden ein hellblauer Streifen (~40 px), auf der Weltkarte (Bild nur
+      270 hoch) Streifen oben und unten; der Kartenbanner liegt unter den
+      Touch-Tasten. Idee: Kamera vertikal aufs Level klemmen / Boden nach
+      unten weiterzeichnen, Karte vertikal zentrieren bzw. auffüllen.
+
 Zwei Spieler (Nutzer 2026-10-02, angeregt von Mario Bros. 1983):
 - [x] v1.6.0 Luigi + abwechselnd spielen (SMB1-Regel: Wechsel bei
       Lebensverlust, Weiterspielen am eigenen Checkpoint), eigene Leben/
