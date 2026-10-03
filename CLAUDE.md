@@ -811,6 +811,11 @@ Server: Uberspace **vega.uberspace.de**, Domain **broesel.net**.
 - Abschied: `NetLink.close()` gibt erst die Warteschlange ab (ENet:
   `peer_disconnect` verwirft noch Wartendes, darum flush davor) → Gast
   sieht „Mario ended the game.“
+- **Relay 2.0 (2026-10-03, für Tetris-Versus)**: dient der ganzen Serie.
+  „host“/„join“ tragen die Spiel-Kennung `g` (fehlt = „mario-clone“, also
+  alte Mario-Versionen unverändert); ein Code öffnet nur einen Raum
+  desselben Spiels, Abschiedstexte je Spiel. Nach Änderung wie immer
+  `server/deploy_uberspace.sh` (Nutzer).
 - Tests: `onlinehost` + `onlineguest` (zwei Fenster + lokaler Relay
   `cd server && PORT=8765 node relay.js`; Raum-Code über `room.txt` im
   Ausgabeordner). Hilfeseite „Online“.

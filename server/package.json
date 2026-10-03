@@ -1,6 +1,6 @@
 {
   "name": "mario-clone-relay",
-  "version": "1.9.1",
+  "version": "2.0.0",
   "description": "Online co-op relay for mario-clone (passes messages between Mario's and Luigi's game)",
   "main": "relay.js",
   "private": true,
