@@ -7,13 +7,24 @@ Git-Log.
 
 ## Offen
 
+Grüne Schildkröte in einer Struktur (Nutzer 2026-10-03):
+- [ ] In einem Kurs spawnt eine grüne Schildkröte IN einer Struktur
+      (Blöcke/Mauer); nachdem Mario auf dem Drachen sie mit der Zunge
+      gefressen hat, bleibt dort ein Loch. Welcher Kurs, weiß der Nutzer
+      nicht genau — vermutlich nicht nach den x-2-Kursen (also eher früh).
+      Vermutung: das Gegner-Zeichen im Level-Raster ersetzt eine
+      Block-/Wandzelle (make_levels.py), die Lücke ist dann nach dem
+      Fressen sichtbar. Prüfen: alle Gegner-Zellen suchen, die links/rechts
+      oder oben/unten in festen Zellen stecken.
+
 4:3-Geräte (Galaxy Tab S3, 2048×1536, gefunden 2026-10-03 beim LAN-Test
 Tablet ↔ RG552 — der LAN-Test selbst lief einwandfrei):
-- [ ] Sichtbereich ist dort 480×360, das Level nur 320 hoch: unter dem
-      Boden ein hellblauer Streifen (~40 px), auf der Weltkarte (Bild nur
-      270 hoch) Streifen oben und unten; der Kartenbanner liegt unter den
-      Touch-Tasten. Idee: Kamera vertikal aufs Level klemmen / Boden nach
-      unten weiterzeichnen, Karte vertikal zentrieren bzw. auffüllen.
+- [x] v1.9.6: Sichtbereich dort 480×360, Level nur 320 hoch, Karte 270 →
+      hellblauer Streifen unter dem Boden bzw. über/unter der Karte.
+      Jetzt zoomt die Kamera, bis der Bereich die Höhe füllt
+      (`Game.fit_zoom`, `view_size()`; Kulisse, Netz-Gast mit). Der
+      Kartenbanner sitzt bei sichtbaren Touch-Tasten über ihnen.
+      Playtest `tall` (`--resolution 1024x768`).
 
 Zwei Spieler (Nutzer 2026-10-02, angeregt von Mario Bros. 1983):
 - [x] v1.6.0 Luigi + abwechselnd spielen (SMB1-Regel: Wechsel bei

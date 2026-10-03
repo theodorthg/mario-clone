@@ -745,6 +745,17 @@ Stufe 2 Internet (erst nach Freigabe durch einen Verbindungstest).
   12 s. Playtest `languest` (Gast im echten Netz, optional Adresse als
   3. Argument, `--maximized`).
 
+- **v1.9.6** (Galaxy Tab S3, 4:3): der Sichtbereich ist dort 480×360
+  Design-px (EXPAND hält die Breite), Kurse sind aber nur 320 hoch, die
+  Karte 270 → leerer Himmel-Streifen unter dem Boden. `Game.fit_zoom(vp,
+  top, bottom)` = max(1, Höhe / Bereichshöhe), `_apply_camera()` setzt
+  `camera.zoom` (4:3: Kurs 1,125, Karte 1,333; 16:9 und breiter: 1);
+  alles, was die sichtbare Welt braucht, nimmt `view_size()` (Viewport /
+  Zoom) statt `get_viewport_rect()`; `backdrop.gd` ebenso. Der Host
+  schickt dem Gast seinen Zoom mit (`"z"` im Snapshot, aus dessen
+  Bildschirmgröße). Kartenbanner über den Touch-Tasten
+  (`WorldMap._place_band`). Playtest `tall`.
+
 ## Online-Coop (v1.9, Stufe 2)
 
 Freigabe nach dem Wi-Fi-Test (Nutzer 2026-10-02: „Klappt alles super“).

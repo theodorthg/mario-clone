@@ -36,6 +36,7 @@ var _delay := 0.0
 var _layer: CanvasLayer
 var _title: Label
 var _hint: Label
+var _band: ColorRect
 var _names: Array[String] = []
 
 func _ready() -> void:
@@ -57,6 +58,7 @@ func _ready() -> void:
 	_layer.layer = 9
 	add_child(_layer)
 	var band := ColorRect.new()
+	_band = band
 	band.color = Color(0.05, 0.04, 0.1, 0.7)
 	band.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	band.offset_top = -24
@@ -275,6 +277,7 @@ func _walk_to(target: int) -> void:
 func _process(delta: float) -> void:
 	if not visible:
 		return
+	_place_band()
 	_update_partner()
 	if puppet:
 		return
@@ -325,6 +328,15 @@ func _point_at(pts: Array, d: float) -> Vector2:
 			return a.lerp(b, d / maxf(seg, 0.001))
 		d -= seg
 	return pts[pts.size() - 1]
+
+## v1.9.6: with touch keys on screen the banner sits just above them
+## (on a tablet the course name ran under the arrow buttons).
+func _place_band() -> void:
+	var touch := Game.instance != null and Game.instance.touch.visible
+	var lift := -(TouchControls.MARGIN + TouchControls.SIZE + 16.0) if touch else 0.0
+	if _band.offset_bottom != lift:
+		_band.offset_bottom = lift
+		_band.offset_top = lift - 24.0
 
 func _update_banner() -> void:
 	var lv: Script = Game.LEVELS[at]

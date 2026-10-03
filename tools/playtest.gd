@@ -419,6 +419,34 @@ func _run() -> void:
 				await teleport(Vector2i(48 if idx == 1 else 60, 12))
 				await _wait(1.8)
 				await shot("level_%d_b" % (idx + 1))
+		"tall":
+			# v1.9.6: 4:3 screen (run with --resolution 1024x768): the camera
+			# zooms in so a course / the map fills the height, no empty band;
+			# the map banner sits above the touch keys
+			game.cfg["touch_buttons"] = 1
+			for lid in ["1-1", "1-4", "2-1", "3-2", "5-1", "6-1", "7-2", "8-1", "8-3"]:
+				var idx := -1
+				for i in Game.LEVELS.size():
+					if Game.LEVELS[i].ID == lid:
+						idx = i
+				game.menus.hide_all()
+				game._start_game()
+				game.level_index = idx
+				game._begin_level()
+				await _wait(Game.CARD_TIME + 0.6)
+				var c := game.camera
+				var vs := game.view_size()
+				print("TALL %s zoom=%.3f view=%s cam=%s limits y %d..%d  shown y %.1f..%.1f" % [lid, c.zoom.x, vs,
+					c.global_position, c.limit_top, c.limit_bottom, c.global_position.y - vs.y * 0.5,
+					c.global_position.y + vs.y * 0.5])
+				await shot("level_" + lid)
+			game.menus.hide_all()
+			game.menus.play_pressed.emit(-1)
+			await _wait(1.0)
+			game.touch.visible = true            # as on a tablet
+			await _wait(0.3)
+			print("TALL map zoom=%.3f view=%s touch=%s" % [game.camera.zoom.x, game.view_size(), game.touch.visible])
+			await shot("map")
 		"card":
 			await _wait(0.5)
 			game.menus.hide_all()
@@ -2448,6 +2476,8 @@ func _run() -> void:
 					await _wait(Game.CARD_TIME + 1.3 + 0.8)
 					var id := str(game.hud._world.text).strip_edges()
 					await shot("guest_%s" % id)
+					if game.net_client == null:      # Mario ended the game meanwhile
+						break
 					print("NETWATCH %s puppets=%d theme=%s" % [id, game.net_client._puppets.size(), game.backdrop.theme])
 		"onlinehost":
 			# v1.9: host a room at a local relay (server/relay.js on :8765);

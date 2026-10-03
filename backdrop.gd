@@ -508,10 +508,12 @@ func _process(delta: float) -> void:
 		_fx.position = view * 0.5 + Vector2(40, -20)
 		_fx.emission_rect_extents = view * 0.5 + Vector2(60, 40)
 	var cam := camera.get_screen_center_position()
-	var left := cam.x - view.x * 0.5
+	# world width on screen (zoomed in on 4:3 screens, Game.fit_zoom)
+	var wv := view / camera.zoom
+	var left := cam.x - wv.x * 0.5
 	for l in _layers:
 		var s: Sprite2D = l.sprite
 		var h: float = s.texture.get_height()
 		var ox: float = left * l.fx + _time * l.auto
-		s.region_rect = Rect2(roundf(ox), 0.0, view.x + 2.0, h)
+		s.region_rect = Rect2(roundf(ox), 0.0, wv.x + 2.0, h)
 		s.global_position = Vector2(roundf(left) - 1.0, roundf(l.y + (cam.y - REF_CAM_Y) * (1.0 - l.fy)))

@@ -447,7 +447,7 @@ func _revive(h: int) -> void:
 		return
 	if heroes.size() < 2:
 		heroes = [null, null]
-	var vs := get_viewport_rect().size
+	var vs := view_size()
 	var p := _make_hero(h, co_power[h], camera.global_position + Vector2(0, -vs.y * 0.5 + 50.0))
 	p.left_limit = _limit_left
 	p.right_limit = camera.limit_right
@@ -457,7 +457,7 @@ func _revive(h: int) -> void:
 ## Every physics frame while playing co-op: screen-edge limit, heroes left
 ## behind go into a bubble, bubbles float to the partner and pop there.
 func _coop_tick(delta: float) -> void:
-	var vs := get_viewport_rect().size
+	var vs := view_size()
 	var cam := camera.global_position
 	var left := cam.x - vs.x * 0.5
 	var bottom := cam.y + vs.y * 0.5
@@ -536,7 +536,7 @@ func _update_camera_coop(delta: float, snap: bool) -> void:
 		if h.global_position.x > lead.global_position.x:
 			lead = h
 		minx = minf(minx, h.global_position.x)
-	var vw := get_viewport_rect().size.x
+	var vw := view_size().x
 	var spread: float = lead.global_position.x - minx
 	var want := (minx + lead.global_position.x) * 0.5 if spread < vw - 80.0 \
 		else lead.global_position.x - (vw * 0.5 - 40.0)
@@ -597,7 +597,7 @@ func _coop_after_death(p: Player) -> void:
 		return
 	var h := p.hero
 	if co_lives[h] > 0:
-		var vs := get_viewport_rect().size
+		var vs := view_size()
 		p.reset_state()
 		p.set_power(co_power[h])
 		p.global_position = camera.global_position + Vector2(0, -vs.y * 0.5 + 50.0)
@@ -998,7 +998,7 @@ func _update_dino_water() -> void:
 			return
 
 func _attract(delta: float) -> void:
-	var vw := get_viewport_rect().size.x
+	var vw := view_size().x
 	_cam_pos.x += _attract_dir * 28.0 * delta
 	if _cam_pos.x > camera.limit_right - vw * 0.5:
 		_attract_dir = -1.0
@@ -1039,7 +1039,9 @@ var cam_wish := Vector2.ZERO
 
 func _apply_camera() -> void:
 	cam_wish = _cam_pos
-	var vs := get_viewport_rect().size
+	var z := fit_zoom(get_viewport_rect().size, camera.limit_top, camera.limit_bottom)
+	camera.zoom = Vector2(z, z)
+	var vs := view_size()
 	var half := vs * 0.5
 	var lo := Vector2(camera.limit_left + half.x, camera.limit_top + half.y)
 	var hi := Vector2(camera.limit_right - half.x, camera.limit_bottom - half.y)
@@ -1047,8 +1049,18 @@ func _apply_camera() -> void:
 	_cam_pos.y = clampf(_cam_pos.y, lo.y, maxf(lo.y, hi.y))
 	camera.global_position = _cam_pos
 
+## v1.9.6: a screen taller than 16:9 (4:3 tablet: 480x360 design px) would
+## show empty space under a course (320 high) or the world map (270): the
+## camera zooms in until the area fills the height. 16:9 and wider: 1.
+static func fit_zoom(vp: Vector2, top: float, bottom: float) -> float:
+	return maxf(1.0, vp.y / maxf(1.0, bottom - top))
+
+## The part of the world the camera shows (viewport / zoom).
+func view_size() -> Vector2:
+	return get_viewport_rect().size / camera.zoom
+
 func is_near_view(pos: Vector2, margin: float) -> bool:
-	var vs := get_viewport_rect().size
+	var vs := view_size()
 	var c := camera.global_position
 	return absf(pos.x - c.x) < vs.x * 0.5 + margin and absf(pos.y - c.y) < vs.y * 0.5 + margin + 64.0
 

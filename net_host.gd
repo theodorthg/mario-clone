@@ -174,14 +174,15 @@ func _send_frame() -> void:
 		_nids.clear()
 		link.send("scene", {"id": _scene_id, "kind": sc[0], "level": sc[2], "text": sc[3]})
 	var cam := _guest_camera()
-	var snap := {"sc": _scene_id, "cam": cam, "hud": game.hud.net_state(), "p": game.is_paused(),
+	var snap := {"sc": _scene_id, "cam": cam, "z": _guest_zoom(), "hud": game.hud.net_state(), "p": game.is_paused(),
 		"th": game.backdrop.theme}
 	if sc[0] == "map":
 		snap["map"] = game.world_map.net_state()
 	elif sc[0] == "level":
 		var ints := PackedInt32Array()
 		var floats := PackedFloat32Array()
-		var view := Rect2(cam - guest_vp * 0.5, guest_vp).grow(96.0)
+		var gv := guest_vp / _guest_zoom()
+		var view := Rect2(cam - gv * 0.5, gv).grow(96.0)
 		_collect(game.level, Color.WHITE, 0, view, ints, floats)
 		snap["i"] = ints
 		snap["f"] = floats
@@ -193,11 +194,15 @@ func _send_frame() -> void:
 ## wider or narrower — RG552 5:3 vs. a 2.2:1 phone).
 func _guest_camera() -> Vector2:
 	var c := game.camera
-	var half := guest_vp * 0.5
+	var half := guest_vp / _guest_zoom() * 0.5
 	var p := game.cam_wish
 	var lo := Vector2(c.limit_left + half.x, c.limit_top + half.y)
 	var hi := Vector2(c.limit_right - half.x, c.limit_bottom - half.y)
 	return Vector2(clampf(p.x, lo.x, maxf(lo.x, hi.x)), clampf(p.y, lo.y, maxf(lo.y, hi.y)))
+
+## The guest's camera zoom (a 4:3 guest zooms in, Game.fit_zoom).
+func _guest_zoom() -> float:
+	return Game.fit_zoom(guest_vp, game.camera.limit_top, game.camera.limit_bottom)
 
 func _collect(n: Node, col: Color, z: int, view: Rect2, ints: PackedInt32Array, floats: PackedFloat32Array) -> void:
 	for c in n.get_children():

@@ -217,6 +217,8 @@ func _apply_snap(d: Dictionary) -> void:
 	var th := str(d.get("th", ""))
 	if _scene_kind == "level" and th != "" and th != game.backdrop.theme:
 		game.backdrop.set_theme(th)
+	var z := float(d.get("z", 1.0))   # 4:3 guest: zoomed in (Game.fit_zoom)
+	game.camera.zoom = Vector2(z, z)
 	var cam: Vector2 = d.get("cam", _cam_to)
 	if _first_scene or cam.distance_to(_cam_to) > 200.0:
 		_cam_from = cam
