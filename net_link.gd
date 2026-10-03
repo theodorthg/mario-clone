@@ -217,6 +217,11 @@ static func local_ips() -> Array:
 ## DISCOVERY_PORT and broadcasts a beacon to GUEST_PORT every second; the
 ## guest listens on GUEST_PORT and broadcasts "FIND" queries, which the host
 ## answers directly (unicast).
+## v1.9.5: a guest PC with a firewall drops both the beacon and the answer
+## to a broadcast (seen with ufw on Linux: OPPO host not found). So the
+## guest also asks every address of its own /24 network directly — the
+## answer to a direct question is let in by any stateful firewall, the
+## guest needs no port rule. (The host still does: it receives.)
 const GUEST_PORT := 47112
 
 class Discovery:
@@ -247,6 +252,11 @@ class Discovery:
 			else:
 				_send_to("255.255.255.255", DISCOVERY_PORT, "FIND")
 				_send_to("127.0.0.1", DISCOVERY_PORT, "FIND")     # same device (tests)
+				_sweep_t -= 1
+				if _sweep_t <= 0 and (_thread == null or not _thread.is_alive()):
+					_sweep_t = 5                                   # every 5 s
+					_sweep()
+		_merge_sweep()
 		while udp.get_available_packet_count() > 0:
 			var pkt := udp.get_packet()
 			var ip := udp.get_packet_ip()
@@ -259,10 +269,77 @@ class Discovery:
 				_send_to(ip, port, "HOST|" + host_name)
 			elif not hosting and body.begins_with("HOST|"):
 				found[ip] = {"name": body.substr(5), "seen": Time.get_ticks_msec()}
-		# forget hosts that went quiet
+		# forget hosts that went quiet (the sweep repeats every ~6.5 s)
 		for ip in found.keys():
-			if Time.get_ticks_msec() - int(found[ip].seen) > 4000:
+			if Time.get_ticks_msec() - int(found[ip].seen) > 12000:
 				found.erase(ip)
+
+	var _sweep_t := 0
+	var _thread: Thread
+	var _mutex := Mutex.new()
+	var _swept := {}                 # ip -> name, filled by the sweep thread
+	var _stop := false
+	## threads of searches that were left while still sending (joined later)
+	static var _lingering: Array = []
+
+	## Asks every address of each local /24 home network (see above) — in
+	## a thread with its own socket: once the system's neighbour table is
+	## full of addresses nobody has, a single send can block for seconds
+	## (measured 3 s; ~1000 at once took 12 s). Only 192.168.x / 10.x, not
+	## Docker (172.16-31) or libvirt (192.168.122).
+	func _sweep() -> void:
+		var targets := []
+		for mine in NetLink.local_ips():
+			var ip := str(mine)
+			if not (ip.begins_with("192.168.") or ip.begins_with("10.")) or ip.begins_with("192.168.122."):
+				continue
+			var p: PackedStringArray = ip.split(".")
+			var net := "%s.%s.%s." % [p[0], p[1], p[2]]
+			for i in range(1, 255):
+				if str(i) != p[3]:
+					targets.append(net + str(i))
+		if targets.is_empty():
+			return
+		if _thread and not _thread.is_alive():
+			_thread.wait_to_finish()
+		_thread = Thread.new()
+		_thread.start(_sweep_worker.bind(targets))
+
+	func _sweep_worker(targets: Array) -> void:
+		var sock := PacketPeerUDP.new()
+		if sock.bind(0) != OK:
+			return
+		var msg := (MAGIC + "|FIND").to_utf8_buffer()
+		for ip in targets:
+			if _stop:
+				break
+			sock.set_dest_address(ip, DISCOVERY_PORT)
+			sock.put_packet(msg)
+			_drain(sock)
+		var until := Time.get_ticks_msec() + 1500
+		while Time.get_ticks_msec() < until and not _stop:
+			_drain(sock)
+			OS.delay_msec(20)
+		sock.close()
+
+	func _drain(sock: PacketPeerUDP) -> void:
+		while sock.get_available_packet_count() > 0:
+			var txt := sock.get_packet().get_string_from_utf8()
+			if txt.begins_with(MAGIC + "|HOST|"):
+				_mutex.lock()
+				_swept[sock.get_packet_ip()] = txt.substr(MAGIC.length() + 6)
+				_mutex.unlock()
+
+	func _merge_sweep() -> void:
+		_mutex.lock()
+		for ip in _swept:
+			found[ip] = {"name": _swept[ip], "seen": Time.get_ticks_msec()}
+		_swept.clear()
+		_mutex.unlock()
+		for t in _lingering.duplicate():
+			if not t.is_alive():
+				t.wait_to_finish()
+				_lingering.erase(t)
 
 	func _send_to(ip: String, port: int, body: String) -> void:
 		udp.set_dest_address(ip, port)
@@ -270,3 +347,10 @@ class Discovery:
 
 	func stop() -> void:
 		udp.close()
+		_stop = true
+		if _thread:
+			if _thread.is_alive():
+				_lingering.append(_thread)      # finishes on its own, joined later
+			else:
+				_thread.wait_to_finish()
+			_thread = null

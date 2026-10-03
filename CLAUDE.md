@@ -729,6 +729,22 @@ Stufe 2 Internet (erst nach Freigabe durch einen Verbindungstest).
   der Bildschirmgröße des Gasts. Mit gleich großen Testfenstern lokal
   nicht zu sehen — nur auf Geräten mit verschiedenem Seitenverhältnis.
 
+- **v1.9.5** (LAN-Test OPPO als Host ↔ Linux-PC maximiert auf dem
+  Ultrawide-Monitor 3440×1440 als Gast; Gast breiter als Host passt): der
+  PC fand das OPPO nicht — seine Firewall (ufw) lässt weder das Beacon
+  (UDP 47112) noch die Antwort auf eine Broadcast-Frage herein. Der Gast
+  fragt jetzt zusätzlich jede Adresse seines /24-Heimnetzes direkt an
+  (`Discovery._sweep`); Antworten auf eine direkte Frage lässt jede
+  zustandsbehaftete Firewall durch → **der Gast braucht nie eine
+  Freigabe**, nur der Host (47110–47111). Nur 192.168.x / 10.x, nicht
+  Docker (172.16–31) / libvirt (192.168.122). **In einem Thread mit
+  eigenem Socket**: bei vielen Fragen an nicht vorhandene Adressen läuft
+  die Nachbartabelle des Systems voll und ein einzelnes `put_packet`
+  blockiert bis 3 s (gemessen: ~1000 auf einmal = 12 s Standbild). Alle
+  5 s, Ergebnisse per Mutex übernommen, gefundene Hosts verfallen nach
+  12 s. Playtest `languest` (Gast im echten Netz, optional Adresse als
+  3. Argument, `--maximized`).
+
 ## Online-Coop (v1.9, Stufe 2)
 
 Freigabe nach dem Wi-Fi-Test (Nutzer 2026-10-02: „Klappt alles super“).

@@ -56,6 +56,10 @@ Spezialversion auf eigenem Webspace):
       online“, Code „RBJZ“, „New Game“ ohne Warnung, Spielen, Blase, Ende
       — klappt. v1.9.2: Wiederholungsversuche beim Verbinden,
       Beitreten-Bildschirm per Enter/A bedienbar.
+- [x] LAN-Test OPPO (Host) ↔ Linux-PC maximiert, Ultrawide (Gast)
+      2026-10-03: Gast breiter als Host passt; v1.9.5: der Gast findet den
+      Host auch hinter seiner eigenen Firewall (fragt das Heimnetz direkt
+      ab, im Hintergrund-Thread).
 - [x] LAN-Test OnePlus (Host) ↔ RG552 (Gast) 2026-10-02: automatisch
       gefunden, verbunden, Karte/Kurs/Luigi ok; v1.9.4 behebt Helden
       außerhalb des Bilds beim schmaleren Gast.

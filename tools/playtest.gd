@@ -2571,6 +2571,55 @@ func _run() -> void:
 			await _wait(0.5)
 			await shot("join")
 			game.menus._stop_search()
+		"languest":
+			# v1.9.4: join the first host found in the real network (another
+			# device), screenshots of map + course; run with --maximized
+			await _wait(1.0)
+			game.menus.hide_all()
+			game.menus._show_screen(Menus.Screen.NETJOIN)
+			var ip := ""
+			var uargs := OS.get_cmdline_user_args()
+			if uargs.size() > 2:
+				ip = uargs[2]          # typed address (no discovery)
+			for i in (0 if ip != "" else 400):
+				await _wait(0.1)
+				if game.menus._net_disc:
+					for k in game.menus._net_disc.found:
+						if k != "127.0.0.1":
+							ip = k
+				if ip != "":
+					break
+			print("LANGUEST found: ", ip, " vp=", game.get_viewport_rect().size)
+			await shot("join")
+			game.menus._connect_to(ip)
+			for i in 300:
+				if game.net_client and game.net_client._scene_kind == "map":
+					break
+				await _wait(0.1)
+			await _wait(1.5)
+			await shot("map")
+			for i in 900:
+				if game.net_client == null or game.net_client._scene_kind == "level":
+					break
+				await _wait(0.1)
+			await _wait(Game.CARD_TIME + 0.6)
+			await shot("level")
+			Input.action_press("move_right")
+			await _wait(0.6)
+			Input.action_press("jump")
+			await _wait(0.4)
+			Input.action_release("jump")
+			await _wait(0.6)
+			Input.action_release("move_right")
+			await _wait(0.3)
+			await shot("level_moved")
+			print("LANGUEST puppets=%d ping=%d" % [game.net_client._puppets.size() if game.net_client else -1,
+				game.net_client.ping_ms() if game.net_client else -1])
+			for i in 600:
+				if game.state != Game.State.NET:
+					break
+				await _wait(0.1)
+			print("LANGUEST end: ", _hints())
 		"starthop":
 			# v1.5.1: entering a course with A (also "jump") must not make the
 			# hero hop at the start
