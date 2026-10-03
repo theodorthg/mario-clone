@@ -8,14 +8,14 @@ Git-Log.
 ## Offen
 
 Grüne Schildkröte in einer Struktur (Nutzer 2026-10-03):
-- [ ] In einem Kurs spawnt eine grüne Schildkröte IN einer Struktur
-      (Blöcke/Mauer); nachdem Mario auf dem Drachen sie mit der Zunge
-      gefressen hat, bleibt dort ein Loch. Welcher Kurs, weiß der Nutzer
-      nicht genau — vermutlich nicht nach den x-2-Kursen (also eher früh).
-      Vermutung: das Gegner-Zeichen im Level-Raster ersetzt eine
-      Block-/Wandzelle (make_levels.py), die Lücke ist dann nach dem
-      Fressen sichtbar. Prüfen: alle Gegner-Zellen suchen, die links/rechts
-      oder oben/unten in festen Zellen stecken.
+- [x] v1.9.7: In einem Kurs spawnte eine grüne Schildkröte IN einer
+      Struktur; nachdem Mario auf dem Drachen sie mit der Zunge gefressen
+      hatte, blieb dort ein Loch. Gefunden per Suche über alle Kurse:
+      3-2 „Sunset Ruins“, Stufenpyramide, `L.enemy(129, 14, "k")` lag eine
+      Stufe zu tief (ersetzte eine Sandstein-Zelle `w`) → Zeile 12, auf der
+      Stufe. `Level.enemy()` bricht jetzt ab, wenn ein Gegner eine feste
+      Zelle ersetzen würde. Sonst nur drei Gegner auf Deko-Zellen (3-2,
+      4-1, 4-2: Busch/Tanne fehlt dort, harmlos).
 
 4:3-Geräte (Galaxy Tab S3, 2048×1536, gefunden 2026-10-03 beim LAN-Test
 Tablet ↔ RG552 — der LAN-Test selbst lief einwandfrei):

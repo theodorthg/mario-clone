@@ -153,6 +153,11 @@ class Level:
     def enemy(self, c, r=None, ch="g"):
         if r is None:
             r = self.surface(c) - 1
+        # v1.9.6: an enemy placed INSIDE a structure replaced a wall cell —
+        # once it was gone (dragon tongue) a hole was left (3-2 pyramid)
+        if self.get(c, r) in SOLID:
+            raise ValueError("%s: enemy %r at (%d, %d) would replace solid %r"
+                             % (self.id, ch, c, r, self.get(c, r)))
         self.set(c, r, ch)
 
     def bat(self, c):
@@ -1298,7 +1303,7 @@ def level_3_2():
     L.coins(131, 16, 5)
     L.set(133, 8, "h")
     L.coins(131, 10, 5)
-    L.enemy(129, 14, ch="k")
+    L.enemy(129, 12, ch="k")      # on the 2nd step (v1.9.6: was row 14 = inside it)
     L.enemy(144)
     L.set(147, 14, "J")
     warp_out = L.pipe(151, 2)
