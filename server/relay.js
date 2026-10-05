@@ -12,6 +12,8 @@
 //                  {"op":"joined"}                       both: partner is there
 //                  {"op":"left"}                         partner went away
 //                  {"op":"error","msg":"..."}           then the socket closes
+// The error texts are shown to the player as they are, by every game of the
+// series — keep them neutral ("host", "room"), no game- or character names.
 // Since 2026-10-03 (relay 2.0, tetris v1.1 versus) the relay serves the whole series: "host"/"join"
 // carry the game ("g": "tetris", …; none = "mario-clone") and a code only
 // opens a room of the same game.
@@ -98,9 +100,9 @@ wss.on("connection", (ws, req) => {
     } else if (m.op === "join") {
       const code = String(m.code || "").toUpperCase().trim();
       const r = rooms.get(code);
-      if (!r || r.g !== gameOf(m)) return fail(ws, `There is no game with the code ${code}.`);
+      if (!r || r.g !== gameOf(m)) return fail(ws, `There is no room with the code ${code}.`);
       if (r.guest && r.guest.readyState === r.guest.OPEN)
-        return fail(ws, r.g === "mario-clone" ? "Luigi is already playing in that game." : "Someone is already playing in that game.");
+        return fail(ws, "That room is already full.");
       r.guest = ws;
       ws.role = "guest";
       ws.room = code;
@@ -117,7 +119,7 @@ wss.on("connection", (ws, req) => {
     if (!r) return;
     if (ws.role === "host" && r.host === ws) {
       rooms.delete(ws.room);
-      if (r.guest) fail(r.guest, r.g === "mario-clone" ? "Mario ended the online game." : "Your opponent ended the game.");
+      if (r.guest) fail(r.guest, "The host ended the game.");
       log("room", ws.room, "closed");
     } else if (ws.role === "guest" && r.guest === ws) {
       r.guest = null;
