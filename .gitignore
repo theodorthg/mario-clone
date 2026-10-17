@@ -38,3 +38,7 @@ __pycache__/
 
 # online relay (server/): npm packages are installed on the server
 server/node_modules/
+
+# Signing keys never belong in the repo (release key was leaked 2026-10, replaced)
+*.keystore
+*.jks
